@@ -1,0 +1,2074 @@
+{
+  "total_source_folders": 132,
+  "total_output_folders": 132,
+  "total_mdc_files": 879,
+  "folders": {
+    "knative-istio-typesense-gpu-cursorrules-prompt-fil": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "istio-specific-rules.mdc",
+        "testing-and-monitoring-rules.mdc",
+        "backend-development-rules.mdc",
+        "general-knative-istio-typesense-htmx-gpu-applications.mdc",
+        "frontend-development-rules.mdc",
+        "typesense-specific-rules.mdc",
+        "knative-specific-rules.mdc"
+      ],
+      "mdc_count": 7,
+      "status": "converted"
+    },
+    "pandas-scikit-learn-guide-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "performance-optimization-rules.mdc",
+        "pandas-data-manipulation-rules.mdc",
+        "data-visualization-rules.mdc",
+        "general-data-analysis-and-jupyter-notebook-rules.mdc",
+        "error-handling-and-data-validation-rules.mdc",
+        "initial-data-analysis-steps.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "cursorrules-cursor-ai-nextjs-14-tailwind-seo-setup": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "typescript-code-generation-rules.mdc",
+        "error-handling-rules.mdc",
+        "data-fetching-rules-for-server-components.mdc",
+        "next-js-14-general-rules.mdc",
+        "general-guidelines.mdc",
+        "metadata-rules.mdc",
+        "tailwind-css-styling-rules.mdc"
+      ],
+      "mdc_count": 7,
+      "status": "converted"
+    },
+    "nextjs-app-router-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "next-js-styling-conventions.mdc",
+        "next-js-image-optimization.mdc",
+        "next-js-error-handling.mdc",
+        "next-js-typescript-usage.mdc",
+        "next-js-seo-guidelines.mdc",
+        "next-js-env-variables.mdc",
+        "next-js-additional-instructions.mdc",
+        "next-js-app-router-best-practices.mdc",
+        "next-js-naming-conventions.mdc",
+        "next-js-folder-structure.mdc"
+      ],
+      "mdc_count": 10,
+      "status": "converted"
+    },
+    "python-developer-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-python-development.mdc",
+        "python-code-style.mdc",
+        "dependencies-management-rules.mdc",
+        "project-technology-stack-context.mdc",
+        "python-version.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "web-app-optimization-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "accessibility-rules.mdc",
+        "sveltekit-api-routes.mdc",
+        "sveltekit-ssr-and-ssg.mdc",
+        "form-and-actions-in-sveltekit.mdc",
+        "paraglide-js-internationalization-i18n.mdc",
+        "performance-optimization-techniques.mdc",
+        "configuration-management.mdc",
+        "typescript-rules-for-svelte-components.mdc",
+        "seo-and-meta-tags-in-sveltekit.mdc",
+        "sveltekit-project-structure.mdc",
+        "tailwind-css-and-shadcn-ui-conventions.mdc",
+        "sveltekit-routing-and-pages.mdc",
+        "svelte-and-sveltekit-general-rules.mdc",
+        "svelte-runes-usage.mdc"
+      ],
+      "mdc_count": 14,
+      "status": "converted"
+    },
+    "nextjs-supabase-todo-app-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "todo-app-general-rules.mdc"
+      ],
+      "mdc_count": 1,
+      "status": "converted"
+    },
+    "tailwind-shadcn-ui-integration-cursorrules-prompt-": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "nextjs-component-rule.mdc",
+        "general-typescript-nextjs-rule.mdc"
+      ],
+      "mdc_count": 2,
+      "status": "converted"
+    },
+    "ascii-simulation-game-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-game-design-and-programming-rules.mdc",
+        "army-and-battle-mechanics-rule.mdc",
+        "core-game-mechanics-rule.mdc",
+        "data-tracking-and-charts-rule.mdc",
+        "visual-and-observational-rules.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "nextjs-seo-dev-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-code-commenting.mdc",
+        "package-json-modification-protection.mdc",
+        "next-js-project-rules.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "typescript-react-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "typescript-react---additional-instructions.mdc",
+        "typescript-react---general-preferences.mdc",
+        "typescript-react---folder-structure.mdc",
+        "typescript-react---best-practices.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "react-mobx-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "mobx-dependency-injection.mdc",
+        "mobx-best-practices.mdc",
+        "folder-structure.mdc",
+        "typescript-with-mobx.mdc",
+        "mobx-react-lite-usage.mdc",
+        "mobx-store-implementation.mdc",
+        "react-general-preferences.mdc",
+        "mobx-reaction-usage.mdc",
+        "mobx-strict-mode.mdc",
+        "observer-hoc-or-useobserver-hook.mdc",
+        "mobx-devtools.mdc"
+      ],
+      "mdc_count": 11,
+      "status": "converted"
+    },
+    "typescript-nodejs-nextjs-ai-cursorrules-prompt-fil": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "python-dependency-management.mdc",
+        "general-project-instructions.mdc"
+      ],
+      "mdc_count": 2,
+      "status": "converted"
+    },
+    "typescript-clasp-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "naming-conventions-rule.mdc",
+        "performance-optimization-rule.mdc",
+        "key-conventions-rule.mdc",
+        "typescript-specific-usage-rule.mdc",
+        "code-style-and-structure-rule.mdc",
+        "syntax-and-formatting-rule.mdc",
+        "google-apps-script-specifics-rule.mdc",
+        "general-typescript-google-apps-script-rule.mdc"
+      ],
+      "mdc_count": 8,
+      "status": "converted"
+    },
+    "pyqt6-eeg-processing-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "root-level-project-instructions.mdc",
+        "eeg-signal-processing-rules.mdc",
+        "workflow-and-integration-rules.mdc",
+        "pyqt6-ui-development-rules.mdc",
+        "python-general-rules.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "convex-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "convex-schema-design---built-in-types.mdc",
+        "convex-development---general.mdc",
+        "convex-schema-design---example-schema.mdc",
+        "convex-schema-design---system-fields.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "python-fastapi-best-practices-cursorrules-prompt-f": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "fastapi-application-structure.mdc",
+        "python-general-coding-style.mdc",
+        "fastapi-performance-optimization.mdc",
+        "fastapi-database-interaction.mdc",
+        "fastapi-documentation.mdc",
+        "fastapi-error-handling.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "nodejs-mongodb-jwt-express-react-cursorrules-promp": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "state-transition-rule.mdc",
+        "general-coding-style.mdc",
+        "admin-interface-rule.mdc",
+        "tech-stack.mdc",
+        "request-and-entry-tracking-rule.mdc",
+        "scoring-and-ranking-rules.mdc",
+        "entry-management-rules.mdc",
+        "payment-tracking-rule.mdc",
+        "strategic-planning-with-pseudocode.mdc",
+        "pick-management-rules.mdc",
+        "entry-creation-rule.mdc",
+        "strict-user-requirements-adherence.mdc",
+        "request-limit-rule.mdc",
+        "submission-process-outline.mdc",
+        "user-flow-rules.mdc",
+        "frontend-tech-stack.mdc",
+        "weekly-scoring-process-pseudocode.mdc",
+        "results-and-standings-rules.mdc"
+      ],
+      "mdc_count": 18,
+      "status": "converted"
+    },
+    "solidity-hardhat-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "solidity-performance-optimization.mdc",
+        "solidity-general-rules.mdc",
+        "solidity-testing-and-quality-assurance.mdc",
+        "solidity-best-practices.mdc",
+        "solidity-documentation.mdc",
+        "hardhat-development-workflow.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "react-query-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "react-query-hooks-directory-guidelines.mdc",
+        "react-functional-components-preference.mdc",
+        "react-project-folder-structure.mdc",
+        "react-query-additional-instructions.mdc",
+        "react-query-general-best-practices.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "swiftui-guidelines-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "swiftui-ui-design-rules.mdc",
+        "swiftui-project-structure-rules.mdc",
+        "swiftui-general-rules.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "solidjs-basic-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "solidjs---data-fetching.mdc",
+        "solidjs---reactive-state-management.mdc",
+        "solidjs---optimization-features.mdc",
+        "solidjs---server-side-rendering.mdc",
+        "solidjs---solid-router.mdc",
+        "solidjs---side-effects-handling.mdc",
+        "solidjs---functional-components-preference.mdc",
+        "solidjs---naming-conventions.mdc",
+        "solidjs---lazy-loading.mdc",
+        "solidjs---conditional-and-list-rendering.mdc",
+        "solidjs---complex-state-management.mdc",
+        "solidjs---jsx-templates.mdc",
+        "solidjs---derived-values-management.mdc",
+        "solidjs---error-boundaries.mdc"
+      ],
+      "mdc_count": 14,
+      "status": "converted"
+    },
+    "nextjs-supabase-shadcn-pwa-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "next-js-15-conventions.mdc",
+        "general-code-quality-and-style.mdc",
+        "build-notes-file-rules.mdc",
+        "context-files-rules.mdc",
+        "project-context-review.mdc",
+        "build-notes-guidelines.mdc",
+        "monorepo-and-tooling.mdc"
+      ],
+      "mdc_count": 7,
+      "status": "converted"
+    },
+    "deno-integration-techniques-cursorrules-prompt-fil": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "project-overview-rule.mdc",
+        "automation-script-rule.mdc",
+        "documentation-rule.mdc",
+        "general-development-rule.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "dragonruby-best-practices-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "dragonruby-syntax-and-formatting.mdc",
+        "dragonruby-naming-conventions.mdc",
+        "dragonruby-error-handling.mdc",
+        "dragonruby-general-ruby-rules.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "wordpress-php-guzzle-gutenberg-cursorrules-prompt-": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "wordpress-plugin-general-rules.mdc",
+        "php-coding-standards.mdc",
+        "javascript-typescript-coding-standards.mdc",
+        "functional-programming-preference.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "optimize-rell-blockchain-code-cursorrules-prompt-f": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "rell-general-rules.mdc",
+        "python-dependency-management-rules.mdc",
+        "general-programming-expert-rules.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "html-tailwind-css-javascript-cursorrules-prompt-fi": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-ai-programming-assistant-rule.mdc",
+        "html-tailwind-css-and-javascript-expert-rule.mdc"
+      ],
+      "mdc_count": 2,
+      "status": "converted"
+    },
+    "sveltekit-typescript-guide-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "component-development-rules.mdc",
+        "drizzle-orm-rules.mdc",
+        "general-sveltekit-typescript-rules.mdc",
+        "supabase-integration-rules.mdc",
+        "class-based-state-management.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "typescript-code-convention-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "next-js-app-router-rule.mdc",
+        "react-component-rule.mdc",
+        "radix-ui-rule.mdc",
+        "general-project-rule.mdc",
+        "shadcn-ui-rule.mdc",
+        "expo-mobile-app-rule.mdc",
+        "tailwind-css-styling-rule.mdc",
+        "general-typescript-rule.mdc",
+        "node-js-backend-rule.mdc",
+        "trpc-api-rule.mdc"
+      ],
+      "mdc_count": 10,
+      "status": "converted"
+    },
+    "webassembly-z80-cellular-automata-cursorrules-prom": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-z80-cellular-automata-simulation-rules.mdc",
+        "region-grid-creation-rules.mdc",
+        "parameter-specific-logic-rules.mdc",
+        "soup-cell-to-region-mapping-rules.mdc",
+        "region-structure-definition-rules.mdc",
+        "main-simulation-loop-modification-rules.mdc",
+        "user-interface-development-rules.mdc",
+        "region-visualization-system-rules.mdc",
+        "data-synchronization-rules.mdc",
+        "wasm-interface-enhancement-rules.mdc",
+        "shader-code-update-rules.mdc"
+      ],
+      "mdc_count": 11,
+      "status": "converted"
+    },
+    "typescript-nextjs-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "naming-conventions-rule.mdc",
+        "ui-and-styling-rule.mdc",
+        "performance-optimization-rule.mdc",
+        "key-conventions-rule.mdc",
+        "general-typescript-node-js-next-js-rules.mdc",
+        "typescript-usage-rule.mdc",
+        "code-style-and-structure-rules.mdc",
+        "syntax-and-formatting-rule.mdc",
+        "next-js-data-fetching-rendering-routing.mdc"
+      ],
+      "mdc_count": 9,
+      "status": "converted"
+    },
+    "solidity-react-blockchain-apps-cursorrules-prompt-": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "python-general-rules.mdc"
+      ],
+      "mdc_count": 1,
+      "status": "converted"
+    },
+    "react-components-creation-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "react-component-adaptation---post-generation-spa.mdc",
+        "react-component-adaptation---post-generation.mdc",
+        "react-component-prompt-example.mdc",
+        "react-component-creation---general.mdc",
+        "react-component-creation---spa-app.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "java-springboot-jpa-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "spring-boot-configuration.mdc",
+        "restcontroller-conventions.mdc",
+        "general-java-development-practices.mdc",
+        "globalexceptionhandler-class.mdc",
+        "repository-class-conventions.mdc",
+        "service-class-conventions.mdc",
+        "apiresponse-class.mdc",
+        "entity-class-conventions.mdc",
+        "dto-conventions.mdc"
+      ],
+      "mdc_count": 9,
+      "status": "converted"
+    },
+    "nextjs15-react19-vercelai-tailwind-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-typescript-and-react-rules.mdc",
+        "directory-naming-conventions.mdc",
+        "next-js-15-state-management-rules.mdc",
+        "next-js-15-component-architecture-rules.mdc",
+        "next-js-15-async-request-api-rules.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "typescript-react-nextjs-cloudflare-cursorrules-pro": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "naming-conventions-rule.mdc",
+        "ui-and-styling-rule.mdc",
+        "performance-optimization-rule.mdc",
+        "terminal-commands-rule.mdc",
+        "key-conventions-rule.mdc",
+        "cloudflare-developer-tools-rule.mdc",
+        "general-typescript-node-js-next-js-rule.mdc"
+      ],
+      "mdc_count": 7,
+      "status": "converted"
+    },
+    "typescript-axios-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-python-rules.mdc",
+        "elite-software-engineer-and-product-manager.mdc"
+      ],
+      "mdc_count": 2,
+      "status": "converted"
+    },
+    "go-servemux-rest-api-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "go-api-development-general-rules.mdc",
+        "go-api-standard-library-usage.mdc",
+        "go-api-security-and-best-practices.mdc",
+        "go-api-error-handling-and-response-formatting.mdc",
+        "go-api-step-by-step-planning.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "react-native-expo-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "react-native-expo---general-best-practices.mdc",
+        "react-native-expo---root-files.mdc",
+        "react-native-expo---project-structure.mdc",
+        "react-native-expo---additional-instructions.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "python-flask-json-guide-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "json-data-handling.mdc",
+        "general-python-rules.mdc",
+        "drawscape-factorio-usage.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "tailwind-react-firebase-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "mobile-first-design-rules.mdc",
+        "accessibility-rules.mdc",
+        "general-ui-ux-rules.mdc",
+        "form-handling-rules.mdc",
+        "pill-management-ai-feature.mdc",
+        "firebase-rules.mdc",
+        "code-organization-rules.mdc"
+      ],
+      "mdc_count": 7,
+      "status": "converted"
+    },
+    "typescript-zod-tailwind-nextjs-cursorrules-prompt-": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "next-js.mdc",
+        "naming-conventions.mdc",
+        "performance-optimization.mdc",
+        "typescript-specific-rules.mdc",
+        "react-server-components-rsc.mdc",
+        "react-remix.mdc",
+        "error-handling-and-validation.mdc",
+        "key-conventions.mdc",
+        "general-typescript-coding-style.mdc",
+        "ui-and-styling.mdc",
+        "syntax-and-formatting.mdc"
+      ],
+      "mdc_count": 11,
+      "status": "converted"
+    },
+    "pytorch-scikit-learn-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "chemistry-ml---testing-and-validation.mdc",
+        "chemistry-ml---pytorch-models.mdc",
+        "chemistry-ml---data-handling-and-preprocessing.mdc",
+        "chemistry-ml---reproducibility-and-version-control.mdc",
+        "chemistry-ml---general-python.mdc",
+        "chemistry-ml---rdkit-usage.mdc",
+        "chemistry-ml---scikit-learn-models.mdc",
+        "chemistry-ml---model-evaluation-and-interpretation.mdc",
+        "chemistry-ml---tauri-integration.mdc"
+      ],
+      "mdc_count": 9,
+      "status": "converted"
+    },
+    "typescript-nestjs-best-practices-cursorrules-promp": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "nestjs-shared-module-guidelines.mdc",
+        "nestjs-testing-guidelines.mdc",
+        "typescript-general-guidelines.mdc",
+        "nestjs-module-structure-guidelines.mdc",
+        "nestjs-core-module-guidelines.mdc",
+        "nestjs-general-guidelines.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "angular-typescript-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "angular-template-hints.mdc",
+        "angular-general.mdc",
+        "typescript-coding-style.mdc",
+        "refactoring-existing-code.mdc",
+        "general-reasoning.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "solidjs-tailwind-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "solidjs-folder-structure.mdc",
+        "tailwind-css-configuration.mdc",
+        "solidjs-tailwind-additional-instructions.mdc",
+        "tailwind-css-styling.mdc",
+        "solidjs-tailwind-css-best-practices.mdc",
+        "solidjs-functional-components.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "react-redux-typescript-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "typescript-type-safety.mdc",
+        "redux-toolkit-best-practices.mdc",
+        "redux-devtools-debugging.mdc",
+        "redux-folder-structure.mdc",
+        "redux-async-actions.mdc",
+        "react-functional-components.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "htmx-go-fiber-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "fiber-routing-and-csrf-protection.mdc",
+        "htmx-go-and-fiber-best-practices-general.mdc",
+        "fiber-logging-and-project-structure.mdc",
+        "recommended-folder-structure.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "tailwind-css-nextjs-guide-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-typescript-rules.mdc",
+        "react-component-guidelines.mdc",
+        "tailwindcss-and-daisyui-rules.mdc",
+        "development-process-rules.mdc",
+        "biome-rules.mdc",
+        "next-js-page-rules.mdc",
+        "general-project-structure.mdc",
+        "starknet-react-rules.mdc",
+        "general-rules.mdc",
+        "prompt-generation-rules.mdc",
+        "cairo-contract-rules.mdc"
+      ],
+      "mdc_count": 11,
+      "status": "converted"
+    },
+    "javascript-chrome-apis-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "publishing-rules.mdc",
+        "chrome-extension-manifest-rules.mdc",
+        "performance-optimization-rules.mdc",
+        "api-usage-rules.mdc",
+        "security-practices.mdc",
+        "development-process-rules.mdc",
+        "extension-architecture-guidelines.mdc",
+        "testing-and-debugging-rules.mdc",
+        "javascript-code-style-and-structure.mdc",
+        "chrome-extension-general-rules.mdc",
+        "ui-and-styling-rules.mdc",
+        "internationalization-rules.mdc"
+      ],
+      "mdc_count": 12,
+      "status": "converted"
+    },
+    "graphical-apps-development-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "langchain-integration-rules.mdc",
+        "element-file-structure-rules.mdc",
+        "general-project-rules.mdc",
+        "panel-view-rules.mdc",
+        "param-parameterized-class-rules.mdc",
+        "general-python-project-rules.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "javascript-typescript-code-quality-cursorrules-pro": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "coding-guidelines---naming-and-constants.mdc",
+        "function-ordering-conventions.mdc",
+        "persona---senior-full-stack-developer.mdc",
+        "typescript-skip-jsdoc.mdc",
+        "coding-guidelines---dry-and-functional-style.mdc",
+        "coding-guidelines---early-returns-and-conditionals.mdc",
+        "javascript-documentation-with-jsdoc.mdc",
+        "general-coding-principles.mdc",
+        "bug-handling-with-todo-comments.mdc",
+        "minimal-code-changes-rule.mdc"
+      ],
+      "mdc_count": 10,
+      "status": "converted"
+    },
+    "flutter-app-expert-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "flutter-testing-rules.mdc",
+        "flutter-core-rules.mdc",
+        "flutter-presentation-rules.mdc",
+        "flutter-feature-rules.mdc",
+        "flutter-general-best-practices.mdc",
+        "flutter-performance-rules.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "go-backend-scalability-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "go-grpc-service-rule.mdc",
+        "backend-general-expert.mdc",
+        "database-interaction-best-practices.mdc",
+        "protocol-buffer-definitions-rule.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "chrome-extension-dev-js-typescript-cursorrules-pro": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "browser-api-usage-rules.mdc",
+        "manifest-and-permissions-rules.mdc",
+        "performance-optimization-rules.mdc",
+        "javascript-typescript-code-style.mdc",
+        "chrome-extension-general-rules.mdc",
+        "ui-and-styling-rules.mdc",
+        "security-and-privacy-rules.mdc",
+        "extension-architecture-rules.mdc",
+        "typescript-usage-rules.mdc",
+        "code-output-rules.mdc"
+      ],
+      "mdc_count": 10,
+      "status": "converted"
+    },
+    "python--typescript-guide-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "react-framework-rules.mdc",
+        "general-ai-behavior-rules.mdc",
+        "tailwind-and-inertiajs-rules.mdc",
+        "django-framework-rules.mdc",
+        "python-and-typescript-code-style.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "python-django-best-practices-cursorrules-prompt-fi": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "django-settings.mdc",
+        "performance-optimization.mdc",
+        "django-models.mdc",
+        "django-views.mdc",
+        "python-django-general.mdc",
+        "django-templates.mdc",
+        "django-middleware.mdc",
+        "security.mdc",
+        "django-rest-framework.mdc",
+        "django-urls.mdc",
+        "django-forms.mdc"
+      ],
+      "mdc_count": 11,
+      "status": "converted"
+    },
+    "htmx-django-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "django-url-routing.mdc",
+        "htmx-and-django-best-practices---general.mdc",
+        "django-class-based-views-for-htmx.mdc",
+        "django-static-files-management.mdc",
+        "general-django-project-structure.mdc",
+        "django-middleware-for-request-response.mdc",
+        "django-orm-for-database-operations.mdc",
+        "django-form-handling.mdc"
+      ],
+      "mdc_count": 8,
+      "status": "converted"
+    },
+    "nextjs-material-ui-tailwind-css-cursorrules-prompt": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "next-js-project-setup.mdc",
+        "tailwind-css-configuration.mdc",
+        "material-ui-configuration.mdc",
+        "prisma-orm-rules.mdc",
+        "shadcn-ui-configuration.mdc",
+        "ckeditor-rules.mdc",
+        "framer-motion-rules.mdc",
+        "bcrypt-rules.mdc",
+        "aceternity-ui-configuration.mdc"
+      ],
+      "mdc_count": 9,
+      "status": "converted"
+    },
+    "nextjs-react-typescript-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "next-js-conventions.mdc",
+        "react-next-js-components.mdc",
+        "error-handling-and-validation.mdc",
+        "general-solidity-typescript-node-js-next-js-rule.mdc",
+        "next-js-server-actions.mdc",
+        "javascript-typescript-coding-style.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "vue-3-nuxt-3-typescript-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "python-general-rules---service-1.mdc"
+      ],
+      "mdc_count": 1,
+      "status": "converted"
+    },
+    "svelte-5-vs-svelte-4-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "svelte-5-reactivity-handling.mdc",
+        "svelte-5-general-rules.mdc",
+        "svelte-5-component-structure---snippets.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "react-nextjs-ui-development-cursorrules-prompt-fil": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "next-js-app-router-rule.mdc",
+        "general-project-behavior-rule.mdc",
+        "general-javascript-react-next-js-rule.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "typescript-llm-tech-stack-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "naming-conventions.mdc",
+        "documentation.mdc",
+        "file-organization.mdc",
+        "library-usage.mdc",
+        "general-typescript-project-rules.mdc",
+        "code-style.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "laravel-tall-stack-best-practices-cursorrules-prom": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "key-conventions-rules.mdc",
+        "alpine-js-usage-rules.mdc",
+        "testing-rules.mdc",
+        "tall-stack-general.mdc",
+        "tailwind-css-styling-rules.mdc",
+        "livewire-implementation-rules.mdc",
+        "php-and-laravel-core-rules.mdc",
+        "laravel-best-practices-rules.mdc",
+        "security-best-practices-rules.mdc"
+      ],
+      "mdc_count": 9,
+      "status": "converted"
+    },
+    "python-containerization-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "python-general-rules.mdc",
+        "database-algorithm-rules.mdc",
+        "containerization-rules.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "kubernetes-mkdocs-documentation-cursorrules-prompt": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "cloud-native-and-kubernetes-expertise-rules.mdc",
+        "documentation-style-and-structure-rules.mdc",
+        "metadata-and-seo-rules.mdc",
+        "mkdocs-specific-rules.mdc",
+        "documentation-best-practices-rules.mdc",
+        "content-creation-rules.mdc",
+        "collaboration-and-version-control-rules.mdc",
+        "general-cloud-native-documentation-rules.mdc",
+        "technical-accuracy-and-usability-rules.mdc"
+      ],
+      "mdc_count": 9,
+      "status": "converted"
+    },
+    "nextjs-vercel-supabase-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-ba-copilot-rules.mdc",
+        "general-project-setup.mdc",
+        "devias-template-integration.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "typescript-vite-tailwind-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "performance-optimization-rule.mdc",
+        "vueuse-library-rule.mdc",
+        "vite-build-optimization-rule.mdc",
+        "general-typescript-rule.mdc",
+        "code-style-and-structure-rule.mdc",
+        "vue-js-component-rule.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "github-cursorrules-prompt-file-instructions": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "naming-conventions.mdc",
+        "general-code-style-and-readability.mdc",
+        "function-length-and-responsibility.mdc",
+        "conditional-encapsulation.mdc",
+        "dry-principle.mdc",
+        "code-writing-standards.mdc",
+        "comment-usage.mdc"
+      ],
+      "mdc_count": 7,
+      "status": "converted"
+    },
+    "typescript-nextjs-react-tailwind-supabase-cursorru": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "agp-router-rules.mdc",
+        "next-js-general-rules.mdc",
+        "radix-ui-specific-rules.mdc",
+        "testing-with-nose-js-and-tastains.mdc",
+        "supabase-specific-rules.mdc",
+        "react-general-rules.mdc",
+        "shaden-ue-specific-rules.mdc",
+        "typescript-general-rules.mdc"
+      ],
+      "mdc_count": 8,
+      "status": "converted"
+    },
+    "typescript-nodejs-react-vite-cursorrules-prompt-fi": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "performance-optimization-rule.mdc",
+        "general-typescript-node-js-react-rule.mdc"
+      ],
+      "mdc_count": 2,
+      "status": "converted"
+    },
+    "python-github-setup-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "clarification-requirement.mdc",
+        "python-documentation.mdc",
+        "python-dependency-management.mdc",
+        "python-security.mdc",
+        "python-code-formatting.mdc",
+        "python-general-coding-style.mdc",
+        "python-version-control.mdc",
+        "python-configuration-management.mdc",
+        "python-testing.mdc",
+        "communication-tone.mdc",
+        "python-logging.mdc",
+        "project-specific-build-tool.mdc",
+        "project-verbosity-level.mdc",
+        "python-monitoring.mdc",
+        "python-code-review.mdc",
+        "python-naming-conventions.mdc",
+        "handle-incomplete-tasks.mdc",
+        "project-specific-testing-framework.mdc",
+        "python-error-handling.mdc",
+        "python-architecture.mdc"
+      ],
+      "mdc_count": 20,
+      "status": "converted"
+    },
+    "vue-3-nuxt-3-development-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "vue-nuxt-general-rules.mdc",
+        "css-specific-rules.mdc",
+        "html-specific-rules.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "next-type-llm": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "coding-style-rules.mdc",
+        "llm-integration-rules.mdc",
+        "technology-stack-frontend-rules.mdc",
+        "general-project-assistant-rules.mdc",
+        "coding-process-rules.mdc",
+        "editing-code-rules.mdc",
+        "technology-stack-backend-rules.mdc",
+        "assistant-response-rules.mdc"
+      ],
+      "mdc_count": 8,
+      "status": "converted"
+    },
+    "vue3-composition-api-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "vue-3-project-structure.mdc",
+        "vue-3-additional-instructions.mdc",
+        "vue-3-typescript-guidelines.mdc",
+        "vue-3-composition-api---composables.mdc",
+        "vue-3-composition-api---general.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "nextjs-typescript-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "coding-style-rules.mdc",
+        "llm-integration-rules.mdc",
+        "general-assistant-rules.mdc",
+        "history-and-next-task-rules.mdc",
+        "backend-stack-rules.mdc",
+        "frontend-stack-rules.mdc",
+        "coding-process-rules.mdc",
+        "editing-code-rules.mdc",
+        "assistant-response-rules.mdc"
+      ],
+      "mdc_count": 9,
+      "status": "converted"
+    },
+    "python-cursorrules-prompt-file-best-practices": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "ai-friendly-coding-practices.mdc",
+        "modular-design-rule.mdc",
+        "project-structure-rule.mdc",
+        "python-general-rules.mdc",
+        "configuration-management-rule.mdc",
+        "ci-cd-implementation-rule.mdc",
+        "error-handling-and-logging-rule.mdc"
+      ],
+      "mdc_count": 7,
+      "status": "converted"
+    },
+    "tauri-svelte-typescript-guide-cursorrules-prompt-f": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "build-and-deployment-rules.mdc",
+        "tauri-native-api-integration.mdc",
+        "testing-rules.mdc",
+        "backend-communication-rules.mdc",
+        "tauri-svelte-typescript-general.mdc",
+        "tauri-svelte-ui-components.mdc",
+        "general-project-conventions.mdc",
+        "tauri-security-rules.mdc"
+      ],
+      "mdc_count": 8,
+      "status": "converted"
+    },
+    "astro-typescript-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "tailwindcss-styling-guidelines.mdc",
+        "general-coding-style.mdc",
+        "astro-development-guidelines.mdc",
+        "custom-slash-commands.mdc",
+        "commit-message-guidelines.mdc",
+        "typescript-development-guidelines.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "nextjs-typescript-app-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "next-js-project-rule.mdc",
+        "typescript-code-style-rule.mdc",
+        "next-js-configuration-rule.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "react-native-expo-router-typescript-windows-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "nativewind-and-tailwind-css-compatibility.mdc",
+        "babel-configuration-for-nativewind.mdc",
+        "react-native-expo-folder-structure.mdc",
+        "react-native-expo-best-practices.mdc",
+        "general-project-instructions.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "flutter-riverpod-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "flutter-project-rules.mdc",
+        "general-ai-assistant-instructions.mdc",
+        "tech-stack-configuration.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "nextjs-typescript-tailwind-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "react-component-guidelines.mdc",
+        "general-typescript-guidelines.mdc",
+        "next-js-app-routing-guidelines.mdc",
+        "ai-interaction-guidelines.mdc",
+        "react-hook-guidelines.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "plasticode-telegram-api-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "php-general-rules.mdc",
+        "composer-dependency-management.mdc",
+        "telegram-bot-api-rules.mdc",
+        "plasticode-rules.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "typescript-react-nextui-supabase-cursorrules-promp": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "authentication-flow-rules.mdc",
+        "supabase-backend-rule.mdc",
+        "react-ui-components-rule.mdc",
+        "general-frontend-rule.mdc",
+        "email-confirmation-rule.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "unity-cursor-ai-c-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "turret-mechanics-rules.mdc",
+        "refactoring-guidance.mdc",
+        "ringcon-controller-integration-rules.mdc",
+        "general-c-unity-tower-defense-rules.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "python-projects-guide-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "python-code-style-consistency-rule.mdc",
+        "python-dependency-management-rule.mdc",
+        "python-error-handling-and-logging-rule.mdc",
+        "python-documentation-rule.mdc",
+        "python-project-structure-rule.mdc",
+        "python-configuration-management-rule.mdc",
+        "python-modular-design-rule.mdc",
+        "python-ai-friendly-coding-practices-rule.mdc",
+        "python-testing-with-pytest-rule.mdc",
+        "python-ci-cd-implementation-rule.mdc"
+      ],
+      "mdc_count": 10,
+      "status": "converted"
+    },
+    "react-styled-components-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "styled-components---naming-conventions.mdc",
+        "styled-components---css-in-js.mdc",
+        "styled-components---attrs-method.mdc",
+        "react-functional-components-preference.mdc",
+        "styled-components---typescript-support.mdc",
+        "styled-components-best-practices---general.mdc",
+        "styled-components---theming.mdc",
+        "styled-components---conditional-styling-css-prop.mdc",
+        "styled-components---documentation.mdc"
+      ],
+      "mdc_count": 9,
+      "status": "converted"
+    },
+    "cursor-ai-react-typescript-shadcn-ui-cursorrules-p": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "naming-conventions-rule.mdc",
+        "ui-and-styling-rule.mdc",
+        "performance-optimization-rule.mdc",
+        "typescript-usage-rule.mdc",
+        "react-and-typescript-general-rules.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "nextjs-vercel-typescript-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-typescript-rules.mdc",
+        "vercel-kv-database-rules.mdc",
+        "performance-optimization-rules.mdc",
+        "middleware-implementation-rules.mdc",
+        "image-optimization-rules.mdc",
+        "general-project-rules.mdc",
+        "ui-component-styling-rules.mdc",
+        "ai-sdk-rsc-integration-rules.mdc",
+        "next-js-server-component-rules.mdc"
+      ],
+      "mdc_count": 9,
+      "status": "converted"
+    },
+    "react-typescript-nextjs-nodejs-cursorrules-prompt-": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "react-next-js-component-rules.mdc",
+        "typescript-javascript-rules.mdc",
+        "general-project-rules.mdc",
+        "next-js-core-principles.mdc",
+        "next-js-server-action-rules.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "elixir-phoenix-docker-setup-cursorrules-prompt-fil": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "commit-message-generation-rule.mdc",
+        "elixir-general-engineering-rule.mdc"
+      ],
+      "mdc_count": 2,
+      "status": "converted"
+    },
+    "htmx-flask-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "flask-folder-structure.mdc",
+        "additional-htmx-and-flask-instructions.mdc",
+        "htmx-and-flask-best-practices.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "optimize-dry-solid-principles-cursorrules-prompt-f": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "code-quality-and-best-practices.mdc",
+        "general-python-rules.mdc",
+        "python-dependency-management.mdc",
+        "response-formatting.mdc",
+        "communication-and-problem-solving.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "qwik-tailwind-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "qwik-folder-structure.mdc",
+        "qwik-tailwind-naming-conventions.mdc",
+        "vite-plugins-for-qwik.mdc",
+        "tailwind-custom-styles.mdc",
+        "qwik-typescript-usage.mdc",
+        "qwik-server-side-code.mdc",
+        "qwik-and-tailwind-best-practices.mdc",
+        "qwik-city-routing.mdc",
+        "qwik-functional-components-preference.mdc",
+        "tailwind-css-purging.mdc",
+        "tailwind-dark-mode.mdc"
+      ],
+      "mdc_count": 11,
+      "status": "converted"
+    },
+    "react-chakra-ui-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "react-chakra-ui---general-preferences.mdc",
+        "chakra-ui---semantic-html-rendering.mdc",
+        "chakra-ui-best-practices.mdc",
+        "chakra-ui---performance-optimization.mdc",
+        "chakra-ui---accessibility-features.mdc",
+        "react-chakra-ui---typescript-usage.mdc",
+        "chakra-ui---component-composition.mdc",
+        "chakra-ui---dark-mode-implementation.mdc",
+        "chakra-ui---responsive-design.mdc",
+        "react-chakra-ui---folder-structure.mdc",
+        "chakra-ui---theme-directory-rules.mdc"
+      ],
+      "mdc_count": 11,
+      "status": "converted"
+    },
+    "python-fastapi-scalable-api-cursorrules-prompt-fil": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "docker-configuration.mdc",
+        "frontend-performance-optimization.mdc",
+        "general-python-backend-rules.mdc",
+        "fastapi-backend-conventions.mdc",
+        "backend-performance-optimization.mdc",
+        "general-typescript-frontend-rules.mdc",
+        "react-frontend-conventions.mdc"
+      ],
+      "mdc_count": 7,
+      "status": "converted"
+    },
+    "python-llm-ml-workflow-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "logging-module-usage.mdc",
+        "experiment-configuration-with-hydra-yaml.mdc",
+        "asynchronous-programming-preference.mdc",
+        "code-formatting-with-ruff.mdc",
+        "comprehensive-type-annotations.mdc",
+        "data-validation-with-pydantic.mdc",
+        "poetry-rye-dependency-management.mdc",
+        "comprehensive-unit-testing-with-pytest.mdc",
+        "prioritize-python-3-10-features.mdc",
+        "detailed-docstrings.mdc",
+        "type-hinting-rule.mdc",
+        "llm-prompt-engineering.mdc",
+        "python-general-role-definition.mdc",
+        "data-pipeline-management-with-dvc.mdc",
+        "testing-framework-pytest.mdc",
+        "fastapi-web-framework.mdc",
+        "google-style-docstrings.mdc"
+      ],
+      "mdc_count": 17,
+      "status": "converted"
+    },
+    "nextjs-react-tailwind-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "component-naming-and-directory-structure.mdc",
+        "next-js-conventions-and-best-practices.mdc",
+        "performance-optimization-rules.mdc",
+        "private-vs-shared-components.mdc",
+        "general-typescript-node-js-next-js-rules.mdc",
+        "ui-and-styling-with-shadcn-ui-and-tailwind.mdc",
+        "placeholder-images.mdc"
+      ],
+      "mdc_count": 7,
+      "status": "converted"
+    },
+    "py-fast-api": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "performance-optimization-rules.mdc",
+        "fastapi-application-rules.mdc",
+        "python-general-principles.mdc",
+        "error-handling-rules.mdc",
+        "fastapi-route-specific-rules.mdc",
+        "pydantic-model-rules.mdc",
+        "database-interaction-rules.mdc"
+      ],
+      "mdc_count": 7,
+      "status": "converted"
+    },
+    "typescript-nodejs-nextjs-react-ui-css-cursorrules-": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-typescript-node-js-next-js-app-router-react-rule.mdc",
+        "next-js-app-router-optimization-rule.mdc",
+        "typescript-usage-rule.mdc",
+        "ui-component-styling-rule.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "angular-novo-elements-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "debugging-and-testing-rules.mdc",
+        "code-style-and-formatting-rules.mdc",
+        "novo-elements-integration-rules.mdc",
+        "development-process-rules.mdc",
+        "project-structure-rules.mdc",
+        "general-coding-principles.mdc",
+        "general-behavior-rules.mdc",
+        "angular-standalone-component-rules.mdc"
+      ],
+      "mdc_count": 8,
+      "status": "converted"
+    },
+    "typescript-expo-jest-detox-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "react-native-core-rule.mdc",
+        "naming-conventions-rule.mdc",
+        "testing-conventions-rule.mdc",
+        "api-documentation-rule.mdc",
+        "expo-framework-rule.mdc",
+        "internationalization-rule.mdc",
+        "general-typescript-rule.mdc",
+        "mobile-ui-development-rule.mdc",
+        "security-practices-rule.mdc",
+        "error-handling-and-validation-rule.mdc"
+      ],
+      "mdc_count": 10,
+      "status": "converted"
+    },
+    "cursorrules-cursor-ai-wordpress-draft-macos-prompt": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "new-user-experience-nux-flow-rule.mdc",
+        "project-overview-rule.mdc",
+        "application-password-rule.mdc",
+        "initial-configuration-rule.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "es-module-nodejs-guidelines-cursorrules-prompt-fil": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-project-practices.mdc",
+        "code-commenting-standards.mdc",
+        "code-style-and-improvements.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "typescript-vuejs-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "naming-conventions.mdc",
+        "performance-optimization.mdc",
+        "general-code-style-and-structure.mdc",
+        "error-handling-and-validation.mdc",
+        "ui-and-styling.mdc",
+        "vue-js-conventions.mdc",
+        "typescript-usage.mdc",
+        "syntax-and-formatting.mdc"
+      ],
+      "mdc_count": 8,
+      "status": "converted"
+    },
+    "typescript-shadcn-ui-nextjs-cursorrules-prompt-fil": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "component-file-structure.mdc",
+        "form-validation-with-zod.mdc",
+        "ui-and-styling-with-shadcn-ui-and-tailwind.mdc",
+        "next-js-specific-conventions.mdc",
+        "performance-optimization-in-react-components.mdc",
+        "general-typescript-code-style.mdc",
+        "syntax-and-formatting.mdc",
+        "server-actions-error-modeling.mdc"
+      ],
+      "mdc_count": 8,
+      "status": "converted"
+    },
+    "typescript-nextjs-supabase-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "performance-optimization-rules.mdc",
+        "ui-styling-rules.mdc",
+        "key-conventions-rules.mdc",
+        "database-querying-rules.mdc",
+        "next-js-app-router-rules.mdc",
+        "vercel-ai-sdk-integration-rules.mdc",
+        "general-typescript-node-js-next-js-project-rules.mdc"
+      ],
+      "mdc_count": 7,
+      "status": "converted"
+    },
+    "react-typescript-symfony-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "full-stack-developer-persona.mdc",
+        "thoughtful-and-accurate-responses.mdc",
+        "general-ai-programming-assistant.mdc",
+        "latest-language-versions-and-best-practices.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "github-code-quality-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "no-unnecessary-confirmations-rule.mdc",
+        "no-understanding-feedback-rule.mdc",
+        "no-previous-x-md-consideration-rule.mdc",
+        "provide-real-file-links-rule.mdc",
+        "no-inventions-rule.mdc",
+        "no-implementation-checks-rule.mdc",
+        "single-chunk-edits-rule.mdc",
+        "check-x-md-content-rule.mdc",
+        "verify-information-rule.mdc",
+        "no-apologies-rule.mdc",
+        "preserve-existing-code-rule.mdc",
+        "no-unnecessary-updates-rule.mdc",
+        "no-summaries-rule.mdc",
+        "no-whitespace-suggestions-rule.mdc",
+        "no-current-implementation-rule.mdc",
+        "file-by-file-changes-rule.mdc"
+      ],
+      "mdc_count": 16,
+      "status": "converted"
+    },
+    "htmx-go-basic-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "htmx-with-go---folder-structure.mdc",
+        "htmx-and-go---best-practices.mdc",
+        "htmx-with-go---additional-instructions.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "solidjs-typescript-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "solidjs-typescript-best-practices.mdc",
+        "solidjs-typescript-coding-standards.mdc",
+        "tsconfig-json-rules.mdc",
+        "solidjs-functional-components-preference.mdc",
+        "solidjs-project-folder-structure.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "nextjs-tailwind-typescript-apps-cursorrules-prompt": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "langchain-rag-application-development.mdc",
+        "supabase-integration-in-next-js.mdc",
+        "next-js-tailwind-typescript-expert---general.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "elixir-engineer-guidelines-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "elixir-general-engineering-rule.mdc",
+        "commit-message-format.mdc"
+      ],
+      "mdc_count": 2,
+      "status": "converted"
+    },
+    "cursorrules-file-cursor-ai-python-fastapi-api": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "fastapi-components-and-validation.mdc",
+        "fastapi-performance-optimization.mdc",
+        "fastapi-dependencies.mdc",
+        "fastapi-function-definitions.mdc",
+        "python-general-style.mdc",
+        "fastapi-dependency-injection.mdc",
+        "fastapi-performance-metrics.mdc",
+        "fastapi-middleware.mdc",
+        "fastapi-conditional-statements.mdc",
+        "fastapi-startup-and-shutdown-events.mdc",
+        "fastapi-file-structure.mdc",
+        "error-handling-priorities.mdc",
+        "fastapi-blocking-operations.mdc"
+      ],
+      "mdc_count": 13,
+      "status": "converted"
+    },
+    "htmx-basic-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "htmx-additional-instructions.mdc",
+        "htmx-folder-structure.mdc",
+        "htmx-best-practices-general.mdc"
+      ],
+      "mdc_count": 3,
+      "status": "converted"
+    },
+    "sveltekit-restful-api-tailwind-css-cursorrules-pro": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "code-quality-standards.mdc",
+        "elon-musk-s-algorithm-for-efficiency.mdc",
+        "truthfulness-and-clarity-for-ai.mdc",
+        "design-and-user-experience-guidelines.mdc",
+        "documentation-standards.mdc",
+        "development-workflow-details.mdc",
+        "file-path-usage.mdc",
+        "continuous-improvement-focus.mdc",
+        "ai-assistant-guidelines.mdc",
+        "tech-stack-definition.mdc",
+        "file-management-rules.mdc",
+        "testing-guidelines.mdc",
+        "test-driven-development-tdd.mdc",
+        "best-practices-guidelines.mdc",
+        "windows-compatibility.mdc",
+        "ai-md-reference.mdc"
+      ],
+      "mdc_count": 16,
+      "status": "converted"
+    },
+    "react-graphql-apollo-client-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "apollo-caching.mdc",
+        "graphql-apollo-client-usage.mdc",
+        "graphql-typescript-integration.mdc",
+        "graphql-naming-conventions.mdc",
+        "graphql-error-boundaries.mdc",
+        "react-functional-components-preference.mdc",
+        "apollo-devtools.mdc",
+        "apollo-provider-setup.mdc",
+        "apollo-custom-hooks.mdc"
+      ],
+      "mdc_count": 9,
+      "status": "converted"
+    },
+    "javascript-astro-tailwind-css-cursorrules-prompt-f": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "astro-build-and-deployment.mdc",
+        "tailwind-css-best-practices.mdc",
+        "astro-component-development.mdc",
+        "performance-metrics.mdc",
+        "astro-content-management.mdc",
+        "testing.mdc",
+        "astro-data-fetching.mdc",
+        "astro-seo-and-meta-tags.mdc",
+        "key-conventions.mdc",
+        "tailwind-css-integration.mdc",
+        "astro-integrations-and-plugins.mdc",
+        "astro-general.mdc",
+        "astro-styling.mdc",
+        "astro-performance-optimization.mdc",
+        "astro-project-structure.mdc",
+        "astro-routing-and-pages.mdc",
+        "accessibility.mdc"
+      ],
+      "mdc_count": 17,
+      "status": "converted"
+    },
+    "laravel-php-83-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "laravel-package-coding-standards.mdc",
+        "readme-md-guidelines.mdc",
+        "laravel-package-testing-and-documentation.mdc",
+        "laravel-package-development-guidelines.mdc",
+        "laravel-package-structure.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "python-fastapi-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "fastapi-best-practices.mdc",
+        "fastapi-folder-structure.mdc",
+        "pydantic-models.mdc",
+        "python-general-coding-standards.mdc",
+        "fastapi-main-application-file.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "nodejs-mongodb-cursorrules-prompt-file-tutorial": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "pools-user-flow-rules.mdc",
+        "scoring-and-ranking-rules.mdc",
+        "entry-management-rules.mdc",
+        "strategic-planning-with-pseudocode.mdc",
+        "pick-management-rules.mdc",
+        "admin-interface-rules.mdc",
+        "frontend-react-rule.mdc",
+        "version-control-rule.mdc",
+        "request-state-transitions.mdc",
+        "general-backend-node-js-express-rule.mdc",
+        "deployment-rule.mdc",
+        "api-endpoint-summarization.mdc",
+        "results-and-standings-rules.mdc"
+      ],
+      "mdc_count": 13,
+      "status": "converted"
+    },
+    "typescript-nodejs-nextjs-app-cursorrules-prompt-fi": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "performance-optimization-rules.mdc",
+        "typescript-specific-rules.mdc",
+        "general-typescript-node-js-next-js-app-router-rules.mdc",
+        "key-conventions-rules.mdc",
+        "directory-naming-convention.mdc",
+        "syntax-and-formatting-rules.mdc",
+        "ui-and-styling-rules.mdc",
+        "component-structure-rules.mdc"
+      ],
+      "mdc_count": 8,
+      "status": "converted"
+    },
+    "qwik-basic-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "qwik-js---typescript-usage.mdc",
+        "qwik-js---general-preferences.mdc",
+        "qwik-js---folder-structure.mdc",
+        "qwik-js---best-practices.mdc",
+        "qwik-js---error-handling-optimization.mdc",
+        "qwik-js---naming-conventions.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "typescript-nextjs-react-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "next-js-app-router-data-fetching-rendering-and-routing-rules.mdc",
+        "pre-configured-apis-rules.mdc",
+        "vercel-ai-sdk-rules.mdc",
+        "general-typescript-react-tailwind-rules.mdc"
+      ],
+      "mdc_count": 4,
+      "status": "converted"
+    },
+    "android-jetpack-compose-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "android-jetpack-compose---testing-guidelines.mdc",
+        "android-jetpack-compose---performance-guidelines.mdc",
+        "android---project-structure.mdc",
+        "android-jetpack-compose---ui-guidelines.mdc",
+        "android-jetpack-compose---general-best-practices.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "python-312-fastapi-best-practices-cursorrules-prom": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "python-dependency-management-with-poetry.mdc",
+        "python-general-best-practices.mdc",
+        "unit-testing-requirement.mdc",
+        "fastapi-framework-rules.mdc",
+        "alembic-database-migrations.mdc",
+        "virtual-environment-usage.mdc"
+      ],
+      "mdc_count": 6,
+      "status": "converted"
+    },
+    "linux-nvidia-cuda-python-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "development-principles-rules.mdc",
+        "ai-alignment-rules.mdc",
+        "continuous-improvement-rules.mdc",
+        "documentation-rules.mdc",
+        "project-overview-rules.mdc"
+      ],
+      "mdc_count": 5,
+      "status": "converted"
+    },
+    "code-guidelines-cursorrules-prompt-file": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "general-coding-rules.mdc"
+      ],
+      "mdc_count": 1,
+      "status": "converted"
+    },
+    "sveltekit-tailwindcss-typescript-cursorrules-promp": {
+      "has_source": true,
+      "has_output": true,
+      "has_cursorrules": true,
+      "mdc_files": [
+        "performance-optimization.mdc",
+        "general-code-guidelines.mdc",
+        "typescript-typing.mdc",
+        "project-file-structure.mdc",
+        "testing-practices.mdc",
+        "documentation-standards.mdc",
+        "imports-aliasing.mdc",
+        "async-operations.mdc",
+        "tailwind-css-styling.mdc",
+        "senior-frontend-developer-mindset.mdc",
+        "sveltekit-data-fetching.mdc",
+        "project-standards---version-numbers.mdc",
+        "svelte-component-design.mdc",
+        "svelte-component-syntax.mdc",
+        "svelte-state-management.mdc",
+        "code-quality-tools.mdc",
+        "accessibility-guidelines.mdc"
+      ],
+      "mdc_count": 17,
+      "status": "converted"
+    }
+  }
+}
