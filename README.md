@@ -1,3 +1,5 @@
+All thanks to the awesome content on https://github.com/PatrickJS/awesome-cursorrules which was processed to create this. I will add a link once they update with .mdc files
+
 # Cursor Rules MDC Converter
 
 This script converts Cursor rules from various formats to the `.mdc` format, using LLM to intelligently process and structure the rules.
