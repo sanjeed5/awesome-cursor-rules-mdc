@@ -21,8 +21,9 @@ GEMINI_API_KEY=your_api_key_here
 ## Usage
 
 The script processes files from the `awesome-cursorrules/rules` directory and:
-1. Creates `.mdc` versions in the same folder as the original files
-2. Creates a new folder structure in `awesome-cursor-mdc-rules` with the converted files
+1. Creates `.mdc` versions in the same folder as the original files.
+2. Creates a new folder structure in `awesome-cursor-mdc-rules` with the converted files.
+3. Generates a conversion report in `conversion_report.json` after processing.
 
 ### Test Mode
 
@@ -37,6 +38,16 @@ By default, the script runs in test mode, which only processes 2 folders. To pro
 ```bash
 uv run convert_to_mdc.py
 ```
+
+### Analyzing Conversion Status
+
+To analyze the conversion status and generate a report, run the following command:
+
+```bash
+uv run test_conversion.py
+```
+
+This will compare the source and output folders, providing a summary of the conversion process and saving the report as `conversion_report.json`.
 
 ## Features
 
