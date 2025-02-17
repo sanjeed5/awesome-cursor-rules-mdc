@@ -1,4 +1,8 @@
+# Awesome Cursor Rules .mdc [![Awesome](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg)](https://github.com/sindresorhus/awesome)
+
 All thanks to the awesome content on https://github.com/PatrickJS/awesome-cursorrules which was processed to create this. I will add a link once they update with .mdc files
+
+
 
 # Cursor Rules MDC Converter
 
