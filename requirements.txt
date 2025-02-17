@@ -1,0 +1,5 @@
+litellm>=1.30.3
+python-dotenv>=1.0.1
+tenacity>=8.2.3
+ratelimit>=2.2.1
+pydantic>=2.6.1 

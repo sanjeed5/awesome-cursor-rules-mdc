@@ -1,0 +1,7 @@
+[project]
+name = "cursor-rules-mdc"
+version = "0.1.0"
+description = "Convert Cursor rules to MDC rules"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
