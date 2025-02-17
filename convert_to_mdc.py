@@ -1,8 +1,7 @@
 import os
-import shutil
 import json
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import List, Dict
 import logging
 from dotenv import load_dotenv
 from litellm import completion
@@ -150,6 +149,41 @@ globs: {rule.glob_pattern}
         f.write(mdc_content)
     logger.info(f"Created {output_path}")
 
+class ProgressTracker:
+    def __init__(self, tracking_file: str = "conversion_progress.json"):
+        self.tracking_file = Path(tracking_file)
+        self.progress: Dict[str, str] = self._load_progress()
+    
+    def _load_progress(self) -> Dict[str, str]:
+        """Load existing progress from file."""
+        if self.tracking_file.exists():
+            try:
+                with open(self.tracking_file, 'r') as f:
+                    return json.load(f)
+            except json.JSONDecodeError:
+                logger.warning("Progress file corrupted, starting fresh")
+                return {}
+        return {}
+    
+    def save_progress(self):
+        """Save current progress to file."""
+        with open(self.tracking_file, 'w') as f:
+            json.dump(self.progress, f, indent=2)
+    
+    def is_folder_processed(self, folder_path: str) -> bool:
+        """Check if a folder has been successfully processed."""
+        return self.progress.get(str(folder_path)) == "completed"
+    
+    def mark_folder_completed(self, folder_path: str):
+        """Mark a folder as successfully processed."""
+        self.progress[str(folder_path)] = "completed"
+        self.save_progress()
+    
+    def mark_folder_failed(self, folder_path: str):
+        """Mark a folder as failed."""
+        self.progress[str(folder_path)] = "failed"
+        self.save_progress()
+
 def process_folder(
     source_folder: str,
     output_base_folder: str,
@@ -167,6 +201,7 @@ def process_folder(
     """
     source_path = Path(source_folder)
     output_base_path = Path(output_base_folder)
+    progress_tracker = ProgressTracker()
     
     if not source_path.exists():
         raise ValueError(f"Source folder {source_folder} does not exist")
@@ -180,17 +215,25 @@ def process_folder(
         subdirs = subdirs[:2]  # Only process first 2 folders in test mode
         logger.info("Running in test mode - processing only 2 folders")
     
+    total_folders = len(subdirs)
+    processed_count = 0
+    
     for subdir in subdirs:
-        logger.info(f"Processing folder: {subdir}")
+        if progress_tracker.is_folder_processed(str(subdir)):
+            logger.info(f"Skipping already processed folder: {subdir}")
+            processed_count += 1
+            continue
+            
+        logger.info(f"Processing folder: {subdir} ({processed_count + 1}/{total_folders})")
         
-        # Create corresponding output subdirectory
-        output_subdir = output_base_path / subdir.name
-        output_subdir.mkdir(parents=True, exist_ok=True)
-        
-        # Process only .cursorrules files in the subdirectory
-        cursorrules_file = subdir / ".cursorrules"
-        if cursorrules_file.is_file():
-            try:
+        try:
+            # Create corresponding output subdirectory
+            output_subdir = output_base_path / subdir.name
+            output_subdir.mkdir(parents=True, exist_ok=True)
+            
+            # Process only .cursorrules files in the subdirectory
+            cursorrules_file = subdir / ".cursorrules"
+            if cursorrules_file.is_file():
                 # Read original content
                 with open(cursorrules_file, 'r', encoding='utf-8') as f:
                     content = f.read()
@@ -212,10 +255,14 @@ def process_folder(
                     if same_folder:
                         same_folder_path = cursorrules_file.parent / mdc_filename
                         create_mdc_file(rule, same_folder_path)
-                    
-            except Exception as e:
-                logger.error(f"Error processing {cursorrules_file}: {str(e)}")
-                continue
+                
+                progress_tracker.mark_folder_completed(str(subdir))
+                processed_count += 1
+                
+        except Exception as e:
+            logger.error(f"Error processing {cursorrules_file}: {str(e)}")
+            progress_tracker.mark_folder_failed(str(subdir))
+            continue
 
 def main():
     """Main function to run the conversion process."""
@@ -228,7 +275,7 @@ def main():
         return
     
     # Process with test mode first
-    test_mode = True  # Change to False for processing all folders
+    test_mode = False  # Change to False for processing all folders
     try:
         process_folder(source_folder, output_folder, same_folder=True, test_mode=test_mode)
         logger.info("Processing completed successfully!")
