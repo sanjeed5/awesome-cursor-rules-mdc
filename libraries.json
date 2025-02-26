@@ -1,0 +1,66 @@
+{
+  "frontend_frameworks": {
+    "react": ["react", "react-native", "react-query", "react-redux", "react-mobx", "next.js"],
+    "vue": ["vue", "vue3", "nuxt"],
+    "angular": ["angular"],
+    "svelte": ["svelte", "sveltekit"],
+    "solid": ["solidjs"],
+    "qwik": ["qwik"]
+  },
+  "backend_frameworks": {
+    "nodejs": ["express", "nestjs", "bun"],
+    "python": ["django", "flask", "fastapi"],
+    "php": ["laravel"],
+    "java": ["springboot"],
+    "go": ["fiber", "servemux"],
+    "elixir": ["phoenix"],
+    "rust": ["actix-web", "rocket"]
+  },
+  "ui_libraries": {
+    "component_libraries": ["shadcn", "chakra-ui", "material-ui", "tailwind"],
+    "mobile_ui": ["jetpack-compose"]
+  },
+  "state_management": {
+    "react": ["redux", "mobx", "zustand"],
+    "flutter": ["riverpod"]
+  },
+  "database_tools": {
+    "sql": ["supabase", "postgresql", "prisma"],
+    "nosql": ["mongodb", "redis"],
+    "analytics": ["duckdb"]
+  },
+  "development_tools": {
+    "build_tools": ["vite", "webpack", "turbopack"],
+    "testing": ["jest", "detox", "playwright", "vitest"],
+    "containerization": ["docker", "kubernetes"],
+    "version_control": ["git"],
+    "documentation": ["mkdocs"],
+    "ci_cd": ["github-actions"],
+    "infrastructure": ["terraform"]
+  },
+  "cross_platform": {
+    "desktop": ["tauri", "electron"],
+    "mobile": ["react-native", "flutter", "expo"]
+  },
+  "ai_ml": {
+    "machine_learning": ["pytorch", "scikit-learn", "pandas", "tensorflow"],
+    "gpu_computing": ["cuda"],
+    "llm_tools": ["langchain", "huggingface", "vllm"],
+    "cloud_inference": ["modal"]
+  },
+  "web_technologies": {
+    "styling": ["tailwind", "css"],
+    "modern_patterns": ["htmx", "trpc"],
+    "type_checking": ["typescript", "zod"],
+    "http_client": ["axios", "guzzle"],
+    "api": ["graphql", "apollo-client"]
+  },
+  "blockchain": {
+    "ethereum": ["solidity", "hardhat"]
+  },
+  "cloud_platforms": {
+    "deployment": ["vercel", "cloudflare", "modal"],
+    "serverless": ["aws-lambda", "modal"],
+    "major_platforms": ["aws", "gcp", "azure"]
+  }
+} 
