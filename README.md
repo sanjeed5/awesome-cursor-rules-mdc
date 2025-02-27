@@ -119,6 +119,23 @@ rules-mdc/
 └── ...
 ```
 
+## Available Libraries
+
+All currently supported libraries and their categories can be found in `src/libraries.json`. This file organizes libraries into categories like:
+- Frontend Frameworks (React, Vue, Angular, etc.)
+- Backend Frameworks (Node.js, Python, PHP, etc.)
+- UI Libraries
+- State Management
+- Database Tools
+- Development Tools
+- Cross Platform
+- AI/ML
+- Web Technologies
+- Blockchain
+- Cloud Platforms
+
+Each category contains relevant subcategories and specific libraries. Check `src/libraries.json` for the complete, up-to-date list of supported libraries.
+
 ## Progress Tracking
 
 The script maintains a progress file (`mdc_generation_progress.json`) to track which libraries have been processed. This allows you to resume the process if it's interrupted.
