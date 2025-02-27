@@ -11,3 +11,5 @@ wheels/
 
 awesome-cursorrules/
 .env
+exa_results/
+logs/
