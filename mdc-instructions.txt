@@ -1,6 +1,6 @@
 Project rules offers a powerful and flexible system with path specific configurations. Project rules are stored in the .cursor/rules directory and provide granular control over AI behavior in different parts of your project.
 
-Here’s how they work
+Here's how they work:
 
 Semantic Descriptions: Each rule can include a description of when it should be applied
 File Pattern Matching: Use glob patterns to specify which files/folders the rule applies to
@@ -8,7 +8,21 @@ Automatic Attachment: Rules can be automatically included when matching files ar
 Reference files: Use @file in your project rules to include them as context when the rule is applied.
 You can reference rule files using @file, allowing you to chain multiple rules together
 
-You can create a new rule using the command palette with Cmd + Shift + P > New Cursor Rule. By using project rules you also get the benefit of version control since it’s just a file
+Example rule format:
+
+---
+description: Library best practices and coding standards
+globs: **/*.ext
+---
+- Best practice 1
+- Best practice 2
+- Best practice 3
+
+Rules should be specific to the library and provide clear, actionable guidance for developers.
+Focus on common patterns, best practices, and coding standards that are widely accepted in the community.
+Include information about code organization, performance considerations, and common pitfalls to avoid.
+
+You can create a new rule using the command palette with Cmd + Shift + P > New Cursor Rule. By using project rules you also get the benefit of version control since it's just a file
 
 Example use cases:
 
@@ -22,7 +36,7 @@ Example rule format (remember that file name should end in .mdc):
 
 ---
 description: Python general rules
-globs: /service-1/**/*.*
+globs: **/*.py
 ---
 - Always use UV when installing depdendencies
 - Always use python 3.12
