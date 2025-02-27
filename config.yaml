@@ -1,0 +1,16 @@
+paths:
+  mdc_instructions: "mdc-instructions.txt"
+  libraries_json: "libraries.json"
+  output_dir: "rules-mdc"
+
+api:
+  llm_model: "gemini/gemini-2.0-flash"
+  rate_limit_calls: 2000 
+  rate_limit_period: 60
+  max_retries: 3
+  retry_min_wait: 4
+  retry_max_wait: 10
+
+processing:
+  max_workers: 4  # Adjust based on your system's capabilities
+  chunk_size: 50000  # Reduced from 50000 to optimize token usage 
