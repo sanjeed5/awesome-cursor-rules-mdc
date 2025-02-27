@@ -1,0 +1,113 @@
+---
+description: Comprehensive guidelines for developing robust and maintainable web applications with the Rocket web framework, covering code organization, security, performance, testing, and more.
+globs: **/*.rs
+---
+- **Code Organization and Structure:**
+  - **Directory Structure:** Organize your project with a clear and maintainable directory structure. A common pattern is:
+    - `src/`: Contains the main source code.
+      - `main.rs`: Entry point of the application.
+      - `lib.rs`:  Defines library components.
+      - `routes/`: Contains route handlers.
+        - `mod.rs`:  Defines and exports route modules.
+        - `resource_name.rs`: Individual route files.
+      - `models/`: Defines data structures and database interactions.
+        - `mod.rs`: Defines and exports model modules.
+        - `data_model.rs`: Individual model definitions.
+      - `utils/`: Utility functions and modules.
+        - `mod.rs`: Defines and exports utility modules.
+        - `helper_functions.rs`: Individual utility function files.
+      - `config/`: Configuration files and settings.
+    - `static/`: Static assets like CSS, JavaScript, and images.
+    - `templates/`:  Templates for rendering dynamic content (using templating engines like Handlebars or Tera).
+    - `tests/`: Unit and integration tests.
+    - `migrations/`: Database migrations (if applicable).
+  - **File Naming Conventions:** Use descriptive and consistent file names.  Follow Rust's conventions, such as `snake_case` for file and module names.  For example, `user_routes.rs`, `database_connection.rs`.
+  - **Module Organization:** Break down your code into logical modules.  Use `mod.rs` files to define and re-export modules within a directory.
+  - **Component Architecture:** Design your application using a component-based architecture. This promotes reusability and maintainability.  Consider using traits to define interfaces between components.
+  - **Code Splitting Strategies:**  For larger applications, split your code into smaller, manageable crates to improve compilation times and code organization.
+
+- **Common Patterns and Anti-patterns:**
+  - **Design Patterns:**
+    - **Repository Pattern:** Abstract data access logic behind a repository interface.
+    - **Service Layer Pattern:** Decouple route handlers from business logic using a service layer.
+    - **State Pattern:**  Manage complex state transitions within route handlers or components.
+  - **Recommended Approaches for Common Tasks:**
+    - **Database Interactions:** Use an ORM like Diesel or SeaORM to interact with databases.  Use connection pooling to efficiently manage database connections.
+    - **Authentication and Authorization:** Implement authentication using JWT (JSON Web Tokens) or sessions. Use role-based access control (RBAC) for authorization.
+    - **Input Validation:**  Thoroughly validate user input to prevent security vulnerabilities and data corruption.
+  - **Anti-patterns and Code Smells:**
+    - **Global Variables:** Avoid using global variables, as they can lead to unexpected side effects and make code harder to reason about. Use dependency injection instead.
+    - **Tight Coupling:** Minimize dependencies between components.  Use interfaces and abstractions to decouple components.
+    - **Long Functions:** Break down long functions into smaller, more manageable functions.
+  - **State Management:** Use Rocket's managed state feature (`#[rocket::State]`) to manage application-level state.
+  - **Error Handling:** Use Rust's `Result` type for error handling.  Provide informative error messages to the user.
+
+- **Performance Considerations:**
+  - **Optimization Techniques:**
+    - **Asynchronous Programming:** Use asynchronous programming (`async/await`) to handle concurrent requests efficiently.
+    - **Caching:**  Implement caching to reduce database load and improve response times.
+    - **Connection Pooling:**  Use connection pooling to reuse database connections.
+  - **Memory Management:** Be mindful of memory allocation and deallocation. Use Rust's ownership and borrowing system to prevent memory leaks and data races.
+  - **Rendering Optimization:**  Optimize your templates to reduce rendering time.  Use template caching.
+  - **Bundle Size Optimization:** Minimize the size of your application's binary. Use release mode compilation (`cargo build --release`). Strip debug symbols.
+  - **Lazy Loading Strategies:**  Load resources on demand to improve initial page load time.
+
+- **Security Best Practices:**
+  - **Common Vulnerabilities:**
+    - **SQL Injection:** Prevent SQL injection by using parameterized queries or an ORM.
+    - **Cross-Site Scripting (XSS):**  Sanitize user input to prevent XSS attacks.
+    - **Cross-Site Request Forgery (CSRF):**  Implement CSRF protection using tokens.
+  - **Input Validation:**  Validate all user input on both the client-side and server-side.
+  - **Authentication and Authorization:**
+    - Use strong password hashing algorithms (e.g., bcrypt or Argon2).
+    - Implement two-factor authentication (2FA).
+    - Use role-based access control (RBAC) to restrict access to resources.
+  - **Data Protection:**
+    - Encrypt sensitive data at rest and in transit.
+    - Use HTTPS to secure communication between the client and server.
+    - Store passwords securely using a strong hashing algorithm.
+  - **Secure API Communication:**
+    - Use HTTPS for all API communication.
+    - Implement rate limiting to prevent abuse.
+    - Use API keys or JWT for authentication.
+
+- **Testing Approaches:**
+  - **Unit Testing:** Write unit tests to verify the functionality of individual functions and modules.  Use the `#[cfg(test)]` attribute to define test modules.
+  - **Integration Testing:** Write integration tests to verify the interaction between different parts of your application.  Test routes and database interactions.
+  - **End-to-End Testing:**  Write end-to-end tests to verify the complete functionality of your application.  Use a testing framework like Selenium or Cypress.
+  - **Test Organization:**  Organize your tests in a clear and maintainable way. Create separate test modules for each component or module.
+  - **Mocking and Stubbing:**  Use mocking and stubbing to isolate units of code during testing.  Use a mocking framework like Mockall.
+
+- **Common Pitfalls and Gotchas:**
+  - **Frequent Mistakes:**
+    - **Forgetting to handle errors:** Always handle errors properly using `Result` and provide informative error messages.
+    - **Not validating user input:** Always validate user input to prevent security vulnerabilities.
+    - **Using global state:** Avoid using global state, as it can lead to unexpected side effects.
+  - **Edge Cases:**
+    - **Handling concurrent requests:**  Use asynchronous programming to handle concurrent requests efficiently.
+    - **Dealing with large files:** Use streaming to process large files without loading them into memory.
+    - **Handling database connection errors:**  Implement retry logic to handle database connection errors.
+  - **Version-Specific Issues:**  Be aware of version-specific issues and compatibility concerns.  Consult the Rocket documentation and release notes.
+  - **Compatibility Concerns:**  Ensure that your application is compatible with the target platform and browser versions.
+  - **Debugging Strategies:**
+    - Use the `println!` macro for debugging.
+    - Use a debugger like GDB or LLDB.
+    - Use logging to track the execution of your application.
+
+- **Tooling and Environment:**
+  - **Recommended Development Tools:**
+    - **Rust toolchain:** Install the Rust toolchain using `rustup`.
+    - **IDE:** Use an IDE like Visual Studio Code with the Rust Analyzer extension.
+    - **Database client:** Use a database client like DBeaver or pgAdmin.
+  - **Build Configuration:** Configure your build using `Cargo.toml`.  Specify dependencies, build scripts, and other build settings.
+  - **Linting and Formatting:**
+    - Use `rustfmt` for code formatting.
+    - Use `clippy` for linting.
+    - Configure your IDE to automatically format and lint your code.
+  - **Deployment Best Practices:**
+    - Use a process manager like systemd or PM2 to manage your application.
+    - Use a reverse proxy like Nginx or Apache to handle incoming requests.
+    - Use a load balancer to distribute traffic across multiple instances of your application.
+  - **CI/CD Integration:**
+    - Use a CI/CD platform like GitHub Actions or GitLab CI to automate your build, test, and deployment process.
+    - Write tests to ensure that your application is working correctly before deploying.

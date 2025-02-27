@@ -1,0 +1,167 @@
+---
+description: Enforces best practices for React development, covering code structure, performance, security, and testing to ensure maintainable and efficient applications.
+globs: **/*.{js,jsx,ts,tsx}
+---
+- **Use Functional Components with Hooks:**
+  - Favor functional components over class components for simplicity and better performance.
+  - Leverage React Hooks (useState, useEffect, useContext, useReducer, useCallback, useMemo, useRef, useImperativeHandle, useLayoutEffect, useDebugValue) for managing state, side effects, and context.
+
+- **Component Composition:**
+  - Build complex UIs by composing smaller, reusable components.
+  - Use props to pass data down the component tree and callbacks to handle events.
+
+- **Meaningful Component Names:**
+  - Give component names that accurately reflect their functionality.
+  - Follow a consistent naming convention (e.g., PascalCase for components, camelCase for props).
+
+- **Keep Components Small and Focused:**
+  - Adhere to the Single Responsibility Principle; each component should have a clear, focused purpose.
+  - Break down large components into smaller, more manageable pieces.
+
+- **Destructuring Props:**
+  - Use destructuring to access props within functional components for improved readability.
+
+- **Avoid Inline Styles:**
+  - Use CSS modules, styled-components, or a CSS-in-JS library for managing styles instead of inline styles.
+  - Keep styles separate from component logic for better maintainability.
+
+- **Use Arrow Functions:**
+  - Use arrow functions for concise syntax and lexical `this` binding.
+  - Be mindful of performance implications when passing arrow functions directly as props; consider using `useCallback`.
+
+- **PropTypes for Type Checking (with alternatives):**
+  - Use PropTypes (though consider TypeScript) to define the expected types of props passed to components.
+  - Enforce type checking at runtime to catch type-related errors early.
+  - Strongly consider TypeScript for static type checking for enhanced code quality and maintainability.
+
+- **Immutability:**
+  - Treat state as immutable; avoid directly modifying state objects.
+  - Use `setState`, the spread operator (`...`), or immutable data structures (e.g., Immutable.js) to update state.
+
+- **Code Organization and Structure:**
+  - **Directory Structure:**
+    - Organize components into folders based on features or modules.
+    - Use a `components` directory for reusable UI elements.
+    - Consider a `hooks` directory for custom hooks.
+    - Separate API services into a `services` or `api` directory.
+  - **File Naming Conventions:**
+    - Use `.jsx` or `.tsx` extensions for React components.
+    - Name files according to the component they export (e.g., `MyComponent.jsx`).
+    - Use `index.js` or `index.ts` files to export multiple components from a directory.
+  - **Module Organization:**
+    - Use ES modules (`import` and `export`) for modular code.
+    - Group related components and logic into modules.
+  - **Component Architecture:**
+    - **Atomic Design:** Consider using Atomic Design principles (Atoms, Molecules, Organisms, Templates, Pages) to structure your components.
+    - **Presentational and Container Components:** Separate presentational (UI-focused) and container (logic-focused) components.
+  - **Code Splitting:**
+    - Use React.lazy and Suspense to lazy-load components and reduce initial bundle size.
+    - Implement route-based code splitting for larger applications.
+    - Consider using dynamic imports for splitting non-route components as well.
+
+- **Common Patterns and Anti-patterns:**
+  - **Design Patterns:**
+    - **Higher-Order Components (HOCs):** Use HOCs to share logic between components.
+    - **Render Props:** Use render props for more flexible code reuse.
+    - **Compound Components:** Create components that implicitly share state and behavior with their children (e.g., `<Tabs>`, `<Tab>`).
+    - **Provider Pattern:** Use the Context API to provide data to a subtree of components.
+  - **Recommended Approaches:**
+    - Use controlled components for forms to manage input values in React state.
+    - Use keys when rendering lists of elements for efficient updates.
+    - Use memoization techniques (React.memo, useMemo, useCallback) to prevent unnecessary re-renders.
+  - **Anti-patterns:**
+    - **Direct DOM Manipulation:** Avoid directly manipulating the DOM; use React's virtual DOM instead.
+    - **Mutating State Directly:** Never directly modify state; use `setState` or the appropriate hook update function.
+    - **Over-reliance on Global State:** Avoid storing too much state in global stores; consider component-level state or context when appropriate.
+  - **State Management:**
+    - **Component State:** Use `useState` for simple component-level state.
+    - **Context API:** Use the Context API for sharing state across a subtree of components.
+    - **Redux/Zustand/Recoil/MobX:** Consider using a state management library (Redux, Zustand, Recoil, MobX) for complex application state.
+  - **Error Handling:**
+    - **Error Boundaries:** Use Error Boundaries to catch errors during rendering and prevent the entire application from crashing.
+    - **Try/Catch Blocks:** Use try/catch blocks for handling errors in event handlers and lifecycle methods.
+
+- **Performance Considerations:**
+  - **Memoization:**
+    - Use `React.memo` to memoize functional components and prevent unnecessary re-renders.
+    - Use `useMemo` to memoize computed values and prevent unnecessary recalculations.
+    - Use `useCallback` to memoize event handler functions and prevent unnecessary re-renders of child components.
+  - **Virtualization:**
+    - Use virtualization libraries (e.g., `react-window`, `react-virtualized`) for rendering large lists of data efficiently.
+  - **Debouncing and Throttling:**
+    - Use debouncing and throttling techniques to limit the frequency of function calls in response to user input.
+  - **Image Optimization:**
+    - Optimize images for the web to reduce file sizes and improve loading times.
+    - Use lazy loading for images that are not immediately visible.
+  - **Bundle Size Optimization:**
+    - Use code splitting to reduce the initial bundle size.
+    - Remove unused code with tree shaking.
+    - Compress code with minification.
+  - **Rendering Optimization:**
+       - Use `shouldComponentUpdate` (in class components) or `React.memo` (in functional components) to prevent unnecessary re-renders.
+       - Implement pure components (components that only re-render when their props change) for performance gains.
+  - **Lazy Loading:**
+       - Use `React.lazy` and `Suspense` to load components on demand and improve initial load time.
+
+- **Security Best Practices:**
+  - **XSS Prevention:**
+    - Sanitize user input to prevent cross-site scripting (XSS) attacks.
+    - Use React's built-in escaping mechanisms to render data safely.
+  - **CSRF Protection:**
+    - Implement cross-site request forgery (CSRF) protection to prevent unauthorized requests.
+    - Use anti-CSRF tokens to verify requests.
+  - **Authentication and Authorization:**
+    - Use secure authentication and authorization patterns to protect sensitive data and functionality.
+    - Implement strong password policies.
+    - Use multi-factor authentication.
+  - **Data Protection:**
+    - Encrypt sensitive data at rest and in transit.
+    - Use HTTPS to secure communication between the client and server.
+  - **Secure API Communication:**
+    - Validate API responses to prevent unexpected data from compromising the application.
+
+- **Testing Approaches:**
+  - **Unit Testing:**
+    - Write unit tests to verify the behavior of individual components and functions.
+    - Use testing libraries like Jest and React Testing Library.
+  - **Integration Testing:**
+    - Write integration tests to verify the interaction between multiple components and modules.
+  - **End-to-End Testing:**
+    - Write end-to-end tests to verify the entire application flow.
+    - Use testing frameworks like Cypress or Playwright.
+  - **Test Organization:**
+    - Organize tests into a `__tests__` directory alongside the component files.
+    - Follow a consistent naming convention for test files (e.g., `MyComponent.test.jsx`).
+  - **Mocking and Stubbing:**
+    - Use mocking and stubbing techniques to isolate components during testing.
+    - Mock external dependencies like API calls and browser APIs.
+
+- **Common Pitfalls and Gotchas:**
+  - **Incorrect `this` Binding:**
+    - Be mindful of `this` binding in class components; use arrow functions or `bind` to ensure the correct context.
+  - **Missing Keys in Lists:**
+    - Provide unique keys to elements when rendering lists to prevent rendering issues.
+  - **Asynchronous State Updates:**
+    - Understand how `setState` and hook update functions handle asynchronous updates; use functional updates when necessary.
+  - **Memory Leaks:**
+    - Clean up side effects in `useEffect` hooks to prevent memory leaks.
+  - **Version-Specific Issues:**
+       - Be aware of compatibility concerns when upgrading React versions.
+       - Consult the React documentation and release notes for migration guides.
+
+- **Tooling and Environment:**
+  - **Recommended Development Tools:**
+    - VS Code with React-specific extensions (e.g., ESLint, Prettier, Babel).
+    - Chrome DevTools for debugging.
+    - React Developer Tools extension for inspecting component hierarchy and state.
+  - **Build Configuration:**
+    - Use tools like webpack, Parcel, or Rollup for bundling and optimizing code.
+    - Configure Babel to transpile JSX and modern JavaScript syntax.
+  - **Linting and Formatting:**
+    - Use ESLint with React-specific rules to enforce code style and best practices.
+    - Use Prettier to automatically format code.
+  - **Deployment Best Practices:**
+    - Use a CDN to serve static assets.
+    - Use server-side rendering (SSR) or static site generation (SSG) for improved performance and SEO.
+  - **CI/CD Integration:**
+    - Integrate CI/CD pipelines for automated testing, building, and deployment.

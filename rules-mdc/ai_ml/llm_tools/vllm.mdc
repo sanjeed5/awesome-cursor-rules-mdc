@@ -1,0 +1,140 @@
+---
+description: This rule outlines the best practices and coding standards for developing with the vllm library, ensuring code quality, performance, and maintainability. It covers code organization, performance considerations, security, testing, and common pitfalls.
+globs: **/*.py
+---
+- ## General
+  - Adhere to the Google Python Style Guide: vllm projects should strictly follow the Google Python Style Guide for consistency and readability.
+  - Adhere to the Google C++ Style Guide (where applicable, especially for backend components).
+  - Pass all linter checks: Ensure code passes all configured linter checks (e.g., pylint, flake8) before committing.
+  - Always use UV when installing dependencies.
+  - Always use Python 3.12 or higher.
+  - Prefer classes over bare functions for better code organization and state management (where appropriate).
+
+- ## Code Organization and Structure:
+  - **Directory Structure Best Practices:**
+    - `vllm/` (Root directory):
+      - `api/`: Contains API endpoints and related logic.
+      - `core/`: Core functionalities and algorithms.
+      - `layers/`: Custom layers for the models.
+      - `models/`: Model definitions and configurations.
+      - `sampling/`: Sampling algorithms.
+      - `sequence/`: Sequence management and data structures.
+      - `utils/`: Utility functions and helper modules.
+      - `tests/`: Unit and integration tests.
+      - `examples/`: Example usage and demonstrations.
+      - `docs/`: Documentation.
+    - Maintain clear separation of concerns.
+  - **File Naming Conventions:**
+    - Use descriptive and meaningful names for files and modules (e.g., `attention_layer.py`, `model_loader.py`).
+    - Follow snake_case for Python files and variables.
+  - **Module Organization:**
+    - Group related functionalities into modules.
+    - Use `__init__.py` files to define packages and control module imports.
+  - **Component Architecture:**
+    - Design components with clear interfaces and responsibilities.
+    - Favor composition over inheritance to promote flexibility and reusability.
+  - **Code Splitting Strategies:**
+    - Break down large modules into smaller, more manageable files.
+    - Utilize lazy loading or dynamic imports to reduce startup time.
+
+- ## Common Patterns and Anti-patterns:
+  - **Design Patterns Specific to vllm:**
+    - **Model Abstraction:** Decouple the model implementation from the core engine.
+    - **Sequence Manager:** Centralized management of sequences and their states.
+    - **Asynchronous Execution:** Use asyncio to handle concurrent requests and I/O operations.
+  - **Recommended Approaches for Common Tasks:**
+    - **Model Loading:** Implement a robust model loading mechanism with caching and error handling.
+    - **Tokenization:** Use a dedicated tokenizer class to handle tokenization and detokenization.
+    - **Inference:** Design an efficient inference pipeline with batching and optimized tensor operations.
+  - **Anti-patterns and Code Smells to Avoid:**
+    - **God Classes:** Avoid creating large classes with too many responsibilities.
+    - **Code Duplication:** Refactor duplicated code into reusable functions or classes.
+    - **Magic Numbers:** Use named constants for configuration values.
+  - **State Management Best Practices:**
+    - Use immutable data structures to avoid unintended side effects.
+    - Manage state within dedicated classes or modules.
+    - Avoid global state where possible.
+  - **Error Handling Patterns:**
+    - Use exceptions to handle errors and unexpected conditions.
+    - Provide informative error messages.
+    - Implement retry mechanisms for transient errors.
+
+- ## Performance Considerations:
+  - **Optimization Techniques:**
+    - **Tensor Optimization:** Use optimized tensor operations and data layouts (e.g., `torch.compile`).
+    - **Kernel Fusion:** Fuse multiple operations into a single kernel to reduce overhead.
+    - **Quantization:** Use quantization techniques to reduce model size and memory footprint.
+  - **Memory Management:**
+    - Minimize memory allocations and deallocations.
+    - Use memory pooling to reuse memory buffers.
+    - Profile memory usage to identify bottlenecks.
+  - **Bundle Size Optimization:**
+    - Remove unused dependencies.
+  - **Lazy Loading Strategies:**
+    - Use lazy loading for large modules or resources.
+    - Implement asynchronous loading for non-critical components.
+
+- ## Security Best Practices:
+  - **Common Vulnerabilities and How to Prevent Them:**
+    - **Injection Attacks:** Sanitize user inputs to prevent injection attacks.
+    - **Denial of Service (DoS):** Implement rate limiting and resource management to protect against DoS attacks.
+    - **Data Breaches:** Protect sensitive data with encryption and access controls.
+  - **Input Validation:**
+    - Validate all user inputs before processing.
+    - Use regular expressions or schema validation to enforce input constraints.
+  - **Authentication and Authorization Patterns:**
+    - Implement authentication to verify user identities.
+    - Use authorization to control access to resources.
+  - **Data Protection Strategies:**
+    - Encrypt sensitive data at rest and in transit.
+    - Use secure storage mechanisms.
+  - **Secure API Communication:**
+    - Use HTTPS for API communication.
+    - Implement API authentication and authorization.
+
+- ## Testing Approaches:
+  - **Unit Testing Strategies:**
+    - Write unit tests for individual functions and classes.
+    - Use mocking and stubbing to isolate units of code.
+  - **Integration Testing:**
+    - Test the interaction between different modules and components.
+  - **End-to-End Testing:**
+    - Test the entire system from end to end.
+  - **Test Organization:**
+    - Organize tests into separate directories.
+    - Use descriptive names for test files and functions.
+  - **Mocking and Stubbing:**
+    - Use mocking to replace external dependencies with controlled substitutes.
+    - Use stubbing to provide predefined responses for function calls.
+
+- ## Common Pitfalls and Gotchas:
+  - **Frequent Mistakes Developers Make:**
+    - **Incorrect Tensor Shapes:** Ensure tensor shapes are compatible for operations.
+    - **Memory Leaks:** Properly release allocated memory to prevent memory leaks.
+    - **Synchronization Issues:** Avoid race conditions and deadlocks in concurrent code.
+  - **Edge Cases to be Aware Of:**
+    - **Handling Empty Sequences:** Handle empty sequences gracefully.
+    - **Dealing with Unknown Tokens:** Implement a mechanism to handle unknown tokens.
+  - **Version-Specific Issues:**
+      - Keep dependencies up-to-date and be aware of breaking changes when upgrading.
+  - **Compatibility Concerns:**
+    - Ensure compatibility with different hardware platforms (CPU, GPU).
+    - Consider different versions of Python and PyTorch.
+  - **Debugging Strategies:**
+    - Use logging to track program execution.
+    - Use a debugger to step through code and inspect variables.
+    - Profile performance to identify bottlenecks.
+
+- ## Tooling and Environment:
+  - **Recommended Development Tools:**
+    - **VS Code:** A popular code editor with Python and C++ support.
+    - **PyCharm:** An IDE specifically designed for Python development.
+  - **Build Configuration:**
+    - Use `setup.py` or `pyproject.toml` to define project dependencies and build configurations.
+  - **Linting and Formatting:**
+    - Use pylint, flake8, and black to enforce code style.
+  - **Deployment Best Practices:**
+    - Use Docker to containerize the application.
+    - Deploy to a cloud platform such as AWS, Google Cloud, or Azure.
+  - **CI/CD Integration:**
+    - Use a CI/CD pipeline to automate testing and deployment.

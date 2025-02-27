@@ -1,0 +1,190 @@
+---
+description: Enforces Prisma best practices for schema design, data access, and application security. Provides guidelines for writing efficient, secure, and maintainable Prisma applications.
+globs: **/*.prisma
+---
+- **General Principles:**
+  - **Never expose the raw Prisma client directly in APIs.** Instead, create abstraction layers (e.g., repositories or services) to handle data access logic. This protects you from accidentally exposing sensitive database details and allows you to easily change your data access implementation in the future.
+  - **Always use input validation** before performing any database operations. Use a validation library like Zod or Yup to ensure that user input conforms to your expected schema and data types.  This helps prevent injection attacks and data corruption.
+  - **Implement row-level security (RLS) where applicable.** If your application handles sensitive data, use Prisma policies or database-level RLS to restrict data access based on user roles or permissions.  Carefully design your policies to prevent unauthorized data access.
+  - **Sanitize and validate all user inputs** to prevent injection attacks, such as SQL injection. Use Prisma's built-in features to escape user input and prevent it from being interpreted as code.
+
+- **Code Organization and Structure:**
+  - **Directory Structure:**
+    - `prisma/`: Contains the `schema.prisma` file and any seed scripts or migrations.
+    - `src/`: Contains the main application code.
+    - `src/lib/prisma.ts`: A single module that exports an instance of the Prisma client. This promotes reuse and simplifies dependency injection.
+    - `src/models/`: Database model definitions as classes, abstracting Prisma calls.
+    - `src/repositories/`: Contains data access logic, abstracting Prisma queries.
+    - `src/services/`: Contains business logic, orchestrating data access through repositories.
+  - **File Naming Conventions:**
+    - Use descriptive names for files and directories that reflect their purpose.
+    - Use consistent naming conventions (e.g., camelCase for variables, PascalCase for components).
+  - **Module Organization:**
+    - Organize code into logical modules with clear responsibilities.
+    - Use dependency injection to decouple modules and improve testability.
+  - **Component Architecture:**
+    - Design components that are reusable, testable, and maintainable.
+    - Follow the single responsibility principle for each component.
+  - **Code Splitting Strategies:**
+    - Use dynamic imports to load code on demand and reduce initial bundle size.
+    - Split code based on routes, features, or user roles.
+
+- **Common Patterns and Anti-patterns:**
+  - **Design Patterns:**
+    - **Repository Pattern:** Abstract data access logic behind repositories.
+    - **Service Layer Pattern:** Encapsulate business logic in service classes.
+    - **Unit of Work Pattern:** Manage transactions across multiple repositories.
+  - **Recommended Approaches:**
+    - Use Prisma's relation features to model complex relationships between entities.
+    - Use Prisma's transaction features to ensure data consistency.
+    - Use Prisma's filtering and sorting options to optimize queries.
+  - **Anti-patterns:**
+    - **Exposing the Prisma client directly to the client-side.** This is a major security risk.
+    - **Writing complex queries directly in components.** Move query logic to repositories or services.
+    - **Ignoring error handling.** Always handle potential errors when interacting with the database.
+  - **State Management:**
+    - Consider using a state management library like Redux, Zustand, or Jotai for complex applications.
+    - Use server-side data fetching for initial data loading and hydration.
+  - **Error Handling:**
+    - Use try-catch blocks to handle potential errors when interacting with the database.
+    - Log errors to a centralized logging system for monitoring and debugging.
+    - Return meaningful error messages to the client-side.
+
+- **Performance Considerations:**
+  - **Optimization Techniques:**
+    - Use Prisma's connection pooling to reduce database connection overhead.
+    - Use Prisma's batching features to reduce the number of database roundtrips.
+    - Optimize database queries by using indexes and filtering data on the server-side.
+  - **Memory Management:**
+    - Avoid loading large amounts of data into memory at once. Use pagination or streaming to process data in smaller chunks.
+    - Clean up resources after use, such as database connections and file handles.
+  - **Rendering Optimization:**
+    - Use virtualization for large lists or tables.
+    - Optimize images and other assets.
+  - **Bundle Size Optimization:**
+    - Use code splitting to reduce the initial bundle size.
+    - Remove unused code and dependencies.
+  - **Lazy Loading Strategies:**
+    - Load data on demand when it is needed.
+    - Use placeholders or skeletons to improve the user experience during loading.
+
+- **Security Best Practices:**
+  - **Common Vulnerabilities:**
+    - SQL injection: Prevented by using Prisma's prepared statements and escaping user input.
+    - Cross-site scripting (XSS): Prevented by sanitizing user input and output.
+    - Cross-site request forgery (CSRF): Prevented by using CSRF tokens.
+  - **Input Validation:**
+    - Use a validation library to validate all user input.
+    - Validate data types, lengths, and formats.
+  - **Authentication and Authorization:**
+    - Use a secure authentication library like NextAuth.js or Clerk.
+    - Implement role-based access control (RBAC) to restrict access to sensitive data and functionality.
+  - **Data Protection:**
+    - Encrypt sensitive data at rest and in transit.
+    - Use HTTPS to secure communication between the client and server.
+  - **Secure API Communication:**
+    - Use API keys or tokens to authenticate API requests.
+    - Rate limit API requests to prevent abuse.
+
+- **Testing Approaches:**
+  - **Unit Testing:**
+    - Test individual components and functions in isolation.
+    - Use mocking and stubbing to isolate components from external dependencies.
+  - **Integration Testing:**
+    - Test the interaction between different components and modules.
+    - Test database interactions using a test database.
+  - **End-to-End Testing:**
+    - Test the entire application from end to end.
+    - Use a testing framework like Cypress or Playwright.
+  - **Test Organization:**
+    - Organize tests into logical suites based on functionality.
+    - Use descriptive names for tests.
+  - **Mocking and Stubbing:**
+    - Use mocking to replace external dependencies with test doubles.
+    - Use stubbing to control the behavior of dependencies.
+
+- **Common Pitfalls and Gotchas:**
+  - **Frequent Mistakes:**
+    - Forgetting to handle errors when interacting with the database.
+    - Exposing the Prisma client directly to the client-side.
+    - Writing complex queries directly in components.
+  - **Edge Cases:**
+    - Handling large datasets.
+    - Dealing with concurrency issues.
+    - Managing database migrations.
+  - **Version-Specific Issues:**
+    - Be aware of breaking changes between Prisma versions.
+    - Use version control to manage dependencies.
+  - **Compatibility Concerns:**
+    - Ensure that your code is compatible with different browsers and devices.
+    - Test your application on different environments.
+  - **Debugging Strategies:**
+    - Use logging to track down errors.
+    - Use a debugger to step through code.
+    - Use Prisma's query logging feature to inspect database queries.
+
+- **Tooling and Environment:**
+  - **Recommended Development Tools:**
+    - VS Code with the Prisma extension.
+    - Prisma Studio for visualizing and managing data.
+    - Docker for containerizing the application.
+  - **Build Configuration:**
+    - Use a build tool like Webpack, Parcel, or esbuild to bundle and optimize code.
+    - Configure the build tool to generate production-ready code.
+  - **Linting and Formatting:**
+    - Use ESLint and Prettier to enforce code style and prevent errors.
+    - Configure the linter and formatter to use consistent settings across the project.
+  - **Deployment Best Practices:**
+    - Use a CI/CD pipeline to automate deployments.
+    - Deploy to a cloud platform like Vercel, Netlify, or AWS.
+  - **CI/CD Integration:**
+    - Integrate with CI/CD tools like GitHub Actions, GitLab CI, or CircleCI.
+    - Run tests and linters as part of the CI/CD pipeline.
+
+- **Specific Prisma Configuration:**
+  - **Schema Design:**
+    - Use clear and concise names for models and fields.
+    - Define relationships between models using Prisma's relation features.
+    - Use indexes to optimize query performance.
+    - Consider using enums for fields with a limited set of values.
+    - Properly use `@id`, `@unique`, and `@relation` directives for optimal schema design.
+  - **Data Types:**
+    - Use the appropriate data types for each field.
+    - Use `DateTime` for storing timestamps.
+    - Use `Json` for storing complex data structures.
+  - **Prisma Client Generation:**
+    - Ensure your `.env` file is correctly configured for database connection.
+    - Regularly update the Prisma client to the latest version.
+    - Use `prisma generate` to generate the client after schema changes.
+
+- **Query Optimization:**
+    - **Select only the necessary fields** to reduce the amount of data transferred from the database.
+    - **Use `include` and `select` carefully** to optimize the query shape.
+    - **Avoid N+1 queries** by using Prisma's `include` or `join` features.
+    - **Use pagination** to limit the number of results returned by a query.
+    - **Use `take` and `skip`** for efficient pagination.
+
+- **Transaction Management:**
+    - **Use Prisma's `prisma.$transaction` method** to ensure atomicity of database operations.
+    - **Handle potential errors** within the transaction to prevent data inconsistency.
+    - **Keep transactions short** to minimize the impact on database performance.
+
+- **Seed Data Management:**
+    - **Create a seed script** to populate the database with initial data.
+    - **Use Prisma's `prisma.create` method** to create seed data.
+    - **Use environment variables** to configure seed data for different environments.
+
+- **Migration Management:**
+    - **Use Prisma Migrate** to manage database schema changes.
+    - **Create migrations** for each schema change.
+    - **Apply migrations** to the database using `prisma migrate deploy`.
+    - **Use shadow database** to test migrations before deploying them to production.
+
+- **Monitoring and Logging:**
+    - **Use Prisma's query logging feature** to monitor database queries.
+    - **Log errors and warnings** to a centralized logging system.
+    - **Monitor database performance** using tools like Prometheus or Grafana.
+
+- **Further Study:**
+  - Always refer to the [official Prisma documentation](https://www.prisma.io/docs/) for the most up-to-date information.
+  - Consider taking an [official Prisma course](https://www.prisma.io/learn/).

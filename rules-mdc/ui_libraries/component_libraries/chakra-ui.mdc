@@ -1,0 +1,207 @@
+---
+description: This rule enforces best practices and coding standards for Chakra UI projects, including accessibility, styling, performance, and security. It aims to provide clear, actionable guidance for developers using Chakra UI.
+globs: **/*.{js,jsx,ts,tsx}
+---
+-   **Accessibility**: Ensure all components follow WAI-ARIA standards, including keyboard navigation and screen reader support.
+
+    -   Use semantic HTML elements where appropriate (e.g., `<button>`, `<input>`, `<nav>`).
+    -   Provide alternative text for images using the `alt` prop on the `<Image>` component.
+    -   Ensure sufficient color contrast between text and background colors. Use a tool like [WebAIM's Color Contrast Checker](https://webaim.org/resources/contrastchecker/) to verify.
+    -   Use the `aria-label`, `aria-labelledby`, and `aria-describedby` props to provide descriptive information to assistive technologies.
+    -   Test your components with a screen reader (e.g., NVDA, VoiceOver) to ensure they are accessible.
+-   **Prop-Based Styling**: Use style props instead of CSS classes for faster and more intuitive styling.
+
+    -   Leverage Chakra UI's extensive set of style props for common CSS properties (e.g., `m`, `p`, `bg`, `color`, `fontSize`, `fontWeight`).
+    -   Use the `sx` prop for more advanced styling that goes beyond the available style props.  However, prefer style props where applicable for consistency.
+    -   Apply responsive styles using array or object syntax for different breakpoints.
+-   **Centralized Theming**: Manage colors, sizes, and styles in one place for consistency across the application.
+
+    -   Extend the default Chakra UI theme using the `extendTheme` function to customize colors, fonts, sizes, and component styles.
+    -   Use semantic tokens for theme values (e.g., `colors.brand.primary`, `sizes.spacing.md`) instead of hardcoding values directly in your components.
+    -   Use the `useTheme` hook to access theme values within your components.
+    -   Organize your theme file to ensure easy modifications and readability
+-   **Modular Components**: Build complex UIs by combining small, reusable components like `Box`, `Flex`, and `Stack`.
+
+    -   Follow atomic design principles to structure your components into atoms, molecules, and organisms.
+    -   Create custom components that encapsulate specific UI patterns and logic.
+    -   Use composition to build more complex components from simpler ones.
+    -  Use the `forwardRef` API when building components that need to directly access a DOM node.
+-   **Responsive Design**: Use array syntax for responsive styles and leverage hooks like `useBreakpointValue` for adaptive layouts.
+
+    -   Use the array syntax to define different values for different breakpoints (e.g., `fontSize={['sm', 'md', 'lg']}`).
+    -   Use the object syntax for more explicit breakpoint control (e.g., `templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }}`).
+    -   Use the `useBreakpointValue` hook to dynamically adjust layouts based on the current breakpoint.
+    -   Utilize `useMediaQuery` hook for conditional rendering of components or sections.
+-   **Simplicity and Composition**: Keep component APIs simple and break them down into smaller parts to maintain flexibility.
+
+    -   Design components with a minimal set of props to keep their APIs clean and easy to use.
+    -   Use composition to allow consumers to customize the appearance and behavior of your components.
+    -   Avoid creating monolithic components with too many responsibilities.
+-   **Custom Theme Creation**: Extend the default theme to match design requirements and ensure consistent styling.
+
+    -   Use `extendTheme` to customize the default Chakra UI theme and create consistent styling.
+    -   Define custom color palettes, typography, spacing, and breakpoints.
+    -   Override component styles to match your design system.
+-   **Testing and Documentation**: Document components and their usage, and ensure thorough testing for accessibility and functionality.
+
+    -   Write unit tests for your components using Jest and React Testing Library.
+    -   Test for accessibility using `axe-core` and `jest-axe`.
+    -   Document your components with clear and concise JSDoc comments.
+    -   Use a tool like Storybook to create a living style guide for your components.
+    -   Use Typescript to ensure you have strongly typed components.
+
+-   **Code Organization and Structure:**
+    -   **Directory Structure Best Practices:**
+        -   Structure your project based on features or components.
+        -   Common structure: `src/components`, `src/pages`, `src/utils`, `src/theme`, `src/hooks`.
+        -   Place related components, hooks, and styles in the same directory.
+    -   **File Naming Conventions:**
+        -   Use PascalCase for component file names (e.g., `Button.tsx`).
+        -   Use camelCase for hook file names (e.g., `useDisclosure.ts`).
+        -   Use descriptive names for utility functions (e.g., `formatDate.ts`).
+    -   **Module Organization:**
+        -   Group related components and functions into modules.
+        -   Use `index.ts` files to re-export members from a module.
+        -   Avoid circular dependencies between modules.
+    -   **Component Architecture:**
+        -   Use a component-based architecture with reusable components.
+        -   Separate presentational components from container components.
+        -   Prefer functional components with hooks over class components.
+    -   **Code Splitting Strategies:**
+        -   Use dynamic imports to load components and modules on demand.
+        -   Split your application into routes or feature modules.
+        -   Use React.lazy and Suspense for code splitting at the component level.
+
+-   **Common Patterns and Anti-patterns:**
+    -   **Design Patterns Specific to Chakra UI:**
+        -   **Compound Components:** Create components like `Tabs` and `Accordion` where child components share state and logic.
+        -   **Control Props:**  Use props like `value` and `onChange` for controlled components, enabling external state management.
+        -   **Render Props:**  Provide a render prop to allow consumers to customize the rendering of a component.
+    -   **Recommended Approaches for Common Tasks:**
+        -   Use Chakra UI's layout components (`Box`, `Flex`, `Grid`, `Stack`) for structuring your UI.
+        -   Use the `useDisclosure` hook for managing the state of modals, drawers, and other toggleable components.
+        -   Use the `useColorMode` hook for implementing dark mode support.
+    -   **Anti-patterns and Code Smells to Avoid:**
+        -   Avoid using inline styles directly; prefer style props or the `sx` prop.
+        -   Avoid mutating the Chakra UI theme directly; always use `extendTheme` to create a new theme.
+        -   Avoid tightly coupling components to specific data sources; make them more generic and reusable.
+    -   **State Management Best Practices:**
+        -   Use local component state for simple UI state.
+        -   Use context for sharing state between components that are not directly related.
+        -   Use a state management library like Redux or Zustand for more complex application state.
+    -   **Error Handling Patterns:**
+        -   Use try-catch blocks to handle errors gracefully.
+        -   Display user-friendly error messages to the user.
+        -   Log errors to a monitoring service for debugging.
+        -   Implement fallback components to handle unexpected errors during rendering.
+
+-   **Performance Considerations:**
+    -   **Optimization Techniques:**
+        -   Use `React.memo` to memoize functional components and prevent unnecessary re-renders.
+        -   Use `useCallback` and `useMemo` to memoize functions and values that are used as props to child components.
+        -   Avoid creating new objects or functions in render methods.
+    -   **Memory Management:**
+        -   Clean up event listeners and timers in `useEffect` hooks.
+        -   Avoid storing large amounts of data in component state.
+        -   Use weak references to prevent memory leaks.
+    -   **Rendering Optimization:**
+        -   Use virtualization libraries like `react-window` or `react-virtualized` to render large lists efficiently.
+        -   Optimize expensive calculations and data transformations.
+        -   Use the `shouldComponentUpdate` lifecycle method or `React.PureComponent` to prevent unnecessary re-renders in class components (avoid when using hooks).
+    -   **Bundle Size Optimization:**
+        -   Use tree shaking to remove unused code from your bundles.
+        -   Use code splitting to load only the code that is needed for a particular page or feature.
+        -   Use image optimization techniques to reduce the size of your images.
+    -   **Lazy Loading Strategies:**
+        -   Use `React.lazy` and `Suspense` for lazy loading components.
+        -   Use intersection observers to lazy load images and other assets that are not initially visible.
+
+-   **Security Best Practices:**
+    -   **Common Vulnerabilities and How to Prevent Them:**
+        -   **Cross-Site Scripting (XSS):** Sanitize user input to prevent the execution of malicious scripts.
+        -   **Cross-Site Request Forgery (CSRF):** Use CSRF tokens to protect against unauthorized requests.
+        -   **SQL Injection:** Use parameterized queries or an ORM to prevent SQL injection attacks.
+    -   **Input Validation:**
+        -   Validate all user input on both the client and server sides.
+        -   Use regular expressions or validation libraries to enforce data formats.
+        -   Escape or encode user input before displaying it in the UI.
+    -   **Authentication and Authorization Patterns:**
+        -   Use a secure authentication protocol like OAuth 2.0 or OpenID Connect.
+        -   Store passwords securely using a hashing algorithm like bcrypt.
+        -   Implement role-based access control (RBAC) to restrict access to sensitive data and functionality.
+    -   **Data Protection Strategies:**
+        -   Encrypt sensitive data at rest and in transit.
+        -   Use HTTPS to secure communication between the client and server.
+        -   Protect API keys and other secrets by storing them in environment variables.
+    -   **Secure API Communication:**
+        -   Use HTTPS for all API requests.
+        -   Validate API responses to ensure they are in the expected format.
+        -   Implement rate limiting to prevent abuse of your APIs.
+
+-   **Testing Approaches:**
+    -   **Unit Testing Strategies:**
+        -   Write unit tests for individual components and functions.
+        -   Test for different input values and edge cases.
+        -   Use mocking and stubbing to isolate components from external dependencies.
+    -   **Integration Testing:**
+        -   Write integration tests to verify the interaction between components.
+        -   Test the flow of data between components.
+        -   Test the integration with external APIs and services.
+    -   **End-to-End Testing:**
+        -   Write end-to-end tests to simulate user interactions and verify the overall functionality of the application.
+        -   Use a testing framework like Cypress or Puppeteer.
+        -   Test for accessibility and performance.
+    -   **Test Organization:**
+        -   Organize your tests into separate directories for unit tests, integration tests, and end-to-end tests.
+        -   Use descriptive names for your test files and test cases.
+        -   Follow a consistent testing style.
+    -   **Mocking and Stubbing:**
+        -   Use mocking to replace external dependencies with mock objects that simulate their behavior.
+        -   Use stubbing to replace specific methods or properties of a dependency with predefined values.
+        -   Use a mocking library like Jest's `jest.mock` or `sinon.js`.
+
+-   **Common Pitfalls and Gotchas:**
+    -   **Frequent Mistakes Developers Make:**
+        -   Not following accessibility guidelines.
+        -   Overusing inline styles.
+        -   Mutating the Chakra UI theme directly.
+        -   Not testing components thoroughly.
+        -   Not optimizing performance.
+    -   **Edge Cases to Be Aware Of:**
+        -   Handling different screen sizes and orientations.
+        -   Handling different input methods (keyboard, mouse, touch).
+        -   Handling different locales and languages.
+        -   Handling different network conditions.
+    -   **Version-Specific Issues:**
+        -   Be aware of breaking changes between Chakra UI versions.
+        -   Read the release notes carefully when upgrading.
+        -   Test your application thoroughly after upgrading.
+    -   **Compatibility Concerns:**
+        -   Ensure your application is compatible with different browsers and devices.
+        -   Use a tool like BrowserStack or Sauce Labs to test your application on different environments.
+    -   **Debugging Strategies:**
+        -   Use the browser's developer tools to inspect the DOM and debug your JavaScript code.
+        -   Use a debugger like VS Code's built-in debugger.
+        -   Use logging statements to track the flow of data and execution.
+
+-   **Tooling and Environment:**
+    -   **Recommended Development Tools:**
+        -   VS Code with the ESLint, Prettier, and TypeScript extensions.
+        -   Chrome Developer Tools or Firefox Developer Tools.
+        -   React Developer Tools browser extension.
+    -   **Build Configuration:**
+        -   Use a build tool like Webpack, Parcel, or Rollup.
+        -   Configure your build tool to optimize your bundles and perform tree shaking.
+        -   Use environment variables to configure your application for different environments.
+    -   **Linting and Formatting:**
+        -   Use ESLint with a configuration like eslint-config-react-app to enforce code style and best practices.
+        -   Use Prettier to format your code automatically.
+        -   Configure your editor to automatically lint and format your code on save.
+    -   **Deployment Best Practices:**
+        -   Use a continuous integration and continuous deployment (CI/CD) pipeline to automate your deployments.
+        -   Deploy your application to a hosting provider like Netlify, Vercel, or AWS.
+        -   Use a content delivery network (CDN) to cache your static assets.
+    -   **CI/CD Integration:**
+        -   Integrate your CI/CD pipeline with your testing and linting tools.
+        -   Automate the process of building, testing, and deploying your application.
+        -   Use a CI/CD platform like GitHub Actions, CircleCI, or Travis CI.

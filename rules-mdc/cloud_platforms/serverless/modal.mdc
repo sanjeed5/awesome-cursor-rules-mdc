@@ -1,0 +1,210 @@
+---
+description: This rule outlines best practices for developing and maintaining modal libraries, covering aspects from code organization and performance to security and testing. It aims to guide developers in creating robust, efficient, and user-friendly modal components.
+globs: **/*.{js,jsx,ts,tsx,mjs,cjs}
+---
+- **Library Information:**
+  - Name: modal
+  - Category: cloud_platforms
+  - Subcategory: serverless
+
+- **General Principles:**
+  - **Clarity and Purpose:** Modals should have a clear and concise purpose, conveyed through a descriptive title. Content should be helpful and action-oriented.
+  - **User Control:** Prioritize user control by using modals sparingly and providing visible, intuitive close options (e.g., close button, overlay click).
+  - **Accessibility:** Ensure modals are accessible to all users by testing with assistive technologies and adhering to accessibility standards (e.g., ARIA attributes).
+
+- **Code Organization and Structure:**
+  - **Directory Structure:**
+    - `src/`: Contains the source code of the modal library.
+      - `components/`: Reusable modal components (e.g., `Modal.jsx`, `ModalHeader.jsx`, `ModalBody.jsx`, `ModalFooter.jsx`).
+      - `hooks/`: Custom hooks for managing modal state and logic (e.g., `useModal.js`).
+      - `utils/`: Utility functions (e.g., validation, formatting).
+      - `styles/`: CSS or styling components.
+      - `types/`: TypeScript type definitions.
+    - `examples/`: Example usage of the modal library.
+    - `tests/`: Unit and integration tests.
+    - `docs/`: Documentation for the library.
+  - **File Naming Conventions:**
+    - Use descriptive names for components (e.g., `ConfirmationModal.jsx`, `InputModal.jsx`).
+    - Follow a consistent naming convention (e.g., PascalCase for components, camelCase for variables and functions).
+  - **Module Organization:**
+    - Organize code into logical modules and submodules. Each module should have a specific responsibility.
+    - Use ES modules (import/export) for modularity and tree-shaking.
+  - **Component Architecture:**
+    - Favor a component-based architecture. Each modal element (header, body, footer) should be a reusable component.
+    - Use composition to create complex modals from smaller, reusable components.
+  - **Code Splitting Strategies:**
+    - Consider code splitting for large modal libraries to improve initial load time.
+    - Lazy load modal content or components that are not immediately needed.
+
+- **Common Patterns and Anti-patterns:**
+  - **Design Patterns:**
+    - **Controlled Components:** Use controlled components for modal content to manage state effectively.
+    - **Render Props or Hooks:** Provide flexibility in rendering modal content using render props or custom hooks.
+    - **Provider Pattern:** Use a context provider to manage global modal state and configuration.
+  - **Recommended Approaches:**
+    - Use a state management library (e.g., Zustand, Jotai) for complex modal state.
+    - Implement a modal queue to manage multiple modals efficiently.
+    - Provide a consistent API for opening and closing modals.
+  - **Anti-patterns:**
+    - **Overusing Modals:** Avoid using modals for non-critical information or actions.
+    - **Deeply Nested Components:** Minimize deeply nested components within modals to improve performance.
+    - **Ignoring Accessibility:** Neglecting accessibility can make the modal unusable for some users.
+  - **State Management Best Practices:**
+    - Choose a state management solution that fits the complexity of the modal library.
+    - Keep state minimal and derive values when possible.
+    - Use immutable data structures to prevent unexpected side effects.
+  - **Error Handling Patterns:**
+    - Implement error boundaries to catch errors within modals.
+    - Provide informative error messages to the user.
+    - Log errors for debugging purposes.
+
+- **Performance Considerations:**
+  - **Optimization Techniques:**
+    - Memoize components to prevent unnecessary re-renders.
+    - Use virtualization for long lists of modal content.
+    - Debounce or throttle event handlers to improve responsiveness.
+  - **Memory Management:**
+    - Clean up event listeners and timers when the modal is closed.
+    - Avoid creating large data structures within modals.
+    - Release resources when the modal is unmounted.
+  - **Rendering Optimization:**
+    - Use CSS transforms for animations instead of modifying layout properties.
+    - Minimize the number of DOM updates.
+    - Use techniques like `requestAnimationFrame` for smoother animations.
+  - **Bundle Size Optimization:**
+    - Use tree-shaking to remove unused code from the bundle.
+    - Minify and compress the code.
+    - Use code splitting to reduce the initial bundle size.
+  - **Lazy Loading Strategies:**
+    - Lazy load modal content or components that are not immediately visible.
+    - Use dynamic imports to load modules on demand.
+
+- **Security Best Practices:**
+  - **Common Vulnerabilities:**
+    - **Cross-Site Scripting (XSS):** Sanitize user inputs to prevent XSS attacks.
+    - **Injection Attacks:** Protect against injection attacks by validating user inputs.
+  - **Input Validation:**
+    - Validate all user inputs within the modal.
+    - Use appropriate data types and formats.
+    - Sanitize inputs to remove malicious code.
+  - **Authentication and Authorization Patterns:**
+    - Implement authentication and authorization mechanisms to protect sensitive data.
+    - Use secure cookies or tokens to store user credentials.
+    - Enforce access control policies.
+  - **Data Protection Strategies:**
+    - Encrypt sensitive data at rest and in transit.
+    - Use secure storage mechanisms to protect data.
+    - Implement data loss prevention measures.
+  - **Secure API Communication:**
+    - Use HTTPS for all API communication.
+    - Validate API responses.
+    - Protect API keys and secrets.
+
+- **Testing Approaches:**
+  - **Unit Testing Strategies:**
+    - Test individual components and functions in isolation.
+    - Use mocking and stubbing to isolate dependencies.
+    - Test edge cases and error conditions.
+  - **Integration Testing:**
+    - Test the interaction between components and modules.
+    - Verify that the modal works correctly with other parts of the application.
+  - **End-to-End Testing:**
+    - Test the entire modal workflow from start to finish.
+    - Use automated testing tools to simulate user interactions.
+  - **Test Organization:**
+    - Organize tests into logical groups based on functionality.
+    - Use descriptive test names.
+    - Keep tests concise and focused.
+  - **Mocking and Stubbing:**
+    - Use mocking to simulate external dependencies.
+    - Use stubbing to replace complex functions with simpler versions.
+    - Avoid over-mocking, as it can lead to brittle tests.
+
+- **Common Pitfalls and Gotchas:**
+  - **Frequent Mistakes:**
+    - Forgetting to handle focus management when opening/closing modal
+    - Not properly managing the stacking context of modals.
+    - Ignoring keyboard navigation.
+  - **Edge Cases:**
+    - Handling modals within modals.
+    - Supporting different screen sizes and orientations.
+    - Handling modals in server-side rendered applications.
+  - **Version-Specific Issues:**
+    - Be aware of compatibility issues with different versions of dependencies.
+    - Test the modal library with different browsers and devices.
+  - **Compatibility Concerns:**
+    - Ensure the modal library is compatible with different JavaScript frameworks and libraries.
+    - Test with different browsers and devices.
+  - **Debugging Strategies:**
+    - Use browser developer tools to inspect the modal's HTML and CSS.
+    - Use logging to track the flow of execution.
+    - Use a debugger to step through the code.
+
+- **Tooling and Environment:**
+  - **Recommended Development Tools:**
+    - VS Code with extensions for React/TypeScript/ESLint.
+    - Chrome DevTools for debugging.
+  - **Build Configuration:**
+    - Use a build tool like webpack, Parcel, or Rollup.
+    - Configure the build tool to optimize the bundle size.
+  - **Linting and Formatting:**
+    - Use ESLint to enforce code style and detect potential errors.
+    - Use Prettier to automatically format the code.
+  - **Deployment Best Practices:**
+    - Deploy the modal library to a CDN for fast and reliable delivery.
+    - Use version control to track changes to the code.
+    - Automate the deployment process.
+  - **CI/CD Integration:**
+    - Integrate the modal library with a CI/CD pipeline for automated testing and deployment.
+    - Use a CI/CD tool like Jenkins, Travis CI, or CircleCI.
+
+- **Accessibility Considerations (WCAG Compliance):**
+    - **Keyboard Navigation:** Ensure all interactive elements within the modal are reachable and operable using the keyboard. Use tab index appropriately.
+    - **Focus Management:** Trap focus within the modal when it's open. Return focus to the previously focused element when the modal is closed.  Prevent focus leaking to elements behind the modal.
+    - **ARIA Attributes:**
+        - Use `role="dialog"` or `role="alertdialog"` to indicate the modal's purpose.
+        - Use `aria-labelledby` to associate the modal's title with the modal element.
+        - Use `aria-describedby` to associate the modal's content with the modal element.
+        - Implement `aria-modal="true"` to signify the modal is blocking interaction with the rest of the page.
+    - **Color Contrast:** Ensure sufficient color contrast between text and background elements.
+    - **Screen Reader Compatibility:** Test the modal with screen readers to ensure content is read correctly and controls are accessible.
+    - **Visual Cues:** Provide clear visual cues to indicate the active element.
+    - **Alternative Text:** Ensure images have descriptive alternative text.
+
+- **UI/UX Best Practices:**
+    - **Modal Size and Positioning:** Ensure the modal is appropriately sized and positioned on the screen. Avoid modals that are too large or obstruct important content.
+    - **Animation and Transitions:** Use subtle animations and transitions to enhance the user experience. Avoid excessive or distracting animations.
+    - **Responsiveness:** Ensure the modal is responsive and adapts to different screen sizes and orientations.
+    - **Dark Overlay:** Use a dark overlay to dim the background and focus the user's attention on the modal. The overlay should be semi-transparent.
+    - **Clear Calls to Action:** Use clear and concise button labels for calls to action. Avoid ambiguous or confusing labels.
+
+- **Example Snippets (Illustrative):**
+    - **React Component:**
+      jsx
+      import React, { useState } from 'react';
+
+      const Modal = ({ isOpen, onClose, children }) => {
+        if (!isOpen) return null;
+
+        return (
+          
+            
+              {children}
+              <button onClick={onClose}>Close</button>
+            
+          
+        );
+      };
+
+      export default Modal;
+      
+    - **TypeScript Type Definitions:**
+      typescript
+      interface ModalProps {
+        isOpen: boolean;
+        onClose: () => void;
+        children: React.ReactNode;
+      }
+      
+
+By adhering to these best practices, you can create robust, accessible, and user-friendly modal libraries that enhance the overall user experience of your applications.
