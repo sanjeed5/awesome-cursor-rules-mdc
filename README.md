@@ -1,10 +1,25 @@
 # MDC Generator for Library Best Practices
 
-This script generates Cursor rule files (.mdc) for various libraries and frameworks based on their best practices. It uses the Exa API for searching and retrieving library best practices and LiteLLM with Gemini for enhancing and structuring content.
+This repository contains Cursor rule files (.mdc) that provide AI-powered best practices and guidelines for various libraries and frameworks. The rules in `rules-mdc/` are the current, improved version which are more focused and comprehensive. (Note: The `rules-v0/` directory contains legacy rules and is kept for historical reference only - please use `rules-mdc/` for all new projects).
+
+## Repository Structure
+
+```
+.
+├── rules-mdc/          # Current, comprehensive rule files (recommended)
+│   ├── frontend/
+│   ├── backend/
+│   └── ...
+├── src/                # Source code for rule generation
+│   ├── generate_mdc_files.py
+│   ├── config.yaml
+│   └── ...
+└── rules-v0/           # Legacy rules (deprecated)
+```
 
 ## Features
 
-- **Configurable**: All settings can be adjusted in `config.yaml`
+- **Configurable**: All settings can be adjusted in `src/config.yaml`
 - **Parallel Processing**: Process multiple libraries simultaneously
 - **Progress Tracking**: Resume from where you left off if the process is interrupted
 - **Smart Glob Pattern Generation**: Automatically determines appropriate glob patterns for different libraries
@@ -20,7 +35,7 @@ This script generates Cursor rule files (.mdc) for various libraries and framewo
 
 ## Configuration
 
-The script uses a configuration file (`config.yaml`) with the following structure:
+The script uses a configuration file (`src/config.yaml`) with the following structure:
 
 ```yaml
 paths:
@@ -46,39 +61,39 @@ processing:
 ### Basic Usage
 
 ```bash
-python generate_mdc_files.py
+python src/generate_mdc_files.py
 ```
 
 ### Test Mode (Process Only One Library)
 
 ```bash
-python generate_mdc_files.py --test
+python src/generate_mdc_files.py --test
 ```
 
 ### Process Specific Categories or Libraries
 
 ```bash
-python generate_mdc_files.py --category frontend_frameworks
-python generate_mdc_files.py --subcategory react
-python generate_mdc_files.py --library react
+python src/generate_mdc_files.py --category frontend_frameworks
+python src/generate_mdc_files.py --subcategory react
+python src/generate_mdc_files.py --library react
 ```
 
 ### Adjust Parallel Processing
 
 ```bash
-python generate_mdc_files.py --workers 8
+python src/generate_mdc_files.py --workers 8
 ```
 
 ### Adjust Rate Limits
 
 ```bash
-python generate_mdc_files.py --rate-limit 50
+python src/generate_mdc_files.py --rate-limit 50
 ```
 
 ### Verbose Logging
 
 ```bash
-python generate_mdc_files.py --verbose
+python src/generate_mdc_files.py --verbose
 ```
 
 ## File Structure
@@ -87,7 +102,7 @@ The generated MDC files will be organized in the following structure:
 
 ```
 rules-mdc/
-├── frontend_frameworks/
+├── frontend/
 │   ├── react/
 │   │   ├── react.mdc
 │   │   ├── react-native.mdc
@@ -95,7 +110,7 @@ rules-mdc/
 │   ├── vue/
 │   │   └── ...
 │   └── ...
-├── backend_frameworks/
+├── backend/
 │   ├── python/
 │   │   ├── django.mdc
 │   │   ├── flask.mdc
