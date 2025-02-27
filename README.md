@@ -1,70 +1,119 @@
-# Awesome Cursor Rules .mdc [![Awesome](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg)](https://github.com/sindresorhus/awesome)
+# MDC Generator for Library Best Practices
 
-All thanks to the awesome content on https://github.com/PatrickJS/awesome-cursorrules which was processed using LLMs to create this. Waiting for this to be integrated into the awesome https://cursor.directory/ ([PR raised](https://github.com/PatrickJS/awesome-cursorrules/pull/60))
+This script generates Cursor rule files (.mdc) for various libraries and frameworks based on their best practices. It uses the Exa API for searching and retrieving library best practices and LiteLLM with Gemini for enhancing and structuring content.
 
+## Features
 
-# Cursor Rules MDC Converter
+- **Configurable**: All settings can be adjusted in `config.yaml`
+- **Parallel Processing**: Process multiple libraries simultaneously
+- **Progress Tracking**: Resume from where you left off if the process is interrupted
+- **Smart Glob Pattern Generation**: Automatically determines appropriate glob patterns for different libraries
+- **Rate Limiting**: Configurable API rate limits to avoid throttling
+- **Robust Error Handling**: Comprehensive error handling and logging
 
-This script converts Cursor rules from various formats to the `.mdc` format, using LLM to intelligently process and structure the rules.
+## Prerequisites
 
-## Setup
+1. Python 3.8+
+2. Required packages (install via `pip install -r requirements.txt`)
+3. Exa API key (set as environment variable `EXA_API_KEY`)
+4. LiteLLM API key (set as environment variable based on your provider)
 
-1. Install dependencies using `uv`:
-```bash
-uv venv
-source .venv/bin/activate  # On Unix/macOS
-.venv\Scripts\activate     # On Windows
-uv sync
-```
+## Configuration
 
-2. Set up your environment variables:
-Create a `.env` file with your LLM API key:
-```
-GEMINI_API_KEY=your_api_key_here
+The script uses a configuration file (`config.yaml`) with the following structure:
+
+```yaml
+paths:
+  mdc_instructions: "mdc-instructions.txt"
+  libraries_json: "libraries.json"
+  output_dir: "rules-mdc"
+
+api:
+  llm_model: "gemini/gemini-2.0-flash"
+  rate_limit_calls: 100
+  rate_limit_period: 60
+  max_retries: 3
+  retry_min_wait: 4
+  retry_max_wait: 10
+
+processing:
+  max_workers: 4
+  chunk_size: 25000
 ```
 
 ## Usage
 
-The script processes files from the `awesome-cursorrules/rules` directory and:
-1. Creates `.mdc` versions in the same folder as the original files.
-2. Creates a new folder structure in `awesome-cursor-mdc-rules` with the converted files.
-3. Generates a conversion report in `conversion_report.json` after processing.
-
-### Test Mode
-
-By default, the script runs in test mode, which only processes 2 folders. To process all folders:
-
-1. Open `convert_to_mdc.py`
-2. Find the line `test_mode = True`
-3. Change it to `test_mode = False`
-
-### Running the Script
+### Basic Usage
 
 ```bash
-uv run convert_to_mdc.py
+python generate_mdc_files.py
 ```
 
-### Analyzing Conversion Status
-
-To analyze the conversion status and generate a report, run the following command:
+### Test Mode (Process Only One Library)
 
 ```bash
-uv run test_conversion.py
+python generate_mdc_files.py --test
 ```
 
-This will compare the source and output folders, providing a summary of the conversion process and saving the report as `conversion_report.json`.
+### Process Specific Categories or Libraries
 
-## Features
+```bash
+python generate_mdc_files.py --category frontend_frameworks
+python generate_mdc_files.py --subcategory react
+python generate_mdc_files.py --library react
+```
 
-- Retries on API failures with exponential backoff
-- Processes files in both original location and separate directory
-- Maintains folder structure
-- Detailed logging
-- Test mode for initial validation
+### Adjust Parallel Processing
 
-## Error Handling
+```bash
+python generate_mdc_files.py --workers 8
+```
 
-The script includes comprehensive error handling:
-- Logs errors for individual file processing
-- Continues processing even if some files fail
-- Retries LLM API calls on failure
+### Adjust Rate Limits
+
+```bash
+python generate_mdc_files.py --rate-limit 50
+```
+
+### Verbose Logging
+
+```bash
+python generate_mdc_files.py --verbose
+```
+
+## File Structure
+
+The generated MDC files will be organized in the following structure:
+
+```
+rules-mdc/
+├── frontend_frameworks/
+│   ├── react/
+│   │   ├── react.mdc
+│   │   ├── react-native.mdc
+│   │   └── ...
+│   ├── vue/
+│   │   └── ...
+│   └── ...
+├── backend_frameworks/
+│   ├── python/
+│   │   ├── django.mdc
+│   │   ├── flask.mdc
+│   │   └── ...
+│   └── ...
+└── ...
+```
+
+## Progress Tracking
+
+The script maintains a progress file (`mdc_generation_progress.json`) to track which libraries have been processed. This allows you to resume the process if it's interrupted.
+
+## Troubleshooting
+
+- If you encounter API rate limit issues, adjust the `rate_limit_calls` in the configuration.
+- If the script is using too much memory, reduce the `chunk_size` in the configuration.
+- If the script is too slow, increase the `max_workers` in the configuration (but be mindful of API rate limits).
+
+## License
+
+MIT
