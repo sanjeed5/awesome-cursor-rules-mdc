@@ -29,7 +29,7 @@ This repository contains Cursor rule files (.mdc) that provide AI-powered best p
 ## Prerequisites
 
 1. Python 3.8+
-2. Required packages (install via `pip install -r requirements.txt`)
+2. Required packages (install via `uv sync`)
 3. Exa API key (set as environment variable `EXA_API_KEY`)
 4. LiteLLM API key (set as environment variable based on your provider)
 
@@ -61,39 +61,39 @@ processing:
 ### Basic Usage
 
 ```bash
-python src/generate_mdc_files.py
+uv run src/generate_mdc_files.py
 ```
 
 ### Test Mode (Process Only One Library)
 
 ```bash
-python src/generate_mdc_files.py --test
+uv run src/generate_mdc_files.py --test
 ```
 
 ### Process Specific Categories or Libraries
 
 ```bash
-python src/generate_mdc_files.py --category frontend_frameworks
-python src/generate_mdc_files.py --subcategory react
-python src/generate_mdc_files.py --library react
+uv run src/generate_mdc_files.py --category frontend_frameworks
+uv run src/generate_mdc_files.py --subcategory react
+uv run src/generate_mdc_files.py --library react
 ```
 
 ### Adjust Parallel Processing
 
 ```bash
-python src/generate_mdc_files.py --workers 8
+uv run src/generate_mdc_files.py --workers 8
 ```
 
 ### Adjust Rate Limits
 
 ```bash
-python src/generate_mdc_files.py --rate-limit 50
+uv run src/generate_mdc_files.py --rate-limit 50
 ```
 
 ### Verbose Logging
 
 ```bash
-python src/generate_mdc_files.py --verbose
+uv run src/generate_mdc_files.py --verbose
 ```
 
 ## File Structure
@@ -128,7 +128,3 @@ The script maintains a progress file (`mdc_generation_progress.json`) to track w
 - If you encounter API rate limit issues, adjust the `rate_limit_calls` in the configuration.
 - If the script is using too much memory, reduce the `chunk_size` in the configuration.
 - If the script is too slow, increase the `max_workers` in the configuration (but be mindful of API rate limits).
-
-## License
-
-MIT
