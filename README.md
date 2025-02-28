@@ -1,25 +1,25 @@
 # MDC Generator for Library Best Practices
 
-This repository contains Cursor rule files (.mdc) that provide AI-powered best practices and guidelines for various libraries and frameworks. The rules in `rules-mdc/` are the current, improved version which are more focused and comprehensive. (Note: The `rules-v0/` directory contains legacy rules and is kept for historical reference only - please use `rules-mdc/` for all new projects).
+This repository contains Cursor rule files (.mdc) that provide AI-powered best practices and guidelines for various libraries and frameworks. The rules in `rules-mdc/` are comprehensive and focused, offering guidance for a wide range of programming libraries and frameworks.
 
 ## Repository Structure
 
 ```
 .
-├── rules-mdc/          # Current, comprehensive rule files (recommended)
-│   ├── frontend/
-│   ├── backend/
-│   └── ...
-├── src/                # Source code for rule generation
+├── rules-mdc/          # Comprehensive rule files in a flat structure
+├── cursor-rules-cli/   # Source code and configuration for rule generation
 │   ├── generate_mdc_files.py
+│   ├── libraries.json
 │   ├── config.yaml
 │   └── ...
-└── rules-v0/           # Legacy rules (deprecated)
+└── logs/               # Log files from rule generation runs
 ```
 
 ## Features
 
-- **Configurable**: All settings can be adjusted in `src/config.yaml`
+- **Tag-Based Library Organization**: Libraries are organized with tags instead of nested categories for more flexible categorization
+- **Flat Directory Structure**: All MDC files are stored in a single directory for easier access
+- **Configurable**: All settings can be adjusted in `config.yaml`
 - **Parallel Processing**: Process multiple libraries simultaneously
 - **Progress Tracking**: Resume from where you left off if the process is interrupted
 - **Smart Glob Pattern Generation**: Automatically determines appropriate glob patterns for different libraries
@@ -35,17 +35,18 @@ This repository contains Cursor rule files (.mdc) that provide AI-powered best p
 
 ## Configuration
 
-The script uses a configuration file (`src/config.yaml`) with the following structure:
+The script uses a configuration file (`config.yaml`) with the following structure:
 
 ```yaml
 paths:
   mdc_instructions: "mdc-instructions.txt"
   libraries_json: "libraries.json"
   output_dir: "rules-mdc"
+  exa_results_dir: "exa_results"
 
 api:
   llm_model: "gemini/gemini-2.0-flash"
-  rate_limit_calls: 100
+  rate_limit_calls: 2000
   rate_limit_period: 60
   max_retries: 3
   retry_min_wait: 4
@@ -53,7 +54,11 @@ api:
 
 processing:
   max_workers: 4
-  chunk_size: 25000
+  chunk_size: 50000
+
+tags:
+  primary_tags: ["python", "javascript", "typescript", "rust", "go", "java", "php", "ruby"]
+  category_tags: ["frontend", "backend", "database", "ai", "ml", "testing", "development"]
 ```
 
 ## Usage
@@ -61,80 +66,85 @@ processing:
 ### Basic Usage
 
 ```bash
-uv run src/generate_mdc_files.py
+uv run generate_mdc_files.py
 ```
 
 ### Test Mode (Process Only One Library)
 
 ```bash
-uv run src/generate_mdc_files.py --test
+uv run generate_mdc_files.py --test
 ```
 
-### Process Specific Categories or Libraries
+### Process Specific Tags or Libraries
 
 ```bash
-uv run src/generate_mdc_files.py --category frontend_frameworks
-uv run src/generate_mdc_files.py --subcategory react
-uv run src/generate_mdc_files.py --library react
+uv run generate_mdc_files.py --tag python
+uv run generate_mdc_files.py --library react
 ```
 
 ### Adjust Parallel Processing
 
 ```bash
-uv run src/generate_mdc_files.py --workers 8
+uv run generate_mdc_files.py --workers 8
 ```
 
 ### Adjust Rate Limits
 
 ```bash
-uv run src/generate_mdc_files.py --rate-limit 50
+uv run generate_mdc_files.py --rate-limit 50
 ```
 
 ### Verbose Logging
 
 ```bash
-uv run src/generate_mdc_files.py --verbose
+uv run generate_mdc_files.py --verbose
 ```
 
 ## File Structure
 
-The generated MDC files will be organized in the following structure:
+The generated MDC files are organized in a flat structure:
 
 ```
 rules-mdc/
-├── frontend/
-│   ├── react/
-│   │   ├── react.mdc
-│   │   ├── react-native.mdc
-│   │   └── ...
-│   ├── vue/
-│   │   └── ...
-│   └── ...
-├── backend/
-│   ├── python/
-│   │   ├── django.mdc
-│   │   ├── flask.mdc
-│   │   └── ...
-│   └── ...
+├── react.mdc
+├── vue.mdc
+├── django.mdc
+├── flask.mdc
+├── pytest.mdc
 └── ...
 ```
 
 ## Available Libraries
 
-All currently supported libraries and their categories can be found in `src/libraries.json`. This file organizes libraries into categories like:
-- Frontend Frameworks (React, Vue, Angular, etc.)
-- Backend Frameworks (Node.js, Python, PHP, etc.)
-- UI Libraries
-- State Management
-- Database Tools
-- Development Tools
-- Cross Platform
-- AI/ML
-- Web Technologies
-- Blockchain
-- Cloud Platforms
+All currently supported libraries can be found in `libraries.json`. This file organizes libraries with tags for flexible categorization:
 
-Each category contains relevant subcategories and specific libraries. Check `src/libraries.json` for the complete, up-to-date list of supported libraries.
+```json
+{
+  "libraries": [
+    {
+      "name": "react",
+      "tags": ["frontend", "framework", "javascript"]
+    },
+    {
+      "name": "django",
+      "tags": ["backend", "framework", "python", "orm", "full-stack"]
+    },
+    ...
+  ]
+}
+```
+
+The libraries cover a wide range of categories including:
+- Frontend frameworks and libraries
+- Backend frameworks
+- UI libraries and components
+- State management solutions
+- Database tools and ORMs
+- Development tools (testing, linting, etc.)
+- Cross-platform frameworks
+- AI/ML libraries
+- Web technologies
+- And many more
 
 ## Progress Tracking
 

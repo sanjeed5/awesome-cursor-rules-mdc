@@ -50,7 +50,7 @@ DEFAULT_CONFIG = {
         "mdc_instructions": "mdc-instructions.txt",
         "libraries_json": "libraries.json",
         "output_dir": "rules-mdc",
-        "exa_results_dir": "exa_results"  # New directory to store Exa results
+        "exa_results_dir": "exa_results"  # Directory to store Exa results
     },
     "api": {
         "llm_model": "gemini/gemini-2.0-flash",
@@ -108,9 +108,8 @@ class MDCRule(BaseModel):
 
 class LibraryInfo(BaseModel):
     """Model for library information."""
-    category: str
-    subcategory: str
     name: str
+    tags: List[str]
     best_practices: str = ""
     citations: List[Dict[str, Any]] = []
 
@@ -185,9 +184,6 @@ def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] 
             "citations": result.citations if hasattr(result, 'citations') else []
         }
         
-        # Log the full Exa result
-        # logger.info(f"Exa result for {library_name}: {result_dict}")
-        
         # Save the Exa result to a file
         exa_results_dir = Path(CONFIG["paths"]["exa_results_dir"])
         exa_results_dir.mkdir(parents=True, exist_ok=True)
@@ -212,6 +208,50 @@ def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] 
     except Exception as e:
         logger.error(f"Error fetching from Exa for {library_name}: {str(e)}")
         return {"answer": "", "citations": []}
+
+def determine_glob_pattern(library_name: str, tags: List[str]) -> str:
+    """Determine the appropriate glob pattern based on library name and tags."""
+    # Default glob pattern
+    default_glob = "**/*"
+    
+    # Check for language-specific patterns
+    if "python" in tags:
+        return "**/*.py"
+    elif "javascript" in tags or "typescript" in tags:
+        if "react" in tags:
+            return "**/*.{jsx,tsx}"
+        elif "vue" in tags:
+            return "**/*.vue"
+        elif "svelte" in tags:
+            return "**/*.svelte"
+        elif "angular" in tags:
+            return "**/*.{ts,html}"
+        return "**/*.{js,ts,jsx,tsx}"
+    elif "rust" in tags:
+        return "**/*.rs"
+    elif "go" in tags:
+        return "**/*.go"
+    elif "java" in tags:
+        return "**/*.java"
+    elif "php" in tags:
+        return "**/*.php"
+    elif "ruby" in tags:
+        return "**/*.rb"
+    
+    # Check for specific libraries with known file extensions
+    if library_name == "django":
+        return "**/*.{py,html}"
+    elif library_name == "flask":
+        return "**/*.py"
+    elif library_name == "fastapi":
+        return "**/*.py"
+    elif library_name == "pytest":
+        return "**/test_*.py"
+    elif library_name == "tailwind":
+        return "**/*.{css,html,jsx,tsx}"
+    
+    # Return default if no specific pattern found
+    return default_glob
 
 @sleep_and_retry
 @limits(calls=CONFIG["api"]["rate_limit_calls"], period=CONFIG["api"]["rate_limit_period"])
@@ -247,6 +287,12 @@ def generate_mdc_rules_from_exa(library_info: LibraryInfo, exa_results: Dict[str
         # Combine all citation texts - Gemini can handle much larger inputs
         all_citation_text = "\n\n".join(citation_texts)
         
+        # Suggest a glob pattern based on library tags
+        suggested_glob = determine_glob_pattern(library_info.name, library_info.tags)
+        
+        # Format tags for prompt
+        tags_str = ", ".join(library_info.tags)
+        
         # Enhanced prompt template for both cases
         enhanced_prompt_template = """Create a comprehensive Cursor rule file (.mdc) for the {library_name} library following these guidelines:
 
@@ -254,8 +300,8 @@ def generate_mdc_rules_from_exa(library_info: LibraryInfo, exa_results: Dict[str
 
 Library Information:
 - Name: {library_name}
-- Category: {library_category}
-- Subcategory: {library_subcategory}
+- Tags: {tags}
+- Suggested glob pattern: {suggested_glob}
 
 {exa_content_section}
 
@@ -312,7 +358,7 @@ Your task is to create an EXTREMELY DETAILED and COMPREHENSIVE guide that covers
 
 Format your response as a valid JSON object with exactly these keys:
   - name: a short descriptive name for the rule (e.g., "{library_name} Best Practices")
-  - glob_pattern: the most appropriate glob pattern for this library based on the file types it typically works with
+  - glob_pattern: the most appropriate glob pattern for this library based on the file types it typically works with (you can use the suggested pattern or improve it)
   - description: a clear 1-2 sentence description of what the rule covers
   - content: the formatted rule content with comprehensive best practices in markdown format
 """
@@ -328,8 +374,8 @@ Your guidance should be useful for both beginners and experienced developers.
             
             prompt = enhanced_prompt_template.format(
                 library_name=library_info.name,
-                library_category=library_info.category,
-                library_subcategory=library_info.subcategory,
+                tags=tags_str,
+                suggested_glob=suggested_glob,
                 exa_content_section=exa_content_section,
                 mdc_instructions=mdc_instructions
             )
@@ -350,8 +396,8 @@ Add any important best practices that might be missing from the search results.
             
             prompt = enhanced_prompt_template.format(
                 library_name=library_info.name,
-                library_category=library_info.category,
-                library_subcategory=library_info.subcategory,
+                tags=tags_str,
+                suggested_glob=suggested_glob,
                 exa_content_section=exa_content_section,
                 mdc_instructions=mdc_instructions
             )
@@ -429,62 +475,60 @@ globs: {rule.glob_pattern}
         f.write(mdc_content)
     logger.info(f"Created {output_path}")
 
-def process_single_library(category: str, subcategory: str, library: str, output_dir: str, exa_client: Optional[Exa] = None) -> Tuple[str, bool]:
+def process_single_library(library_info: Dict[str, Any], output_dir: str, exa_client: Optional[Exa] = None) -> Tuple[str, bool]:
     """Process a single library and generate MDC file. Returns (library_key, success)."""
-    library_key = f"{category}/{subcategory}/{library}"
-    logger.info(f"Processing library: {library} (Category: {category}, Subcategory: {subcategory})")
+    library_name = library_info["name"]
+    library_tags = library_info["tags"]
+    
+    # Create a unique key for this library - using just the name for flat structure
+    library_key = library_name
+    
+    logger.info(f"Processing library: {library_name} (Tags: {', '.join(library_tags)})")
     
     try:
         # Create output directory structure
         output_path = Path(output_dir)
-        category_dir = output_path / category
-        subcategory_dir = category_dir / subcategory
-        
-        # Create directories if they don't exist
-        for directory in [output_path, category_dir, subcategory_dir]:
-            if not directory.exists():
-                directory.mkdir(exist_ok=True)
+        if not output_path.exists():
+            output_path.mkdir(parents=True, exist_ok=True)
         
         # Create library info object
-        library_info = LibraryInfo(
-            category=category,
-            subcategory=subcategory,
-            name=library
+        library_obj = LibraryInfo(
+            name=library_name,
+            tags=library_tags
         )
         
         # Get best practices using Exa
-        logger.info(f"Getting best practices for {library} using Exa")
-        exa_results = get_library_best_practices_exa(library, exa_client)
+        logger.info(f"Getting best practices for {library_name} using Exa")
+        exa_results = get_library_best_practices_exa(library_name, exa_client)
         
         # Store citations in library info
-        library_info.citations = exa_results.get("citations", [])
+        library_obj.citations = exa_results.get("citations", [])
         
         # Generate MDC rules directly from Exa results
-        logger.info(f"Generating MDC rules for {library} directly from Exa results")
-        rules = generate_mdc_rules_from_exa(library_info, exa_results)
+        logger.info(f"Generating MDC rules for {library_name} directly from Exa results")
+        rules = generate_mdc_rules_from_exa(library_obj, exa_results)
         
         # Save each rule to a file
         for rule in rules:
             # Create safe filename
-            safe_name = re.sub('[^a-z0-9-]+', '-', library.lower()).strip('-')
+            safe_name = re.sub('[^a-z0-9-]+', '-', library_name.lower()).strip('-')
             mdc_filename = f"{safe_name}.mdc"
             
-            # Determine output path
-            output_file = subcategory_dir / mdc_filename
+            # Determine output path - directly in the output directory
+            output_file = output_path / mdc_filename
             
             # Create MDC file
             create_mdc_file(rule, output_file)
         
-        logger.info(f"Successfully processed {library}")
+        logger.info(f"Successfully processed {library_name}")
         return (library_key, True)
     
     except Exception as e:
-        logger.error(f"Error processing library {library}: {str(e)}")
+        logger.error(f"Error processing library {library_name}: {str(e)}")
         return (library_key, False)
 
 def process_libraries_json(json_path: str, output_dir: str, test_mode: bool = False, 
-                          target_category: str = None, target_subcategory: str = None, 
-                          target_library: str = None) -> None:
+                          target_tag: str = None, target_library: str = None) -> None:
     """Process libraries.json and generate MDC files."""
     # Check if libraries.json exists
     if not Path(json_path).exists():
@@ -494,6 +538,11 @@ def process_libraries_json(json_path: str, output_dir: str, test_mode: bool = Fa
     # Load libraries.json
     with open(json_path, 'r') as f:
         libraries_data = json.load(f)
+    
+    # Check if the new flat structure is used
+    if "libraries" not in libraries_data:
+        logger.error("The libraries.json file does not use the expected flat structure with tags.")
+        return
     
     # Create progress tracker
     progress_tracker = ProgressTracker()
@@ -508,56 +557,46 @@ def process_libraries_json(json_path: str, output_dir: str, test_mode: bool = Fa
     if not output_path.exists():
         output_path.mkdir(parents=True, exist_ok=True)
     
+    # Get libraries list
+    libraries = libraries_data["libraries"]
+    
+    # Filter libraries based on target tag or library if specified
+    if target_tag or target_library:
+        filtered_libraries = []
+        for lib in libraries:
+            if target_library and lib["name"] == target_library:
+                filtered_libraries.append(lib)
+            elif target_tag and target_tag in lib["tags"]:
+                filtered_libraries.append(lib)
+        libraries = filtered_libraries
+    
     # If test mode is enabled, just process one library
     if test_mode:
-        # Use React as the test library if no specific target is provided
-        test_category = target_category or "frontend_frameworks"
-        test_subcategory = target_subcategory or "react"
-        test_library = target_library or "react"
-        
-        # Check if the test library exists in the JSON
-        if test_category in libraries_data and test_subcategory in libraries_data[test_category]:
-            if test_library in libraries_data[test_category][test_subcategory]:
-                library_key, success = process_single_library(test_category, test_subcategory, test_library, output_dir, exa_client)
-                if success:
-                    progress_tracker.mark_library_completed(library_key)
-                else:
-                    progress_tracker.mark_library_failed(library_key)
+        if libraries:
+            test_library = libraries[0]
+            library_key, success = process_single_library(test_library, output_dir, exa_client)
+            if success:
+                progress_tracker.mark_library_completed(library_key)
             else:
-                logger.error(f"Test library {test_library} not found in {test_category}/{test_subcategory}")
+                progress_tracker.mark_library_failed(library_key)
         else:
-            logger.error(f"Test category/subcategory {test_category}/{test_subcategory} not found")
-        
+            logger.error("No libraries found to process in test mode")
         return
     
     # Prepare list of libraries to process
     libraries_to_process = []
     
-    for category, subcategories in libraries_data.items():
-        # Skip if a specific category is targeted and this isn't it
-        if target_category and category != target_category:
+    for library in libraries:
+        # Create a unique key for this library
+        library_key = library["name"]
+        
+        # Skip if already processed
+        if progress_tracker.is_library_processed(library_key):
+            logger.info(f"Skipping already processed library: {library['name']}")
             continue
-            
-        for subcategory, libraries in subcategories.items():
-            # Skip if a specific subcategory is targeted and this isn't it
-            if target_subcategory and subcategory != target_subcategory:
-                continue
-                
-            for library in libraries:
-                # Skip if a specific library is targeted and this isn't it
-                if target_library and library != target_library:
-                    continue
-                    
-                # Create a unique key for this library
-                library_key = f"{category}/{subcategory}/{library}"
-                
-                # Skip if already processed
-                if progress_tracker.is_library_processed(library_key):
-                    logger.info(f"Skipping already processed library: {library}")
-                    continue
-                
-                # Add to processing list
-                libraries_to_process.append((category, subcategory, library))
+        
+        # Add to processing list
+        libraries_to_process.append(library)
     
     # Process libraries in parallel
     max_workers = CONFIG["processing"]["max_workers"]
@@ -569,13 +608,13 @@ def process_libraries_json(json_path: str, output_dir: str, test_mode: bool = Fa
         
         # Submit all tasks
         future_to_library = {
-            executor.submit(process_func, category, subcategory, library): (category, subcategory, library)
-            for category, subcategory, library in libraries_to_process
+            executor.submit(process_func, library): library
+            for library in libraries_to_process
         }
         
         # Process results as they complete
         for future in concurrent.futures.as_completed(future_to_library):
-            category, subcategory, library = future_to_library[future]
+            library = future_to_library[future]
             try:
                 library_key, success = future.result()
                 if success:
@@ -583,16 +622,15 @@ def process_libraries_json(json_path: str, output_dir: str, test_mode: bool = Fa
                 else:
                     progress_tracker.mark_library_failed(library_key)
             except Exception as e:
-                logger.error(f"Exception processing {category}/{subcategory}/{library}: {str(e)}")
-                progress_tracker.mark_library_failed(f"{category}/{subcategory}/{library}")
+                logger.error(f"Exception processing {library['name']}: {str(e)}")
+                progress_tracker.mark_library_failed(library['name'])
 
 def main():
     """Main function to run the MDC generation process."""
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Generate MDC files from libraries.json")
     parser.add_argument("--test", action="store_true", help="Run in test mode (process only one library)")
-    parser.add_argument("--category", type=str, help="Process only a specific category")
-    parser.add_argument("--subcategory", type=str, help="Process only a specific subcategory")
+    parser.add_argument("--tag", type=str, help="Process only libraries with a specific tag")
     parser.add_argument("--library", type=str, help="Process only a specific library")
     parser.add_argument("--output", type=str, default=CONFIG["paths"]["output_dir"], help="Output directory for MDC files")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
@@ -636,8 +674,7 @@ def main():
             libraries_json_path, 
             output_dir, 
             test_mode=args.test,
-            target_category=args.category,
-            target_subcategory=args.subcategory,
+            target_tag=args.tag,
             target_library=args.library
         )
         logger.info("MDC generation completed successfully!")
