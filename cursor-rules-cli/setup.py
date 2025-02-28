@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 """
-Setup script for cursor-rules-cli.
+Setup script for cursor-rules.
 """
 
 from setuptools import setup, find_packages
 import os
+import shutil
 from pathlib import Path
 
 # Read version from __init__.py
@@ -23,8 +24,15 @@ if readme_path.exists():
     with open(readme_path, "r", encoding="utf-8") as f:
         long_description = f.read()
 
+# Copy rules.json to src directory if it doesn't exist
+rules_json_src = Path("rules.json")
+rules_json_dest = Path("src/rules.json")
+if rules_json_src.exists() and not rules_json_dest.exists():
+    shutil.copy2(rules_json_src, rules_json_dest)
+    print(f"Copied rules.json to {rules_json_dest}")
+
 setup(
-    name="cursor-rules-cli",
+    name="cursor-rules",
     version=version,
     description="A CLI tool to scan projects and install relevant Cursor rules",
     long_description=long_description,
@@ -36,7 +44,7 @@ setup(
     packages=["cursor_rules_cli"],
     include_package_data=True,
     package_data={
-        "cursor_rules_cli": ["rules.json"],
+        "cursor_rules_cli": ["*.json"],
     },
     entry_points={
         "console_scripts": [
