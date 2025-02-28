@@ -15,14 +15,19 @@ from exa_py import Exa
 import concurrent.futures
 from functools import partial
 import yaml
+import sys
+import shutil
 
 # Enable JSON schema validation in LiteLLM
 import litellm
 litellm.enable_json_schema_validation = True
 
+# Get the script directory for absolute path resolution
+SCRIPT_DIR = Path(__file__).parent.absolute()
+
 # Configure logging
 # Create logs directory if it doesn't exist
-logs_dir = Path("logs")
+logs_dir = SCRIPT_DIR / "logs"
 logs_dir.mkdir(exist_ok=True)
 
 # Create a timestamp for the log file
@@ -48,8 +53,8 @@ load_dotenv()
 DEFAULT_CONFIG = {
     "paths": {
         "mdc_instructions": "mdc-instructions.txt",
-        "rules_json": "rules.json",
-        "output_dir": "rules-mdc",
+        "rules_json": "../rules.json",
+        "output_dir": "../rules-mdc",
         "exa_results_dir": "exa_results"  # Directory to store Exa results
     },
     "api": {
@@ -60,16 +65,24 @@ DEFAULT_CONFIG = {
         "retry_min_wait": 4,
         "retry_max_wait": 10
     },
+    "exa_api": {
+        "rate_limit_calls": 5,
+        "rate_limit_period": 1,
+        "max_retries": 3,
+        "retry_min_wait": 1,
+        "retry_max_wait": 5
+    },
     "processing": {
         "max_workers": 4,
-        "chunk_size": 50000
+        "chunk_size": 50000,
+        "retry_failed_only": True  # Default to retry only failed libraries
     }
 }
 
 # Load or create configuration
 def load_config() -> Dict[str, Any]:
     """Load configuration from config.yaml or create default if not exists."""
-    config_path = Path("config.yaml")
+    config_path = SCRIPT_DIR / "config.yaml"
     if config_path.exists():
         try:
             with open(config_path, "r") as f:
@@ -116,18 +129,22 @@ class LibraryInfo(BaseModel):
 class ProgressTracker:
     """Track progress of MDC generation to allow resuming."""
     def __init__(self, tracking_file: str = "mdc_generation_progress.json"):
-        self.tracking_file = Path(tracking_file)
+        self.tracking_file = SCRIPT_DIR / tracking_file
         self.progress: Dict[str, str] = self._load_progress()
+        logger.debug(f"Loaded progress tracker with {len(self.progress)} entries")
     
     def _load_progress(self) -> Dict[str, str]:
         """Load existing progress from file."""
         if self.tracking_file.exists():
             try:
                 with open(self.tracking_file, 'r') as f:
-                    return json.load(f)
+                    progress = json.load(f)
+                    logger.debug(f"Loaded progress from {self.tracking_file}")
+                    return progress
             except json.JSONDecodeError:
                 logger.warning("Progress file corrupted, starting fresh")
                 return {}
+        logger.debug(f"Progress file {self.tracking_file} not found, starting fresh")
         return {}
     
     def save_progress(self):
@@ -139,6 +156,10 @@ class ProgressTracker:
         """Check if a library has been successfully processed."""
         return self.progress.get(library_key) == "completed"
     
+    def is_library_failed(self, library_key: str) -> bool:
+        """Check if a library has failed processing."""
+        return self.progress.get(library_key) == "failed"
+    
     def mark_library_completed(self, library_key: str):
         """Mark a library as successfully processed."""
         self.progress[library_key] = "completed"
@@ -148,6 +169,52 @@ class ProgressTracker:
         """Mark a library as failed."""
         self.progress[library_key] = "failed"
         self.save_progress()
+    
+    def get_failed_libraries(self) -> List[str]:
+        """Get a list of failed libraries."""
+        return [key for key, value in self.progress.items() if value == "failed"]
+    
+    def identify_new_libraries(self, all_libraries: List[str]) -> List[str]:
+        """Identify libraries that are not yet in the progress tracker."""
+        new_libraries = [lib for lib in all_libraries if lib not in self.progress]
+        logger.debug(f"Found {len(new_libraries)} new libraries out of {len(all_libraries)} total libraries")
+        if new_libraries:
+            logger.debug(f"New libraries: {', '.join(new_libraries)}")
+        return new_libraries
+    
+    def update_progress_with_new_libraries(self, all_libraries: List[str]) -> List[str]:
+        """
+        Update progress tracker with new libraries and return the list of newly added libraries.
+        New libraries are marked as not processed (not in the progress tracker).
+        """
+        new_libraries = self.identify_new_libraries(all_libraries)
+        if new_libraries:
+            logger.info(f"Found {len(new_libraries)} new libraries to process: {', '.join(new_libraries)}")
+        return new_libraries
+
+def validate_environment_variables() -> bool:
+    """Validate that all required environment variables are set."""
+    required_vars = []
+    
+    # Check for LiteLLM API key (depends on the model being used)
+    model = CONFIG["api"]["llm_model"]
+    if model.startswith("gemini"):
+        required_vars.append("GEMINI_API_KEY")
+    elif model.startswith("gpt") or model.startswith("openai"):
+        required_vars.append("OPENAI_API_KEY")
+    elif model.startswith("claude") or model.startswith("anthropic"):
+        required_vars.append("ANTHROPIC_API_KEY")
+    
+    # Check for Exa API key
+    required_vars.append("EXA_API_KEY")
+    
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    
+    if missing_vars:
+        logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+        return False
+    
+    return True
 
 def initialize_exa_client() -> Optional[Exa]:
     """Initialize the Exa client with API key from environment."""
@@ -162,17 +229,26 @@ def initialize_exa_client() -> Optional[Exa]:
         logger.error(f"Failed to initialize Exa client: {str(e)}")
         return None
 
-@retry(stop=stop_after_attempt(CONFIG["api"]["max_retries"]), 
-       wait=wait_exponential(multiplier=1, min=CONFIG["api"]["retry_min_wait"], max=CONFIG["api"]["retry_max_wait"]))
-def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] = None) -> Dict[str, Any]:
+@retry(stop=stop_after_attempt(CONFIG["exa_api"]["max_retries"]), 
+       wait=wait_exponential(multiplier=1, min=CONFIG["exa_api"]["retry_min_wait"], max=CONFIG["exa_api"]["retry_max_wait"]))
+@sleep_and_retry
+@limits(calls=CONFIG["exa_api"]["rate_limit_calls"], period=CONFIG["exa_api"]["rate_limit_period"])
+def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] = None, tags: List[str] = None) -> Dict[str, Any]:
     """Use Exa to search for best practices for a library."""
     if exa_client is None:
         logger.warning("Exa client not initialized, falling back to LLM generation")
         return {"answer": "", "citations": []}
     
     try:
-        # Construct a query for best practices
-        query = f"{library_name} best practices coding standards"
+        # Construct a query for best practices that includes tags for better context
+        if tags and len(tags) > 0:
+            # Select up to 3 most relevant tags to keep the query focused
+            relevant_tags = tags[:3] if len(tags) > 3 else tags
+            tags_str = " ".join(relevant_tags)
+            query = f"{library_name} best practices coding standards for {tags_str} development"
+        else:
+            query = f"{library_name} best practices coding standards"
+            
         logger.info(f"Searching Exa for: {query}")
         
         # Call Exa API
@@ -185,7 +261,7 @@ def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] 
         }
         
         # Save the Exa result to a file
-        exa_results_dir = Path(CONFIG["paths"]["exa_results_dir"])
+        exa_results_dir = SCRIPT_DIR / CONFIG["paths"]["exa_results_dir"]
         exa_results_dir.mkdir(parents=True, exist_ok=True)
         
         # Create a safe filename
@@ -209,50 +285,6 @@ def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] 
         logger.error(f"Error fetching from Exa for {library_name}: {str(e)}")
         return {"answer": "", "citations": []}
 
-def determine_glob_pattern(library_name: str, tags: List[str]) -> str:
-    """Determine the appropriate glob pattern based on library name and tags."""
-    # Default glob pattern
-    default_glob = "**/*"
-    
-    # Check for language-specific patterns
-    if "python" in tags:
-        return "**/*.py"
-    elif "javascript" in tags or "typescript" in tags:
-        if "react" in tags:
-            return "**/*.{jsx,tsx}"
-        elif "vue" in tags:
-            return "**/*.vue"
-        elif "svelte" in tags:
-            return "**/*.svelte"
-        elif "angular" in tags:
-            return "**/*.{ts,html}"
-        return "**/*.{js,ts,jsx,tsx}"
-    elif "rust" in tags:
-        return "**/*.rs"
-    elif "go" in tags:
-        return "**/*.go"
-    elif "java" in tags:
-        return "**/*.java"
-    elif "php" in tags:
-        return "**/*.php"
-    elif "ruby" in tags:
-        return "**/*.rb"
-    
-    # Check for specific libraries with known file extensions
-    if library_name == "django":
-        return "**/*.{py,html}"
-    elif library_name == "flask":
-        return "**/*.py"
-    elif library_name == "fastapi":
-        return "**/*.py"
-    elif library_name == "pytest":
-        return "**/test_*.py"
-    elif library_name == "tailwind":
-        return "**/*.{css,html,jsx,tsx}"
-    
-    # Return default if no specific pattern found
-    return default_glob
-
 @sleep_and_retry
 @limits(calls=CONFIG["api"]["rate_limit_calls"], period=CONFIG["api"]["rate_limit_period"])
 @retry(stop=stop_after_attempt(CONFIG["api"]["max_retries"]), 
@@ -261,7 +293,7 @@ def generate_mdc_rules_from_exa(library_info: LibraryInfo, exa_results: Dict[str
     """Generate MDC rules for a library using LLM directly from Exa results."""
     try:
         # Load MDC instructions
-        mdc_instructions_path = Path(CONFIG["paths"]["mdc_instructions"])
+        mdc_instructions_path = SCRIPT_DIR / CONFIG["paths"]["mdc_instructions"]
         if not mdc_instructions_path.exists():
             logger.warning(f"MDC instructions file not found at {mdc_instructions_path}")
             mdc_instructions = "Create rules with clear descriptions and appropriate glob patterns."
@@ -287,10 +319,7 @@ def generate_mdc_rules_from_exa(library_info: LibraryInfo, exa_results: Dict[str
         # Combine all citation texts - Gemini can handle much larger inputs
         all_citation_text = "\n\n".join(citation_texts)
         
-        # Suggest a glob pattern based on library tags
-        suggested_glob = determine_glob_pattern(library_info.name, library_info.tags)
-        
-        # Format tags for prompt
+        # Format tags for prompt - but don't emphasize them too much
         tags_str = ", ".join(library_info.tags)
         
         # Enhanced prompt template for both cases
@@ -301,64 +330,63 @@ def generate_mdc_rules_from_exa(library_info: LibraryInfo, exa_results: Dict[str
 Library Information:
 - Name: {library_name}
 - Tags: {tags}
-- Suggested glob pattern: {suggested_glob}
 
 {exa_content_section}
 
 Your task is to create an EXTREMELY DETAILED and COMPREHENSIVE guide that covers:
 
 1. Code Organization and Structure:
-   - Directory structure best practices
-   - File naming conventions
-   - Module organization
-   - Component architecture
-   - Code splitting strategies
+   - Directory structure best practices for {library_name}
+   - File naming conventions specific to {library_name}
+   - Module organization best practices for projects using {library_name}
+   - Component architecture recommendations for {library_name}
+   - Code splitting strategies appropriate for {library_name}
 
 2. Common Patterns and Anti-patterns:
    - Design patterns specific to {library_name}
-   - Recommended approaches for common tasks
-   - Anti-patterns and code smells to avoid
-   - State management best practices
-   - Error handling patterns
+   - Recommended approaches for common tasks with {library_name}
+   - Anti-patterns and code smells to avoid when using {library_name}
+   - State management best practices for {library_name} applications
+   - Error handling patterns appropriate for {library_name}
 
 3. Performance Considerations:
-   - Optimization techniques
-   - Memory management
-   - Rendering optimization
-   - Bundle size optimization
-   - Lazy loading strategies
+   - Optimization techniques specific to {library_name}
+   - Memory management considerations for applications using {library_name}
+   - Rendering optimization for {library_name} (if applicable)
+   - Bundle size optimization strategies for projects using {library_name}
+   - Lazy loading strategies appropriate for {library_name}
 
 4. Security Best Practices:
-   - Common vulnerabilities and how to prevent them
-   - Input validation
-   - Authentication and authorization patterns
-   - Data protection strategies
-   - Secure API communication
+   - Common vulnerabilities and how to prevent them with {library_name}
+   - Input validation best practices for {library_name}
+   - Authentication and authorization patterns for {library_name}
+   - Data protection strategies relevant to {library_name}
+   - Secure API communication with {library_name}
 
 5. Testing Approaches:
-   - Unit testing strategies
-   - Integration testing
-   - End-to-end testing
-   - Test organization
-   - Mocking and stubbing
+   - Unit testing strategies for {library_name} components
+   - Integration testing approaches for {library_name} applications
+   - End-to-end testing recommendations for {library_name} projects
+   - Test organization best practices for {library_name}
+   - Mocking and stubbing techniques specific to {library_name}
 
 6. Common Pitfalls and Gotchas:
-   - Frequent mistakes developers make
-   - Edge cases to be aware of
-   - Version-specific issues
-   - Compatibility concerns
-   - Debugging strategies
+   - Frequent mistakes developers make when using {library_name}
+   - Edge cases to be aware of when using {library_name}
+   - Version-specific issues with {library_name}
+   - Compatibility concerns between {library_name} and other technologies
+   - Debugging strategies for {library_name} applications
 
 7. Tooling and Environment:
-   - Recommended development tools
-   - Build configuration
-   - Linting and formatting
-   - Deployment best practices
-   - CI/CD integration
+   - Recommended development tools for {library_name}
+   - Build configuration best practices for projects using {library_name}
+   - Linting and formatting recommendations for {library_name} code
+   - Deployment best practices for {library_name} applications
+   - CI/CD integration strategies for {library_name} projects
 
 Format your response as a valid JSON object with exactly these keys:
   - name: a short descriptive name for the rule (e.g., "{library_name} Best Practices")
-  - glob_pattern: the most appropriate glob pattern for this library based on the file types it typically works with (you can use the suggested pattern or improve it)
+  - glob_pattern: the most appropriate glob pattern for this library based on the file types it typically works with
   - description: a clear 1-2 sentence description of what the rule covers
   - content: the formatted rule content with comprehensive best practices in markdown format
 """
@@ -375,7 +403,6 @@ Your guidance should be useful for both beginners and experienced developers.
             prompt = enhanced_prompt_template.format(
                 library_name=library_info.name,
                 tags=tags_str,
-                suggested_glob=suggested_glob,
                 exa_content_section=exa_content_section,
                 mdc_instructions=mdc_instructions
             )
@@ -397,7 +424,6 @@ Add any important best practices that might be missing from the search results.
             prompt = enhanced_prompt_template.format(
                 library_name=library_info.name,
                 tags=tags_str,
-                suggested_glob=suggested_glob,
                 exa_content_section=exa_content_section,
                 mdc_instructions=mdc_instructions
             )
@@ -499,7 +525,7 @@ def process_single_library(library_info: Dict[str, Any], output_dir: str, exa_cl
         
         # Get best practices using Exa
         logger.info(f"Getting best practices for {library_name} using Exa")
-        exa_results = get_library_best_practices_exa(library_name, exa_client)
+        exa_results = get_library_best_practices_exa(library_name, exa_client, library_tags)
         
         # Store citations in library info
         library_obj.citations = exa_results.get("citations", [])
@@ -528,10 +554,12 @@ def process_single_library(library_info: Dict[str, Any], output_dir: str, exa_cl
         return (library_key, False)
 
 def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
-                      specific_library: Optional[str] = None, specific_tag: Optional[str] = None):
+                      specific_library: Optional[str] = None, specific_tag: Optional[str] = None,
+                      retry_failed_only: bool = False):
     """Process rules.json and generate MDC files."""
     # Check if rules.json exists
-    if not os.path.exists(json_path):
+    json_path = Path(json_path)
+    if not json_path.exists():
         logger.error(f"Rules JSON file not found at {json_path}")
         return
     
@@ -560,6 +588,12 @@ def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
     # Get libraries list
     libraries = libraries_data["libraries"]
     
+    # Extract all library names for progress tracking
+    all_library_names = [lib["name"] for lib in libraries]
+    
+    # Check for new libraries and update progress tracker
+    progress_tracker.update_progress_with_new_libraries(all_library_names)
+    
     # Filter libraries based on target tag or library if specified
     if specific_library:
         filtered_libraries = [lib for lib in libraries if lib["name"] == specific_library]
@@ -584,17 +618,38 @@ def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
     # Prepare list of libraries to process
     libraries_to_process = []
     
-    for library in filtered_libraries:
-        # Create a unique key for this library
-        library_key = library["name"]
+    # If retry_failed_only is True, only process libraries that have failed before
+    # and any new libraries that have been added
+    if retry_failed_only:
+        failed_libraries = progress_tracker.get_failed_libraries()
+        new_libraries = progress_tracker.identify_new_libraries(all_library_names)
+        target_libraries = set(failed_libraries).union(set(new_libraries))
         
-        # Skip if already processed
-        if progress_tracker.is_library_processed(library_key):
-            logger.info(f"Skipping already processed library: {library['name']}")
-            continue
+        if failed_libraries:
+            logger.info(f"Retrying {len(failed_libraries)} failed libraries")
+        if new_libraries:
+            logger.info(f"Processing {len(new_libraries)} new libraries")
         
-        # Add to processing list
-        libraries_to_process.append(library)
+        for library in filtered_libraries:
+            library_key = library["name"]
+            if library_key in target_libraries:
+                libraries_to_process.append(library)
+    else:
+        # Normal processing - skip completed libraries
+        for library in filtered_libraries:
+            library_key = library["name"]
+            
+            # Skip if already processed
+            if progress_tracker.is_library_processed(library_key):
+                logger.info(f"Skipping already processed library: {library['name']}")
+                continue
+            
+            # Add to processing list
+            libraries_to_process.append(library)
+    
+    if not libraries_to_process:
+        logger.info("No libraries to process. All libraries may have been completed already.")
+        return
     
     # Process libraries in parallel
     max_workers = CONFIG["processing"]["max_workers"]
@@ -630,16 +685,18 @@ def main():
     parser.add_argument("--test", action="store_true", help="Run in test mode (process only one library)")
     parser.add_argument("--tag", type=str, help="Process only libraries with a specific tag")
     parser.add_argument("--library", type=str, help="Process only a specific library")
-    parser.add_argument("--output", type=str, default=CONFIG["paths"]["output_dir"], help="Output directory for MDC files")
+    parser.add_argument("--output", type=str, default=None, help="Output directory for MDC files")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     parser.add_argument("--workers", type=int, help=f"Number of parallel workers (default: {CONFIG['processing']['max_workers']})")
     parser.add_argument("--rate-limit", type=int, help=f"API rate limit calls per minute (default: {CONFIG['api']['rate_limit_calls']})")
     parser.add_argument("--log-dir", type=str, default="logs", help="Directory to save log files")
-    parser.add_argument("--exa-results-dir", type=str, default=CONFIG["paths"]["exa_results_dir"], help="Directory to save Exa results")
+    parser.add_argument("--exa-results-dir", type=str, default=None, help="Directory to save Exa results")
+    parser.add_argument("--regenerate-all", action="store_true", help="Regenerate all libraries, including previously completed ones")
+    parser.add_argument("--debug", action="store_true", help="Enable extra debug output")
     args = parser.parse_args()
     
     # Set up verbose logging if requested
-    if args.verbose:
+    if args.verbose or args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
     
@@ -653,18 +710,25 @@ def main():
     if args.exa_results_dir:
         CONFIG["paths"]["exa_results_dir"] = args.exa_results_dir
     
-    # Set paths
-    rules_json_path = CONFIG["paths"]["rules_json"]
-    output_dir = args.output or CONFIG["paths"]["output_dir"]
+    # Set paths with absolute paths
+    rules_json_path = SCRIPT_DIR / Path(CONFIG["paths"]["rules_json"])
+    output_dir = args.output if args.output else SCRIPT_DIR / Path(CONFIG["paths"]["output_dir"])
     
     # Check if rules.json exists
-    if not os.path.exists(rules_json_path):
+    if not rules_json_path.exists():
         logger.error(f"rules.json not found at {rules_json_path}")
         return
     
-    # Check if EXA_API_KEY is set
-    if not os.getenv("EXA_API_KEY"):
-        logger.warning("EXA_API_KEY environment variable not set. Will generate content using LLM only.")
+    # Debug output
+    if args.debug:
+        logger.debug(f"Rules JSON path: {rules_json_path}")
+        logger.debug(f"Output directory: {output_dir}")
+        logger.debug(f"Config: {CONFIG}")
+    
+    # Validate environment variables
+    if not validate_environment_variables():
+        logger.error("Missing required environment variables. Exiting.")
+        sys.exit(1)
     
     try:
         # Process rules.json and generate MDC files
@@ -673,9 +737,23 @@ def main():
             output_dir, 
             test_mode=args.test,
             specific_library=args.library,
-            specific_tag=args.tag
+            specific_tag=args.tag,
+            retry_failed_only=not args.regenerate_all  # Invert regenerate-all flag
         )
         logger.info("MDC generation completed successfully!")
+        
+        # Copy rules.json to cursor-rules-cli folder
+        cursor_rules_cli_dir = Path(SCRIPT_DIR).parent / "cursor-rules-cli"
+        cursor_rules_cli_dir.mkdir(exist_ok=True)
+        
+        target_rules_json = cursor_rules_cli_dir / "rules.json"
+        
+        try:
+            shutil.copy2(rules_json_path, target_rules_json)
+            logger.info(f"Successfully copied rules.json to {target_rules_json}")
+        except Exception as e:
+            logger.error(f"Failed to copy rules.json to cursor-rules-cli folder: {str(e)}")
+        
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")
         if args.verbose:

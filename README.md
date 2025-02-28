@@ -1,157 +1,111 @@
-# MDC Generator for Library Best Practices
+# MDC Rules Generator
 
-This repository contains Cursor rule files (.mdc) that provide AI-powered best practices and guidelines for various libraries and frameworks. The rules in `rules-mdc/` are comprehensive and focused, offering guidance for a wide range of programming libraries and frameworks.
-
-## Repository Structure
-
-```
-.
-├── rules-mdc/          # Comprehensive rule files in a flat structure
-├── cursor-rules-cli/   # Source code and configuration for rule generation
-│   ├── generate_mdc_files.py
-│   ├── rules.json
-│   ├── config.yaml
-│   └── ...
-└── logs/               # Log files from rule generation runs
-```
+This project generates Cursor MDC (Markdown Cursor) rule files from a structured JSON file containing library information. It uses Exa for semantic search and LLM (Gemini) for content generation.
 
 ## Features
 
-- **Tag-Based Library Organization**: Libraries are organized with tags instead of nested categories for more flexible categorization
-- **Flat Directory Structure**: All MDC files are stored in a single directory for easier access
-- **Configurable**: All settings can be adjusted in `config.yaml`
-- **Parallel Processing**: Process multiple libraries simultaneously
-- **Progress Tracking**: Resume from where you left off if the process is interrupted
-- **Smart Glob Pattern Generation**: Automatically determines appropriate glob patterns for different libraries
-- **Rate Limiting**: Configurable API rate limits to avoid throttling
-- **Robust Error Handling**: Comprehensive error handling and logging
+- Generates comprehensive MDC rule files for libraries
+- Uses Exa for semantic web search to gather best practices
+- Leverages LLM to create detailed, structured content
+- Supports parallel processing for efficiency
+- Tracks progress to allow resuming interrupted runs
+- Smart retry system that focuses on failed libraries by default
 
 ## Prerequisites
 
-1. Python 3.8+
-2. Required packages (install via `uv sync`)
-3. Exa API key (set as environment variable `EXA_API_KEY`)
-4. LiteLLM API key (set as environment variable based on your provider)
+- Python 3.8+
+- [uv](https://github.com/astral-sh/uv) for dependency management
+- API keys for:
+  - Exa (for semantic search)
+  - LLM provider (Gemini, OpenAI, or Anthropic)
+
+## Installation
+
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/sanjeed5/awesome-cursor-rules-mdc.git
+   cd awesome-cursor-rules-mdc
+   ```
+
+2. Install dependencies using uv:
+   ```bash
+   uv sync
+   ```
+
+3. Set up environment variables:
+   Create a `.env` file in the project root with your API keys:
+   ```
+   EXA_API_KEY=your_exa_api_key
+   GOOGLE_API_KEY=your_google_api_key  # For Gemini
+   # Or use one of these depending on your LLM choice:
+   # OPENAI_API_KEY=your_openai_api_key
+   # ANTHROPIC_API_KEY=your_anthropic_api_key
+   ```
 
 ## Configuration
 
-The script uses a configuration file (`config.yaml`) with the following structure:
+The script uses a `config.yaml` file for configuration. You can modify this file to adjust:
 
-```yaml
-paths:
-  mdc_instructions: "mdc-instructions.txt"
-  rules_json: "rules.json"
-  output_dir: "rules-mdc"
-  exa_results_dir: "exa_results"
-
-api:
-  llm_model: "gemini/gemini-2.0-flash"
-  rate_limit_calls: 2000
-  rate_limit_period: 60
-  max_retries: 3
-  retry_min_wait: 4
-  retry_max_wait: 10
-
-processing:
-  max_workers: 4
-  chunk_size: 50000
-
-tags:
-  primary_tags: ["python", "javascript", "typescript", "rust", "go", "java", "php", "ruby"]
-  category_tags: ["frontend", "backend", "database", "ai", "ml", "testing", "development"]
-```
+- API rate limits
+- Output directories
+- LLM model selection
+- Processing parameters
 
 ## Usage
 
-### Basic Usage
+Run the script with:
 
 ```bash
-uv run generate_mdc_files.py
+uv run src/generate_mdc_files.py
 ```
 
-### Test Mode (Process Only One Library)
+By default, the script will only process libraries that failed in previous runs. This behavior helps ensure reliability and efficiency.
 
+### Command-line Options
+
+- `--test`: Run in test mode (process only one library)
+- `--tag TAG`: Process only libraries with a specific tag
+- `--library LIBRARY`: Process only a specific library
+- `--output OUTPUT_DIR`: Specify output directory for MDC files
+- `--verbose`: Enable verbose logging
+- `--workers N`: Set number of parallel workers
+- `--rate-limit N`: Set API rate limit calls per minute
+- `--regenerate-all`: Process all libraries, including previously completed ones
+
+### Examples
+
+Process failed libraries (default behavior):
 ```bash
-uv run generate_mdc_files.py --test
+uv run src/generate_mdc_files.py
 ```
 
-### Process Specific Tags or Libraries
-
+Regenerate all libraries:
 ```bash
-uv run generate_mdc_files.py --tag python
-uv run generate_mdc_files.py --library react
+uv run src/generate_mdc_files.py --regenerate-all
 ```
 
-### Adjust Parallel Processing
-
+Process only Python libraries:
 ```bash
-uv run generate_mdc_files.py --workers 8
+uv run src/generate_mdc_files.py --tag python
 ```
 
-### Adjust Rate Limits
-
+Process a specific library:
 ```bash
-uv run generate_mdc_files.py --rate-limit 50
+uv run src/generate_mdc_files.py --library react
 ```
 
-### Verbose Logging
+## Project Structure
 
-```bash
-uv run generate_mdc_files.py --verbose
-```
+- `src/`: Source code directory
+  - `generate_mdc_files.py`: Main script
+  - `config.yaml`: Configuration file
+  - `mdc-instructions.txt`: Instructions for MDC generation
+  - `logs/`: Log files directory
+  - `exa_results/`: Directory for Exa search results
+- `rules.json`: Input file with library information
+- `rules-mdc/`: Output directory for generated MDC files
+- `pyproject.toml`: Project dependencies and metadata
 
-## File Structure
+## License
 
-The generated MDC files are organized in a flat structure:
-
-```
-rules-mdc/
-├── react.mdc
-├── vue.mdc
-├── django.mdc
-├── flask.mdc
-├── pytest.mdc
-└── ...
-```
-
-## Available Libraries
-
-All currently supported libraries can be found in `rules.json`. This file organizes libraries with tags for flexible categorization:
-
-```json
-{
-  "libraries": [
-    {
-      "name": "react",
-      "tags": ["frontend", "framework", "javascript"]
-    },
-    {
-      "name": "django",
-      "tags": ["backend", "framework", "python", "orm", "full-stack"]
-    },
-    ...
-  ]
-}
-```
-
-The libraries cover a wide range of categories including:
-- Frontend frameworks and libraries
-- Backend frameworks
-- UI libraries and components
-- State management solutions
-- Database tools and ORMs
-- Development tools (testing, linting, etc.)
-- Cross-platform frameworks
-- AI/ML libraries
-- Web technologies
-- And many more
-
-## Progress Tracking
-
-The script maintains a progress file (`mdc_generation_progress.json`) to track which libraries have been processed. This allows you to resume the process if it's interrupted.
-
-## Troubleshooting
-
-- If you encounter API rate limit issues, adjust the `rate_limit_calls` in the configuration.
-- If the script is using too much memory, reduce the `chunk_size` in the configuration.
-- If the script is too slow, increase the `max_workers` in the configuration (but be mindful of API rate limits).
+[MIT License](LICENSE)

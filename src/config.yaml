@@ -1,7 +1,8 @@
 paths:
   mdc_instructions: "mdc-instructions.txt"
-  rules_json: "rules.json"
-  output_dir: "rules-mdc"
+  rules_json: "../rules.json"
+  output_dir: "../rules-mdc"
+  exa_results_dir: "exa_results"
 
 api:
   llm_model: "gemini/gemini-2.0-flash"
@@ -10,7 +11,15 @@ api:
   max_retries: 3
   retry_min_wait: 4
   retry_max_wait: 10
+  
+exa_api:
+  rate_limit_calls: 5  # Exa rate limit is 5 requests per second
+  rate_limit_period: 1  # Period in seconds
+  max_retries: 3
+  retry_min_wait: 1
+  retry_max_wait: 5
 
 processing:
   max_workers: 4  # Adjust based on your system's capabilities
-  chunk_size: 50000  # Reduced from 50000 to optimize token usage 
+  chunk_size: 50000  # Reduced from 50000 to optimize token usage
+  retry_failed_only: true  # Default to retry only failed libraries 
