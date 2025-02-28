@@ -325,13 +325,10 @@ def main():
             
             if result["installed"]:
                 logger.info(f"{Fore.GREEN}✅ Successfully installed {len(result['installed'])} rules!{Style.RESET_ALL}")
-                for rule in result["installed"]:
-                    logger.info(f"  - {Fore.CYAN}{rule}{Style.RESET_ALL}")
             
             if result["failed"]:
                 logger.warning(f"{Fore.YELLOW}⚠️ Failed to install {len(result['failed'])} rules:{Style.RESET_ALL}")
-                for failure in result["failed"]:
-                    logger.warning(f"  - {Fore.CYAN}{failure['rule']}{Style.RESET_ALL}: {failure['error']}")
+                
             
         return 0
     
@@ -388,16 +385,16 @@ def get_category_display_name(category: str) -> str:
     
     return category_names.get(category, category.title())
 
-def display_matched_rules(matched_rules: List[Dict[str, Any]], max_results: int = 20) -> List[str]:
+def display_matched_rules(matched_rules: List[Dict[str, Any]], max_results: int = 20) -> List[Dict[str, Any]]:
     """
-    Display matched rules and return selected rule names.
+    Display matched rules and return selected rule objects.
     
     Args:
         matched_rules: List of matched rules
         max_results: Maximum number of rules to display
         
     Returns:
-        List of selected rule names
+        List of selected rule objects
     """
     if not matched_rules:
         logger.info("No relevant rules found for your project.")
@@ -459,18 +456,18 @@ def display_matched_rules(matched_rules: List[Dict[str, Any]], max_results: int 
         return []
     
     if selection == "all":
-        return [rule["rule"] for rule in display_rules]
+        return display_rules
     
     if selection.startswith("category:"):
         category = selection.split(":", 1)[1]
         return [
-            rule["rule"] for rule in display_rules
+            rule for rule in display_rules
             if category in rule.get("tags", [])
         ]
     
     try:
         indices = [int(idx.strip()) for idx in selection.split(",") if idx.strip()]
-        return [display_rules[idx - 1]["rule"] for idx in indices if 1 <= idx <= len(display_rules)]
+        return [display_rules[idx - 1] for idx in indices if 1 <= idx <= len(display_rules)]
     except (ValueError, IndexError):
         logger.error(f"{Fore.RED}Invalid selection. Please try again.{Style.RESET_ALL}")
         return display_matched_rules(matched_rules, max_results)
