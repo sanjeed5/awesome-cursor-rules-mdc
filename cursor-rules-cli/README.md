@@ -12,6 +12,15 @@ A command-line tool to scan your projects and suggest relevant Cursor rules (.md
 
 ## Installation
 
+### From PyPI (Recommended)
+
+```bash
+# Install from PyPI
+pip install cursor-rules
+```
+
+### From Source
+
 ```bash
 # Clone the repository
 git clone https://github.com/sanjeed5/awesome-cursor-rules-mdc
@@ -28,16 +37,16 @@ pip install -e .
 cursor-rules
 
 # Scan a specific directory
-cursor-rules scan -d /path/to/project
+cursor-rules -d /path/to/project
 
 # Show what would be done without making changes
-cursor-rules scan --dry-run
+cursor-rules --dry-run
 
 # Force overwrite existing rules
-cursor-rules scan --force
+cursor-rules --force
 
 # Enable verbose output
-cursor-rules scan -v
+cursor-rules -v
 ```
 
 ## Advanced Usage
@@ -48,13 +57,13 @@ You can use your own forked repository of Cursor rules. This is a CLI-wide setti
 
 ```bash
 # Use a custom repository for the current scan
-cursor-rules scan --custom-repo username/repo
+cursor-rules --custom-repo username/repo
 
 # Set custom repository globally without running scan
-cursor-rules scan --custom-repo username/repo --set-repo
+cursor-rules --custom-repo username/repo --set-repo
 
 # Save this setting as your default configuration
-cursor-rules scan --custom-repo username/repo --save-config
+cursor-rules --custom-repo username/repo --save-config
 ```
 
 Note: Custom repository settings are always global and not project-specific. The repository must contain a valid `rules.json` file at the root level.
@@ -63,13 +72,13 @@ Note: Custom repository settings are always global and not project-specific. The
 
 ```bash
 # Show current configuration
-cursor-rules scan --show-config
+cursor-rules --show-config
 
 # Save current settings as global configuration
-cursor-rules scan --save-config
+cursor-rules --save-config
 
 # Save current settings as project-specific configuration (except repository settings)
-cursor-rules scan --save-project-config
+cursor-rules --save-project-config
 ```
 
 ## Configuration Files
