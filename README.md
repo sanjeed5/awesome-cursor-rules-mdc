@@ -9,7 +9,7 @@ This repository contains Cursor rule files (.mdc) that provide AI-powered best p
 ├── rules-mdc/          # Comprehensive rule files in a flat structure
 ├── cursor-rules-cli/   # Source code and configuration for rule generation
 │   ├── generate_mdc_files.py
-│   ├── libraries.json
+│   ├── rules.json
 │   ├── config.yaml
 │   └── ...
 └── logs/               # Log files from rule generation runs
@@ -40,7 +40,7 @@ The script uses a configuration file (`config.yaml`) with the following structur
 ```yaml
 paths:
   mdc_instructions: "mdc-instructions.txt"
-  libraries_json: "libraries.json"
+  rules_json: "rules.json"
   output_dir: "rules-mdc"
   exa_results_dir: "exa_results"
 
@@ -116,7 +116,7 @@ rules-mdc/
 
 ## Available Libraries
 
-All currently supported libraries can be found in `libraries.json`. This file organizes libraries with tags for flexible categorization:
+All currently supported libraries can be found in `rules.json`. This file organizes libraries with tags for flexible categorization:
 
 ```json
 {

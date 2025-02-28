@@ -1,6 +1,6 @@
 paths:
   mdc_instructions: "mdc-instructions.txt"
-  libraries_json: "libraries.json"
+  rules_json: "rules.json"
   output_dir: "rules-mdc"
 
 api:

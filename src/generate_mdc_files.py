@@ -48,7 +48,7 @@ load_dotenv()
 DEFAULT_CONFIG = {
     "paths": {
         "mdc_instructions": "mdc-instructions.txt",
-        "libraries_json": "libraries.json",
+        "rules_json": "rules.json",
         "output_dir": "rules-mdc",
         "exa_results_dir": "exa_results"  # Directory to store Exa results
     },
@@ -527,21 +527,21 @@ def process_single_library(library_info: Dict[str, Any], output_dir: str, exa_cl
         logger.error(f"Error processing library {library_name}: {str(e)}")
         return (library_key, False)
 
-def process_libraries_json(json_path: str, output_dir: str, test_mode: bool = False, 
-                          target_tag: str = None, target_library: str = None) -> None:
-    """Process libraries.json and generate MDC files."""
-    # Check if libraries.json exists
-    if not Path(json_path).exists():
-        logger.error(f"Libraries JSON file not found at {json_path}")
+def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
+                      specific_library: Optional[str] = None, specific_tag: Optional[str] = None):
+    """Process rules.json and generate MDC files."""
+    # Check if rules.json exists
+    if not os.path.exists(json_path):
+        logger.error(f"Rules JSON file not found at {json_path}")
         return
     
-    # Load libraries.json
+    # Load rules.json
     with open(json_path, 'r') as f:
         libraries_data = json.load(f)
     
     # Check if the new flat structure is used
     if "libraries" not in libraries_data:
-        logger.error("The libraries.json file does not use the expected flat structure with tags.")
+        logger.error("The rules.json file does not use the expected flat structure with tags.")
         return
     
     # Create progress tracker
@@ -561,19 +561,17 @@ def process_libraries_json(json_path: str, output_dir: str, test_mode: bool = Fa
     libraries = libraries_data["libraries"]
     
     # Filter libraries based on target tag or library if specified
-    if target_tag or target_library:
-        filtered_libraries = []
-        for lib in libraries:
-            if target_library and lib["name"] == target_library:
-                filtered_libraries.append(lib)
-            elif target_tag and target_tag in lib["tags"]:
-                filtered_libraries.append(lib)
-        libraries = filtered_libraries
+    if specific_library:
+        filtered_libraries = [lib for lib in libraries if lib["name"] == specific_library]
+    elif specific_tag:
+        filtered_libraries = [lib for lib in libraries if specific_tag in lib["tags"]]
+    else:
+        filtered_libraries = libraries
     
     # If test mode is enabled, just process one library
     if test_mode:
-        if libraries:
-            test_library = libraries[0]
+        if filtered_libraries:
+            test_library = filtered_libraries[0]
             library_key, success = process_single_library(test_library, output_dir, exa_client)
             if success:
                 progress_tracker.mark_library_completed(library_key)
@@ -586,7 +584,7 @@ def process_libraries_json(json_path: str, output_dir: str, test_mode: bool = Fa
     # Prepare list of libraries to process
     libraries_to_process = []
     
-    for library in libraries:
+    for library in filtered_libraries:
         # Create a unique key for this library
         library_key = library["name"]
         
@@ -628,7 +626,7 @@ def process_libraries_json(json_path: str, output_dir: str, test_mode: bool = Fa
 def main():
     """Main function to run the MDC generation process."""
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Generate MDC files from libraries.json")
+    parser = argparse.ArgumentParser(description="Generate MDC files from rules.json")
     parser.add_argument("--test", action="store_true", help="Run in test mode (process only one library)")
     parser.add_argument("--tag", type=str, help="Process only libraries with a specific tag")
     parser.add_argument("--library", type=str, help="Process only a specific library")
@@ -656,12 +654,12 @@ def main():
         CONFIG["paths"]["exa_results_dir"] = args.exa_results_dir
     
     # Set paths
-    libraries_json_path = CONFIG["paths"]["libraries_json"]
+    rules_json_path = CONFIG["paths"]["rules_json"]
     output_dir = args.output or CONFIG["paths"]["output_dir"]
     
-    # Check if libraries.json exists
-    if not os.path.exists(libraries_json_path):
-        logger.error(f"libraries.json not found at {libraries_json_path}")
+    # Check if rules.json exists
+    if not os.path.exists(rules_json_path):
+        logger.error(f"rules.json not found at {rules_json_path}")
         return
     
     # Check if EXA_API_KEY is set
@@ -669,13 +667,13 @@ def main():
         logger.warning("EXA_API_KEY environment variable not set. Will generate content using LLM only.")
     
     try:
-        # Process libraries.json and generate MDC files
-        process_libraries_json(
-            libraries_json_path, 
+        # Process rules.json and generate MDC files
+        process_rules_json(
+            rules_json_path, 
             output_dir, 
             test_mode=args.test,
-            target_tag=args.tag,
-            target_library=args.library
+            specific_library=args.library,
+            specific_tag=args.tag
         )
         logger.info("MDC generation completed successfully!")
     except Exception as e:
