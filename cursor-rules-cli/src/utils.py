@@ -66,19 +66,19 @@ def calculate_content_hash(content: str) -> str:
 
 def get_cursor_dir() -> Path:
     """
-    Get the path to the .cursor directory.
+    Get the path to the project's .cursor directory.
     
     Returns:
-        Path to the .cursor directory
+        Path to the project's .cursor directory
     """
-    return Path.home() / ".cursor"
+    return Path.cwd() / ".cursor"
 
 def get_rules_dir() -> Path:
     """
-    Get the path to the .cursor/rules directory.
+    Get the path to the project's .cursor/rules directory.
     
     Returns:
-        Path to the .cursor/rules directory
+        Path to the project's .cursor/rules directory
     """
     return get_cursor_dir() / "rules"
 
@@ -87,7 +87,7 @@ def get_config_file() -> Path:
     Get the path to the configuration file.
     
     Returns:
-        Path to the configuration file
+        Path to the configuration file in the project's .cursor directory
     """
     return get_cursor_dir() / "rules-cli-config.json"
 

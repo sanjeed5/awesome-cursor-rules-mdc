@@ -1,7 +1,7 @@
 """
 Installer module for installing MDC rule files.
 
-This module handles installing the downloaded MDC rule files to the user's
+This module handles installing the downloaded MDC rule files to the project's
 .cursor/rules directory.
 """
 
@@ -21,12 +21,12 @@ def install_rules(
     backup: bool = True,
 ) -> Dict[str, List]:
     """
-    Install downloaded MDC rule files to the .cursor/rules directory.
+    Install downloaded MDC rule files to the project's .cursor/rules directory.
     
     Args:
         rules: List of rule metadata with local file paths
         force: Whether to overwrite existing rules
-        cursor_dir: Path to .cursor directory (defaults to ~/.cursor)
+        cursor_dir: Path to .cursor directory (defaults to ./.cursor in current directory)
         backup: Whether to backup existing rules
         
     Returns:
@@ -41,9 +41,9 @@ def install_rules(
         logger.warning("No rules to install")
         return result
     
-    # Determine .cursor directory
+    # Determine .cursor directory - use project local directory
     if cursor_dir is None:
-        cursor_dir = Path.home() / ".cursor"
+        cursor_dir = Path.cwd() / ".cursor"
     
     # Create rules directory if it doesn't exist
     rules_dir = cursor_dir / "rules"
@@ -99,7 +99,7 @@ def install_rules(
 
 def create_backup(rules_dir: Path) -> Optional[Path]:
     """
-    Create a backup of existing rules.
+    Create a backup of existing rules in the project directory.
     
     Args:
         rules_dir: Path to .cursor/rules directory
@@ -108,7 +108,8 @@ def create_backup(rules_dir: Path) -> Optional[Path]:
         Path to backup directory or None if failed
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_dir = rules_dir.parent / f"rules_backup_{timestamp}"
+    # Keep backups in the project directory under .cursor/backups
+    backup_dir = rules_dir.parent / "backups" / f"rules_backup_{timestamp}"
     
     try:
         # Create backup directory
@@ -128,14 +129,14 @@ def list_installed_rules(cursor_dir: Optional[Path] = None) -> List[Dict[str, An
     List installed MDC rule files.
     
     Args:
-        cursor_dir: Path to .cursor directory (defaults to ~/.cursor)
+        cursor_dir: Path to .cursor directory (defaults to ./.cursor in current directory)
         
     Returns:
         List of installed rule metadata
     """
-    # Determine .cursor directory
+    # Determine .cursor directory - use project local directory
     if cursor_dir is None:
-        cursor_dir = Path.home() / ".cursor"
+        cursor_dir = Path.cwd() / ".cursor"
     
     rules_dir = cursor_dir / "rules"
     
