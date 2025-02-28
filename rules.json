@@ -21,7 +21,7 @@
       "tags": ["frontend", "javascript", "state-management"]
     },
     {
-      "name": "next.js",
+      "name": "next-js",
       "tags": ["frontend", "framework", "javascript", "react", "ssr"]
     },
     {
@@ -263,6 +263,10 @@
     {
       "name": "vitest",
       "tags": ["development", "testing", "javascript", "vite"]
+    },
+    {
+      "name": "python",
+      "tags": ["python"]
     },
     {
       "name": "pytest",
@@ -595,6 +599,366 @@
     {
       "name": "streamlit",
       "tags": ["python", "utilities", "data-apps", "dashboard"]
+    },
+    {
+      "name": "css",
+      "tags": ["web", "frontend", "styling", "language"]
+    },
+    {
+      "name": "crewai",
+      "tags": ["ai", "ml", "llm", "python", "agent-framework", "multi-agent"]
+    },
+    {
+      "name": "smolagents",
+      "tags": ["ai", "ml", "llm", "python", "agent-framework", "lightweight"]
+    },
+    {
+      "name": "langgraph",
+      "tags": ["ai", "ml", "llm", "python", "agent-framework", "workflow"]
+    },
+    {
+      "name": "autogen",
+      "tags": ["ai", "ml", "llm", "python", "agent-framework", "multi-agent"]
+    },
+    {
+      "name": "llamaindex-js",
+      "tags": ["ai", "ml", "llm", "javascript", "rag"]
+    },
+    {
+      "name": "langchain-js",
+      "tags": ["ai", "ml", "llm", "javascript"]
+    },
+    {
+      "name": "asp-net",
+      "tags": ["backend", "framework", "csharp", "microsoft"]
+    },
+    {
+      "name": "aws-amplify",
+      "tags": ["cloud", "frontend", "aws", "full-stack"]
+    },
+    {
+      "name": "aws-cli",
+      "tags": ["cloud", "devops", "aws", "command-line"]
+    },
+    {
+      "name": "aws-dynamodb",
+      "tags": ["database", "nosql", "aws", "cloud"]
+    },
+    {
+      "name": "aws-ecs",
+      "tags": ["cloud", "containerization", "aws", "orchestration"]
+    },
+    {
+      "name": "aws-rds",
+      "tags": ["database", "sql", "aws", "cloud"]
+    },
+    {
+      "name": "amazon-ec2",
+      "tags": ["cloud", "infrastructure", "aws", "virtual-machines"]
+    },
+    {
+      "name": "amazon-s3",
+      "tags": ["cloud", "storage", "aws", "object-storage"]
+    },
+    {
+      "name": "android-sdk",
+      "tags": ["mobile", "framework", "java", "kotlin"]
+    },
+    {
+      "name": "ansible",
+      "tags": ["devops", "infrastructure", "automation", "configuration-management"]
+    },
+    {
+      "name": "ant-design",
+      "tags": ["ui", "component-library", "react", "design-system"]
+    },
+    {
+      "name": "apollo-graphql",
+      "tags": ["web", "api", "graphql", "javascript"]
+    },
+    {
+      "name": "astro",
+      "tags": ["frontend", "framework", "javascript", "static-site"]
+    },
+    {
+      "name": "auth0",
+      "tags": ["authentication", "security", "identity", "saas"]
+    },
+    {
+      "name": "azure-pipelines",
+      "tags": ["devops", "ci-cd", "microsoft", "cloud"]
+    },
+    {
+      "name": "bash",
+      "tags": ["shell", "scripting", "unix", "command-line"]
+    },
+    {
+      "name": "boto3",
+      "tags": ["cloud", "aws", "python", "sdk"]
+    },
+    {
+      "name": "c-sharp",
+      "tags": ["language", "microsoft", "dotnet", "backend"]
+    },
+    {
+      "name": "cheerio",
+      "tags": ["web-scraping", "javascript", "html-parsing", "nodejs"]
+    },
+    {
+      "name": "circleci",
+      "tags": ["devops", "ci-cd", "cloud", "automation"]
+    },
+    {
+      "name": "clerk",
+      "tags": ["authentication", "security", "identity", "saas"]
+    },
+    {
+      "name": "codemirror",
+      "tags": ["editor", "javascript", "text-editor", "code-editor"]
+    },
+    {
+      "name": "cypress",
+      "tags": ["testing", "e2e", "javascript", "browser"]
+    },
+    {
+      "name": "d3",
+      "tags": ["data-visualization", "javascript", "svg", "charts"]
+    },
+    {
+      "name": "datadog",
+      "tags": ["monitoring", "observability", "devops", "cloud"]
+    },
+    {
+      "name": "deno",
+      "tags": ["javascript", "runtime", "typescript", "nodejs-alternative"]
+    },
+    {
+      "name": "digitalocean",
+      "tags": ["cloud", "hosting", "infrastructure", "paas"]
+    },
+    {
+      "name": "discord-api",
+      "tags": ["api", "messaging", "gaming", "communication"]
+    },
+    {
+      "name": "django-rest-framework",
+      "tags": ["api", "python", "django", "rest"]
+    },
+    {
+      "name": "drizzle",
+      "tags": ["database", "orm", "typescript", "sql"]
+    },
+    {
+      "name": "elk-stack",
+      "tags": ["logging", "monitoring", "search", "analytics"]
+    },
+    {
+      "name": "esbuild",
+      "tags": ["build-tool", "javascript", "bundler", "performance"]
+    },
+    {
+      "name": "eslint",
+      "tags": ["linting", "javascript", "static-analysis", "code-quality"]
+    },
+    {
+      "name": "elasticsearch",
+      "tags": ["search", "database", "full-text", "analytics"]
+    },
+    {
+      "name": "emacs",
+      "tags": ["editor", "text-editor", "lisp", "extensible"]
+    },
+    {
+      "name": "ffmpeg",
+      "tags": ["multimedia", "video", "audio", "conversion"]
+    },
+    {
+      "name": "fabric-js",
+      "tags": ["canvas", "graphics", "javascript", "interactive"]
+    },
+    {
+      "name": "firebase",
+      "tags": ["backend-as-service", "database", "authentication", "google"]
+    },
+    {
+      "name": "fontawesome",
+      "tags": ["icons", "ui", "web", "design"]
+    },
+    {
+      "name": "gcp-cli",
+      "tags": ["cloud", "google", "command-line", "devops"]
+    },
+    {
+      "name": "gitlab-ci",
+      "tags": ["devops", "ci-cd", "automation", "git"]
+    },
+    {
+      "name": "go",
+      "tags": ["language", "backend", "performance", "google"]
+    },
+    {
+      "name": "godot",
+      "tags": ["game-development", "engine", "cross-platform", "open-source"]
+    },
+    {
+      "name": "google-maps-js",
+      "tags": ["maps", "geolocation", "javascript", "api"]
+    },
+    {
+      "name": "gradle",
+      "tags": ["build-tool", "java", "android", "automation"]
+    },
+    {
+      "name": "grafana",
+      "tags": ["monitoring", "visualization", "dashboards", "observability"]
+    },
+    {
+      "name": "heroku",
+      "tags": ["cloud", "paas", "hosting", "deployment"]
+    },
+    {
+      "name": "insomnia",
+      "tags": ["api", "testing", "development", "http-client"]
+    },
+    {
+      "name": "ionic",
+      "tags": ["mobile", "framework", "cross-platform", "javascript"]
+    },
+    {
+      "name": "jax",
+      "tags": ["ai", "ml", "numerical-computing", "python"]
+    },
+    {
+      "name": "junit",
+      "tags": ["testing", "java", "unit-testing", "framework"]
+    },
+    {
+      "name": "java",
+      "tags": ["language", "backend", "enterprise", "jvm"]
+    },
+    {
+      "name": "jenkins",
+      "tags": ["devops", "ci-cd", "automation", "build"]
+    },
+    {
+      "name": "jquery",
+      "tags": ["javascript", "dom", "library", "frontend"]
+    },
+    {
+      "name": "llvm",
+      "tags": ["compiler", "infrastructure", "optimization", "toolchain"]
+    },
+    {
+      "name": "mlx",
+      "tags": ["ai", "ml", "apple", "deep-learning"]
+    },
+    {
+      "name": "maven",
+      "tags": ["build-tool", "java", "dependency-management", "project-management"]
+    },
+    {
+      "name": "microsoft-teams",
+      "tags": ["collaboration", "communication", "microsoft", "enterprise"]
+    },
+    {
+      "name": "mockito",
+      "tags": ["testing", "java", "mocking", "unit-testing"]
+    },
+    {
+      "name": "neo4j",
+      "tags": ["database", "graph", "nosql", "relationships"]
+    },
+    {
+      "name": "netlify",
+      "tags": ["hosting", "deployment", "jamstack", "frontend"]
+    },
+    {
+      "name": "nginx",
+      "tags": ["web-server", "proxy", "load-balancer", "performance"]
+    },
+    {
+      "name": "notion-api",
+      "tags": ["api", "productivity", "collaboration", "integration"]
+    },
+    {
+      "name": "openai",
+      "tags": ["ai", "ml", "llm", "api"]
+    },
+    {
+      "name": "php",
+      "tags": ["language", "backend", "web", "server-side"]
+    },
+    {
+      "name": "postman",
+      "tags": ["api", "testing", "development", "http-client"]
+    },
+    {
+      "name": "puppeteer",
+      "tags": ["web-scraping", "browser-automation", "testing", "javascript"]
+    },
+    {
+      "name": "ros",
+      "tags": ["robotics", "framework", "middleware", "distributed-systems"]
+    },
+    {
+      "name": "railway",
+      "tags": ["hosting", "deployment", "paas", "devops"]
+    },
+    {
+      "name": "remix",
+      "tags": ["frontend", "framework", "react", "javascript"]
+    },
+    {
+      "name": "ruby",
+      "tags": ["language", "backend", "web", "scripting"]
+    },
+    {
+      "name": "rust",
+      "tags": ["language", "systems", "performance", "safety"]
+    },
+    {
+      "name": "sqlite",
+      "tags": ["database", "sql", "embedded", "lightweight"]
+    },
+    {
+      "name": "sentry",
+      "tags": ["error-tracking", "monitoring", "debugging", "observability"]
+    },
+    {
+      "name": "socket-io",
+      "tags": ["websockets", "real-time", "javascript", "communication"]
+    },
+    {
+      "name": "spring",
+      "tags": ["backend", "framework", "java", "enterprise"]
+    },
+    {
+      "name": "stripe",
+      "tags": ["payments", "api", "e-commerce", "financial"]
+    },
+    {
+      "name": "three-js",
+      "tags": ["3d", "graphics", "webgl", "javascript"]
+    },
+    {
+      "name": "tinygrad",
+      "tags": ["ai", "ml", "deep-learning", "lightweight"]
+    },
+    {
+      "name": "unity",
+      "tags": ["game-development", "engine", "cross-platform", "c-sharp"]
+    },
+    {
+      "name": "unreal-engine",
+      "tags": ["game-development", "engine", "cross-platform", "c++"]
+    },
+    {
+      "name": "vim",
+      "tags": ["editor", "text-editor", "terminal", "productivity"]
+    },
+    {
+      "name": "zsh",
+      "tags": ["shell", "command-line", "unix", "terminal"]
     }
   ]
 } 
