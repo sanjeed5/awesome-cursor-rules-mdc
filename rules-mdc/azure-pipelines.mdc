@@ -1,0 +1,176 @@
+---
+description: Comprehensive guidelines for Azure Pipelines, covering code structure, security, performance, testing, and deployment. Provides actionable advice for developers working with Azure Pipelines YAML definitions to enhance code quality and CI/CD processes.
+globs: **/*.{yml,yaml}
+---
+- # General Guidelines
+  - Utilize YAML pipelines for version control and ease of replication.
+  - Integrate security practices throughout the pipeline using Azure Key Vault for secret management.
+  - Implement role-based access controls (RBAC) to limit permissions.
+  - Establish monitoring and alerting mechanisms for maintaining pipeline health and addressing issues.
+  - Use Infrastructure as Code (IaC) for consistent deployments.
+
+- # 1. Code Organization and Structure
+  - **Directory Structure Best Practices:**
+    - Organize pipeline definitions into a dedicated directory (e.g., `azure-pipelines`).
+    - Use subdirectories to categorize pipelines based on application, environment, or team (e.g., `azure-pipelines/app1/dev`, `azure-pipelines/app1/prod`).
+    - Store reusable templates and scripts in a separate `templates` or `scripts` directory.
+    - Consider using a `modules` directory for custom modules or extensions related to pipeline functionality.
+  - **File Naming Conventions:**
+    - Use descriptive names for pipeline definitions (e.g., `ci-cd-app1-dev.yml`, `deploy-to-staging.yml`).
+    - Prefix or suffix template files with `template` or `tmpl` (e.g., `build-template.yml`, `deploy-tmpl.yml`).
+    - Use consistent naming for variables, parameters, and stages within YAML files.
+  - **Module Organization Best Practices:**
+    - Break down complex pipelines into smaller, reusable modules using templates.
+    - Use parameters to configure templates for different scenarios.
+    - Store modules in a central repository for sharing across projects.
+  - **Component Architecture Recommendations:**
+    - Design pipelines with a clear separation of concerns (e.g., build, test, deploy).
+    - Use stages to represent distinct phases of the CI/CD process.
+    - Leverage tasks to perform specific actions within each stage.
+    - Define clear inputs and outputs for each component (stage/task).
+  - **Code Splitting Strategies:**
+    - Split large YAML files into smaller, more manageable files using the `extends` keyword.
+    - Use templates to define reusable pipeline components.
+    - Implement parameterization to customize pipeline behavior without duplicating code.
+
+- # 2. Common Patterns and Anti-patterns
+  - **Design Patterns:**
+    - **Template Pattern:** Define a base template with placeholders for customization, allowing for consistent pipeline structure with varying configurations.
+    - **Strategy Pattern:** Use parameters to select different deployment strategies (e.g., blue-green, canary) within a single pipeline.
+    - **Chain of Responsibility:** Implement a sequence of tasks or stages, where each component handles a specific aspect of the deployment process.
+  - **Recommended Approaches for Common Tasks:**
+    - **Secret Management:** Use Azure Key Vault to store sensitive information such as passwords, API keys, and connection strings. Reference secrets in pipelines using variables or tasks.
+    - **Environment Configuration:** Define environment-specific variables and settings using variable groups. Use conditional execution to apply different configurations based on the target environment.
+    - **Artifact Management:** Publish and consume artifacts using the `PublishBuildArtifacts` and `DownloadBuildArtifacts` tasks. Use artifact feeds to store and manage dependencies.
+    - **Rollback Strategies:** Implement rollback mechanisms to revert to a previous version in case of deployment failures. Use deployment slots or blue-green deployments for seamless rollbacks.
+  - **Anti-patterns and Code Smells:**
+    - Hardcoding secrets in pipeline definitions.
+    - Duplicating code across multiple pipelines.
+    - Overly complex and monolithic YAML files.
+    - Lack of error handling and logging.
+    - Insufficient testing and validation.
+  - **State Management Best Practices:**
+    - Use Azure DevOps variables or variable groups to store pipeline state.
+    - Consider using external storage (e.g., Azure Blob Storage, Azure Table Storage) for persistent state.
+    - Implement idempotency to ensure that pipeline operations can be safely retried.
+  - **Error Handling Patterns:**
+    - Use the `try...catch` construct to handle exceptions within pipeline tasks.
+    - Implement retry mechanisms for transient failures.
+    - Configure alerts and notifications for pipeline failures.
+
+- # 3. Performance Considerations
+  - **Optimization Techniques:**
+    - **Parallel Execution:** Use parallel jobs to run multiple tasks concurrently, reducing overall pipeline execution time.
+    - **Caching:** Cache dependencies and build artifacts to speed up subsequent builds.
+    - **Agent Selection:** Choose the appropriate agent size and type based on the workload requirements.
+    - **Task Optimization:** Optimize individual tasks to minimize execution time (e.g., using efficient scripts, optimizing database queries).
+  - **Memory Management:**
+    - Monitor pipeline memory usage and identify potential memory leaks.
+    - Use appropriate data structures and algorithms to minimize memory consumption.
+    - Optimize image sizes for containerized applications.
+  - **Bundle Size Optimization:**
+    - Minimize the size of build artifacts by removing unnecessary files and dependencies.
+    - Use code splitting and tree shaking techniques to reduce bundle size.
+    - Compress artifacts before publishing.
+  - **Lazy Loading:**
+    - Implement lazy loading for large files or datasets to improve pipeline startup time.
+
+- # 4. Security Best Practices
+  - **Common Vulnerabilities and Prevention:**
+    - **Credential Leaks:** Avoid storing secrets in pipeline definitions or source code. Use Azure Key Vault for secure secret management.
+    - **Command Injection:** Sanitize user inputs and avoid executing untrusted code. Use parameterized tasks and scripts to prevent command injection attacks.
+    - **Unauthorized Access:** Implement RBAC to restrict access to sensitive resources and operations.
+    - **Dependency Vulnerabilities:** Regularly scan dependencies for known vulnerabilities and update them to the latest versions.
+  - **Input Validation:**
+    - Validate all user inputs to prevent injection attacks and other security vulnerabilities.
+    - Use regular expressions or other validation techniques to ensure that inputs conform to expected formats.
+    - Implement input sanitization to remove or escape potentially malicious characters.
+  - **Authentication and Authorization:**
+    - Use service principals or managed identities for authentication with Azure resources.
+    - Implement RBAC to control access to pipelines, resources, and environments.
+    - Enforce multi-factor authentication (MFA) for privileged accounts.
+  - **Data Protection:**
+    - Encrypt sensitive data at rest and in transit.
+    - Use secure protocols (e.g., HTTPS, TLS) for API communication.
+    - Mask sensitive information in pipeline logs and outputs.
+  - **Secure API Communication:**
+    - Use API keys or access tokens for authentication.
+    - Implement rate limiting to prevent denial-of-service attacks.
+    - Validate API responses to prevent data corruption.
+
+- # 5. Testing Approaches
+  - **Unit Testing:**
+    - Write unit tests for individual pipeline tasks and components.
+    - Use mocking frameworks to isolate components and simulate dependencies.
+    - Ensure that unit tests cover all critical code paths.
+  - **Integration Testing:**
+    - Perform integration tests to verify the interaction between different pipeline stages and tasks.
+    - Test the integration with external services and resources.
+    - Use test environments that closely resemble production environments.
+  - **End-to-end Testing:**
+    - Conduct end-to-end tests to validate the entire CI/CD pipeline from code commit to deployment.
+    - Use automated testing frameworks to automate end-to-end tests.
+    - Test the deployed application in a production-like environment.
+  - **Test Organization:**
+    - Organize tests into a dedicated `tests` directory.
+    - Use a consistent naming convention for test files and methods.
+    - Group tests based on functionality or component.
+  - **Mocking and Stubbing:**
+    - Use mocking frameworks (e.g., Moq, NSubstitute) to create mock objects for dependencies.
+    - Use stubbing to replace complex dependencies with simple, predictable implementations.
+
+- # 6. Common Pitfalls and Gotchas
+  - **Frequent Mistakes:**
+    - Using incorrect YAML syntax.
+    - Forgetting to parameterize reusable components.
+    - Neglecting error handling and logging.
+    - Insufficient testing.
+    - Ignoring security best practices.
+  - **Edge Cases:**
+    - Handling large files or datasets.
+    - Dealing with complex dependencies.
+    - Managing concurrency and race conditions.
+    - Recovering from catastrophic failures.
+  - **Version-Specific Issues:**
+    - Be aware of breaking changes in Azure DevOps updates.
+    - Test pipelines after upgrading Azure DevOps versions.
+    - Use version control to track changes to pipeline definitions.
+  - **Compatibility Concerns:**
+    - Ensure compatibility between pipeline tasks and agent versions.
+    - Verify compatibility with external services and resources.
+  - **Debugging Strategies:**
+    - Use pipeline logs to identify errors and warnings.
+    - Enable verbose logging for detailed troubleshooting.
+    - Use remote debugging to step through pipeline execution.
+
+- # 7. Tooling and Environment
+  - **Recommended Development Tools:**
+    - Visual Studio Code with the Azure Pipelines extension.
+    - Azure CLI.
+    - PowerShell.
+    - YAML linters and validators.
+  - **Build Configuration Best Practices:**
+    - Use a consistent build configuration across environments.
+    - Store build configuration in version control.
+    - Use environment variables to customize build behavior.
+  - **Linting and Formatting:**
+    - Use YAML linters (e.g., yamllint) to enforce consistent formatting and syntax.
+    - Configure linters to automatically fix formatting issues.
+  - **Deployment Best Practices:**
+    - Use deployment slots for zero-downtime deployments.
+    - Implement rollback mechanisms for failed deployments.
+    - Monitor deployed applications for performance and errors.
+  - **CI/CD Integration:**
+    - Integrate Azure Pipelines with source control systems (e.g., Azure Repos, GitHub).
+    - Automate build, test, and deployment processes.
+    - Use triggers to automatically start pipelines on code changes.
+
+- # Additional Best Practices
+  - **Infrastructure as Code (IaC):** Use tools like ARM templates or Terraform for consistent deployments.
+  - **Automated Testing:** Automate builds, run tests, and perform code quality checks with each commit.
+  - **Secret Management:** Securely manage secrets using Azure Key Vault.
+  - **Monitoring and Alerting:** Implement robust monitoring and alerting for pipeline health.
+  - **Role-Based Access Control (RBAC):** Enforce RBAC to limit access to sensitive resources.
+  - **Regular Audits:** Perform regular security audits to identify and address vulnerabilities.
+
+By adhering to these guidelines, developers can create robust, secure, and efficient Azure Pipelines for continuous integration and continuous delivery.

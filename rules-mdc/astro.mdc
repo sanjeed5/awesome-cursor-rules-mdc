@@ -1,0 +1,168 @@
+---
+description: Comprehensive best practices and coding standards for Astro projects, including code organization, performance considerations, security, and testing.
+globs: **/*.astro
+---
+- # Code Organization and Structure
+  - ## Directory Structure Best Practices
+    - `src/`: This is the heart of your Astro project.
+      - `components/`: Reusable UI elements. Organize components into subdirectories based on functionality or feature.
+      - `layouts/`: Components that define the overall page structure. Use a `BaseLayout.astro` to provide common elements like `<head>` and `<footer>`.
+      - `pages/`: Special components that create routes. Each file here becomes a page. Use dynamic routes (`[param].astro`) for data-driven content.
+      - `content/`: (Required for content collections) Store content collections and an optional `config.ts` or `config.js` file.
+      - `styles/`: Global CSS or Sass files. Use Astro's CSS Modules for component-specific styles.
+      - `scripts/`: JavaScript modules or utilities. Consider using TypeScript for type safety.
+      - `utils/`: Helper functions and utilities.
+      - `types/`: TypeScript type definitions for your project.
+    - `public/`: Static assets like images, fonts, and favicons. These are copied directly to the `dist/` folder without processing.
+    - `dist/`: (Generated) The output directory containing the built website. Usually ignored in version control.
+    - `node_modules/`: (Generated) Project dependencies managed by npm, pnpm or yarn. Usually ignored in version control.
+    - `.astro/`: (Generated) Internal Astro files.  Should not be manually modified.
+  - ## File Naming Conventions
+    - **Components:** `ComponentName.astro` (PascalCase).
+    - **Pages:** `page-name.astro` (kebab-case). Index pages should be named `index.astro`.
+    - **Layouts:** `LayoutName.astro` (PascalCase).
+    - **Styles:** `Component.module.css` (component-specific), `global.css` (global styles).
+    - **Scripts:** `script-name.js` or `script-name.ts` (kebab-case).
+  - ## Module Organization
+    - Favor modularity and reusability.
+    - Group related components and functions into modules within the appropriate directory (e.g., `components/ui/Button.astro`).
+    - Use clear and descriptive names for files and folders.
+    - Expose only the necessary parts of a module using `export` and `import` statements.
+  - ## Component Architecture Recommendations
+    - **Atomic Design:** Consider using Atomic Design principles to create a scalable and maintainable component library (Atoms, Molecules, Organisms, Templates, Pages).
+    - **Composition:** Favor composition over inheritance.
+    - **Slots:** Utilize Astro's slots to create flexible components that accept dynamic content.
+    - **Props:** Use TypeScript to define prop types for your components.
+    - **Keep Components Focused:**  A component should ideally handle a single responsibility.
+  - ## Code Splitting Strategies
+    - **Automatic Code Splitting:** Astro automatically code-splits JavaScript and CSS, so generally you don't need to manually handle code splitting.
+    - **Dynamic Imports:** Use dynamic imports (`import('./Component.astro')`) for components or modules that are not immediately needed.  This is useful for infrequently used components or large libraries.
+    - **View Transitions:** Astro's View Transitions API also helps with perceived performance, providing smoother navigation between pages instead of full reloads. Optimize assets for transitions by using the `<Image>` component.
+
+- # Common Patterns and Anti-patterns
+  - ## Design Patterns
+    - **Container/Presentational:** Separate data fetching and logic (container components) from UI rendering (presentational components).
+    - **Higher-Order Components (HOCs):** Use HOCs or render props (though less common in Astro) to share logic between components.
+    - **Provider Pattern:** Utilize Astro's `<script context="module">` to provide context values to all components within a scope.
+  - ## Recommended Approaches
+    - **Data Fetching:** Fetch data in `<script>` tags inside Astro components using `fetch` or other HTTP libraries.  Use `await` to handle asynchronous operations.
+    - **State Management:** Astro favors a simpler approach with props and events for most use cases. For complex state management, consider using tools like nanostores, zustand or redux if needed.
+    - **Component Communication:** Pass data down through props.  For event handling, use standard JavaScript event listeners and dispatch custom events if needed.
+  - ## Anti-patterns
+    - **Mutating Props:** Avoid directly mutating props passed to a component.
+    - **Over-Complicated State Management:** Don't introduce complex state management libraries unless absolutely necessary.
+    - **Large Components:** Break down large components into smaller, more manageable pieces.
+    - **Inline Styles:** Avoid inline styles. Use CSS Modules or global CSS files instead.
+  - ## State Management Best Practices
+    - **Local Component State:** Use `Astro.props` for simple local state within a component.
+    - **Global State (If Needed):** For application-wide state, consider lightweight state management libraries such as nanostores.
+    - **Avoid Overusing State:** Not every value needs to be reactive state.  Consider the complexity trade-off.
+  - ## Error Handling
+    - **Try/Catch:** Use `try...catch` blocks to handle errors during data fetching or other asynchronous operations.
+    - **Error Boundaries (Components):** Create dedicated components to catch errors and display fallback UI.
+    - **Centralized Logging:** Implement a centralized logging system to track errors in production.
+
+- # Performance Considerations
+  - ## Optimization Techniques
+    - **Image Optimization:** Use Astro's `<Image>` component for automatic image optimization (resizing, format conversion, lazy loading).
+    - **Font Optimization:** Use `font-display: swap;` in your CSS to prevent blocking render when loading web fonts.
+    - **Minification and Bundling:** Astro automatically minifies and bundles CSS and JavaScript during the build process.
+    - **Remove Unused CSS:** Use tools like PurgeCSS to remove unused CSS from your stylesheets, improving performance.
+    - **Partial Hydration:** Use Astro's directives (e.g., `client:load`, `client:idle`) to control when components are hydrated, reducing JavaScript overhead.
+  - ## Memory Management
+    - **Avoid Memory Leaks:** Be mindful of memory leaks, especially in long-running applications.  Properly clean up event listeners and resources when components unmount.
+    - **Efficient Data Structures:** Choose appropriate data structures for your application's needs.
+  - ## Rendering Optimization
+    - **Static Rendering:** Astro favors static rendering, which delivers the fastest possible performance.
+    - **Server-Side Rendering (SSR):** Use SSR only when necessary for dynamic content or features that require server-side processing.
+    - **Client-Side Rendering (CSR):** Minimize client-side rendering to improve initial page load time.
+  - ## Bundle Size Optimization
+    - **Lazy Loading:** Use lazy loading for images and other assets that are not immediately visible on the page.
+    - **Tree Shaking:** Astro's build process automatically performs tree shaking to remove unused code from your JavaScript bundles.
+    - **Code Splitting:** Astro automatically splits your code into smaller chunks, which can improve performance by reducing the amount of code that needs to be downloaded initially.
+  - ## Lazy Loading Strategies
+    - **Images:** Use the `loading="lazy"` attribute on `<img>` tags or use the Astro `<Image>` component to automatically lazy load images.
+    - **Components:** Use dynamic imports to lazy load components that are not immediately needed.
+    - **Libraries:** Import libraries only when they are needed, using dynamic imports if necessary.
+
+- # Security Best Practices
+  - ## Common Vulnerabilities
+    - **Cross-Site Scripting (XSS):** Prevent XSS attacks by sanitizing user input and escaping output.
+    - **Cross-Site Request Forgery (CSRF):** Use CSRF tokens to protect against CSRF attacks.
+    - **SQL Injection:** Protect against SQL injection attacks by using parameterized queries or an ORM.
+    - **Man-in-the-Middle (MitM) Attacks:** Use HTTPS to encrypt communication between the client and server.
+  - ## Input Validation
+    - **Server-Side Validation:** Always validate user input on the server-side.
+    - **Client-Side Validation:** Use client-side validation for immediate feedback to the user, but never rely on it as the sole means of validation.
+    - **Escape Output:** Escape user-provided data when rendering it to prevent XSS.
+  - ## Authentication and Authorization
+    - **Use Secure Authentication:** Use a secure authentication mechanism, such as OAuth 2.0 or JWT.
+    - **Implement Role-Based Access Control (RBAC):** Restrict access to resources based on user roles.
+    - **Protect API Endpoints:** Require authentication for all API endpoints that require authorization.
+  - ## Data Protection
+    - **Encrypt Sensitive Data:** Encrypt sensitive data at rest and in transit.
+    - **Use Strong Passwords:** Enforce strong password policies.
+    - **Regularly Back Up Data:** Regularly back up your data in case of data loss or corruption.
+  - ## Secure API Communication
+    - **Use HTTPS:** Always use HTTPS to encrypt communication between the client and server.
+    - **Validate API Responses:** Validate API responses to ensure that they are in the expected format.
+    - **Rate Limiting:** Implement rate limiting to prevent abuse of your API.
+
+- # Testing Approaches
+  - ## Unit Testing
+    - **Test Individual Components:** Test individual components in isolation to ensure that they are working correctly.
+    - **Mock Dependencies:** Use mocking to isolate components from their dependencies.
+    - **Assertion Libraries:** Use assertion libraries like Jest or Chai to assert that components are behaving as expected.
+  - ## Integration Testing
+    - **Test Component Interactions:** Test the interactions between components to ensure that they are working together correctly.
+    - **Test Data Flow:** Test the flow of data through your application to ensure that data is being passed correctly between components.
+  - ## End-to-End Testing
+    - **Test User Flows:** Test user flows to ensure that users can complete tasks successfully.
+    - **Automate Tests:** Automate end-to-end tests to ensure that your application is working correctly after changes are made.
+  - ## Test Organization
+    - **Locate tests near components:** Keep test files close to the components being tested (e.g. `src/components/MyComponent.test.astro`).
+    - **Consistent naming:**  Use a consistent naming convention for test files (e.g., `MyComponent.test.astro` or `MyComponent.spec.astro`).
+  - ## Mocking and Stubbing
+    - **Mock API calls:** Mock API calls to isolate components from the backend.
+    - **Stub External Dependencies:** Stub external dependencies to control their behavior during testing.
+    - **Use testing libraries:** Utilize testing libraries such as `jest`, `vitest`, or `mocha` for mocking and stubbing.
+
+- # Common Pitfalls and Gotchas
+  - ## Frequent Mistakes
+    - **Over-reliance on Client-Side JavaScript:** Remember Astro's focus on minimal JS.  Avoid hydrating components unless necessary.
+    - **Incorrect Component Hydration Directives:**  Double-check `client:` directives to make sure components are hydrated at the correct time.
+    - **Ignoring Performance Metrics:** Pay attention to performance metrics like Lighthouse scores and bundle sizes.
+  - ## Edge Cases
+    - **View Transitions with Complex Animations:** Complex animations may need special handling with Astro's View Transitions API.
+    - **Integrating with Third-Party Libraries:** Some third-party libraries may require custom integration due to Astro's build process.
+  - ## Version-Specific Issues
+    - Refer to the Astro documentation and release notes for any version-specific issues or breaking changes.
+  - ## Compatibility Concerns
+    - Be aware of compatibility concerns when integrating with other technologies, such as backend frameworks or CMS systems.
+  - ## Debugging Strategies
+    - **Browser Developer Tools:** Use browser developer tools to inspect HTML, CSS, and JavaScript.
+    - **Astro Dev Toolbar:** Take advantage of Astro's built-in Dev Toolbar for component inspection and debugging.
+    - **Console Logging:** Strategically use `console.log` statements to debug your code.
+    - **Debugging in VS Code:** Configure VS Code for debugging Astro applications.
+
+- # Tooling and Environment
+  - ## Recommended Development Tools
+    - **VS Code:** Use VS Code with the official Astro extension for syntax highlighting, code completion, and other features.
+    - **ESLint:** Configure ESLint with the `eslint-plugin-astro` plugin to lint Astro components.
+    - **Prettier:** Use Prettier to automatically format your code.
+    - **EditorConfig:** Use EditorConfig to maintain consistent code style across different editors.
+  - ## Build Configuration
+    - **astro.config.mjs:** Configure your Astro project in the `astro.config.mjs` file.
+    - **Environment Variables:** Use environment variables to configure your application for different environments.
+  - ## Linting and Formatting
+    - **ESLint:** Configure ESLint with the recommended rules for Astro projects.
+    - **Prettier:** Configure Prettier with the recommended options for Astro projects.
+    - **Husky and Lint-Staged:** Use Husky and Lint-Staged to automatically lint and format your code before committing.
+  - ## Deployment Best Practices
+    - **Choose a Deployment Platform:** Choose a deployment platform that is compatible with Astro, such as Netlify, Vercel, or Cloudflare Pages.
+    - **Configure Build Settings:** Configure your build settings to optimize your application for production.
+    - **Use a CDN:** Use a CDN to serve your static assets.
+    - **Optimize Images:** Optimize images for web performance.
+  - ## CI/CD Integration
+    - **GitHub Actions:** Use GitHub Actions or other CI/CD tools to automate your build, test, and deployment processes.
+    - **Automated Testing:** Run automated tests during your CI/CD pipeline to ensure that your application is working correctly before it is deployed.

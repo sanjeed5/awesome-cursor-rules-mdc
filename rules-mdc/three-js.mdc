@@ -1,0 +1,311 @@
+---
+description: This rule provides guidelines and best practices for developing efficient, maintainable, and robust 3D web applications using Three.js. It covers aspects like code organization, performance optimization, security, testing, and common pitfalls to ensure a high-quality development experience.
+globs: **/*.{js,ts,jsx,tsx,mjs,html}
+---
+# Three.js Best Practices and Coding Standards
+
+This document outlines the best practices and coding standards for developing with Three.js. Adhering to these guidelines will help you create efficient, maintainable, and robust 3D web applications.
+
+## Library Information:
+
+- Name: three.js
+- Tags: 3d, graphics, webgl, javascript
+
+## 1. Code Organization and Structure
+
+### 1.1. Directory Structure Best Practices:
+
+A well-organized directory structure enhances project maintainability and scalability. Consider the following structure:
+
+
+project-root/
+├── src/
+│   ├── components/        # Reusable 3D components (e.g., models, scenes)
+│   │   ├── MyComponent.js
+│   │   └── ...
+│   ├── scenes/           # Specific scenes for different parts of the application
+│   │   ├── MainScene.js
+│   │   └── ...
+│   ├── models/           # 3D model files (e.g., .glb, .obj)
+│   │   ├── myModel.glb
+│   │   └── ...
+│   ├── textures/         # Texture files (e.g., .jpg, .png)
+│   │   ├── myTexture.jpg
+│   │   └── ...
+│   ├── shaders/          # Custom shader code (GLSL)
+│   │   ├── vertexShader.glsl
+│   │   └── fragmentShader.glsl
+│   ├── utils/            # Utility functions (e.g., math, helpers)
+│   │   ├── mathUtils.js
+│   │   └── ...
+│   ├── core/             # Core application logic (e.g., scene initialization, rendering loop)
+│   │   ├── renderer.js
+│   │   ├── camera.js
+│   │   ├── scene.js
+│   │   └── controls.js
+│   ├── app.js            # Main application entry point
+│   └── index.html        # HTML file to load the application
+├── dist/              # Distribution build
+├── node_modules/      # Node modules
+├── .gitignore
+├── package.json
+└── webpack.config.js    # Or equivalent build tool configuration
+
+
+### 1.2. File Naming Conventions:
+
+Consistent file naming improves code readability.
+
+-   **Components:** Use PascalCase (e.g., `MyComponent.js`).
+-   **Scenes:** Use PascalCase (e.g., `MainScene.js`).
+-   **Models:** Use camelCase (e.g., `myModel.glb`).
+-   **Textures:** Use camelCase (e.g., `myTexture.jpg`).
+-   **Shaders:** Use camelCase (e.g., `vertexShader.glsl`, `fragmentShader.glsl`).
+-   **Utilities:** Use camelCase (e.g., `mathUtils.js`).
+
+### 1.3. Module Organization:
+
+Employ ES modules for better code organization and dependency management.
+
+javascript
+// MyComponent.js
+import * as THREE from 'three';
+
+export class MyComponent extends THREE.Mesh {
+ constructor() {
+ super();
+ // ... component logic ...
+ }
+}
+
+
+javascript
+// app.js
+import { MyComponent } from './components/MyComponent.js';
+import { MainScene } from './scenes/MainScene.js';
+
+const scene = new MainScene();
+const myComponent = new MyComponent();
+scene.add(myComponent);
+
+// ... rest of the application logic ...
+
+
+### 1.4. Component Architecture:
+
+Use a component-based architecture to create reusable and modular 3D elements.
+
+-   Encapsulate Three.js objects (e.g., meshes, lights) within components.
+-   Create components with well-defined interfaces (props and methods).
+-   Use a scene graph to manage the hierarchy of components.
+
+### 1.5. Code Splitting Strategies:
+
+For large applications, use code splitting to improve initial load time.
+
+-   Split the application into smaller chunks based on routes or features.
+-   Use dynamic imports to load components or scenes on demand.
+-   Leverage Webpack or Parcel to configure code splitting.
+
+## 2. Common Patterns and Anti-patterns
+
+### 2.1. Design Patterns:
+
+-   **Factory Pattern:**  Use factory functions or classes to create complex Three.js objects. This can encapsulate the object creation logic, making it easier to manage and reuse. For example, a `ModelFactory` can load and process different 3D model formats.
+-   **Observer Pattern:** Implement an observer pattern for handling events and interactions in the 3D scene. For instance, you can use this to notify components when a user clicks on a specific object or when the scene changes.
+-   **Singleton Pattern:** For global resources like the renderer or scene manager, consider using a singleton pattern to ensure only one instance exists.  However, be cautious as singletons can sometimes make testing more difficult.
+-   **Command Pattern:** Decouple the execution of actions from their trigger by encapsulating them in command objects. This allows for easier undo/redo functionality and more flexible control over the 3D scene.
+
+### 2.2. Recommended Approaches for Common Tasks:
+
+-   **Loading Models:** Use `GLTFLoader` for loading GLTF/GLB models, which are efficient and widely supported.  Handle asynchronous loading using `async/await` or Promises.
+-   **Texture Management:** Use `TextureLoader` to load textures. Ensure textures are properly disposed of when no longer needed to prevent memory leaks.
+-   **Animation:** Use `AnimationMixer` to play animations from loaded models.  Optimize animation performance by reducing the number of animated objects and keyframes.
+-   **User Interaction:** Use `Raycaster` to detect intersections between the mouse cursor and 3D objects. Optimize raycasting by using bounding box checks and limiting the number of objects tested.
+
+### 2.3. Anti-patterns and Code Smells:
+
+-   **Creating Objects Inside Render Loop:** Avoid creating new Three.js objects (e.g., `THREE.Mesh`, `THREE.Material`) within the render loop. This can lead to significant performance degradation due to constant memory allocation and garbage collection. Instead, create objects once and reuse them.
+-   **Unnecessary Object Updates:**  Avoid updating object properties (position, rotation, scale) unnecessarily in the render loop.  Only update properties when they actually change.
+-   **Ignoring Memory Management:** Failing to dispose of Three.js objects (geometries, materials, textures) when they are no longer needed will lead to memory leaks. Always call `dispose()` on these objects to release resources.
+-   **Overly Complex Shaders:**  Writing overly complex or inefficient shaders can negatively impact performance.  Optimize shaders by reducing the number of calculations, using simpler algorithms, and minimizing texture lookups.
+-   **Direct Manipulation of `__webgl` properties:** Avoid directly accessing or manipulating internal properties of Three.js objects that start with `__webgl`. These are implementation details and are subject to change, which can break your code.
+
+### 2.4. State Management Best Practices:
+
+-   **Centralized State:** For complex applications, consider using a centralized state management library like Zustand, Redux, or Vuex to manage the application's state and synchronize changes across components.  This provides a single source of truth and simplifies state updates.
+-   **Immutable State:**  Prefer immutable state updates to make debugging easier and improve performance by avoiding unnecessary re-renders.  Libraries like Immer can help with immutable state management.
+-   **Reactive Programming:** Consider using a reactive programming library like RxJS or MobX to handle asynchronous data streams and side effects in a declarative way.
+
+### 2.5. Error Handling Patterns:
+
+-   **Try-Catch Blocks:**  Use `try-catch` blocks to handle potential errors during model loading, texture loading, and other asynchronous operations.
+-   **Error Boundaries:**  In React or other component-based frameworks, use error boundaries to catch errors in child components and prevent the entire application from crashing.
+-   **Logging:**  Implement a robust logging system to track errors and debug issues in production. Use a library like Winston or Bunyan for structured logging.
+-   **Fallback Mechanisms:**  Provide fallback mechanisms in case of errors. For example, if a model fails to load, display a placeholder object or an error message.
+
+## 3. Performance Considerations
+
+### 3.1. Optimization Techniques:
+
+-   **Minimize Draw Calls:** Reduce the number of draw calls by merging geometries, using instancing, and using optimized materials.
+-   **Optimize Shaders:**  Simplify shader code, reduce the number of calculations, and minimize texture lookups.
+-   **Use LOD (Level of Detail):** Implement LOD to render objects with lower polygon counts when they are far from the camera.
+-   **Frustum Culling:**  Enable frustum culling to prevent objects that are outside the camera's view from being rendered.
+-   **Use Compressed Textures:** Use compressed texture formats like ETC1, PVRTC, or ASTC to reduce texture size and improve loading times.
+-   **GPU Instancing:** Use `InstancedMesh` to render multiple copies of the same geometry with different transformations using a single draw call.
+-   **Occlusion Culling:**  Implement occlusion culling to prevent objects that are hidden behind other objects from being rendered.
+-   **Use WebGL2:** If possible, use WebGL2, which offers performance improvements over WebGL1.
+
+### 3.2. Memory Management:
+
+-   **Dispose of Objects:**  Always dispose of Three.js objects (geometries, materials, textures) when they are no longer needed. Use the `dispose()` method.
+-   **Reuse Objects:** Reuse Three.js objects whenever possible instead of creating new ones.
+-   **Avoid Memory Leaks:** Be mindful of memory leaks, especially when dealing with event listeners and closures.
+-   **Use `BufferGeometry`:**  `BufferGeometry` is more memory efficient than `Geometry`. Use it whenever possible.
+
+### 3.3. Rendering Optimization:
+
+-   **Use `requestAnimationFrame`:** Use `requestAnimationFrame` to synchronize rendering with the browser's refresh rate.
+-   **Limit Frame Rate:**  Limit the frame rate to prevent unnecessary rendering and reduce CPU usage.
+-   **Optimize Camera Movement:**  Optimize camera movement and avoid unnecessary updates to the camera's position and rotation.
+-   **Use Post-processing Effects Sparingly:** Post-processing effects can be expensive. Use them sparingly and optimize their parameters.
+
+### 3.4. Bundle Size Optimization:
+
+-   **Tree Shaking:**  Use a bundler like Webpack or Parcel with tree shaking enabled to remove unused code from the Three.js library.
+-   **Code Splitting:** Split the application into smaller chunks to reduce the initial load time.
+-   **Minification:** Minify JavaScript and CSS code to reduce bundle size.
+-   **Gzip Compression:** Enable Gzip compression on the server to reduce the size of the transferred files.
+
+### 3.5. Lazy Loading:
+
+-   **Lazy Load Models and Textures:** Lazy load models and textures when they are needed instead of loading them all at once.
+-   **Use Dynamic Imports:** Use dynamic imports to load modules on demand.
+-   **Implement a Loading Screen:** Display a loading screen while assets are being loaded.
+
+## 4. Security Best Practices
+
+### 4.1. Common Vulnerabilities and Prevention:
+
+-   **Cross-Site Scripting (XSS):** Prevent XSS by sanitizing user input and avoiding the use of `innerHTML` to inject dynamic content.
+-   **Cross-Site Request Forgery (CSRF):** Protect against CSRF by using anti-CSRF tokens in forms and API requests.
+-   **Third-Party Dependencies:** Regularly audit and update third-party dependencies to patch security vulnerabilities.
+
+### 4.2. Input Validation:
+
+-   **Validate User Input:**  Validate user input to prevent malicious data from being processed by the application.
+-   **Sanitize Data:** Sanitize data before displaying it to the user to prevent XSS attacks.
+-   **Use a Validation Library:** Use a validation library like Joi or Yup to simplify input validation.
+
+### 4.3. Authentication and Authorization:
+
+-   **Use Secure Authentication:**  Use a secure authentication protocol like OAuth 2.0 or OpenID Connect.
+-   **Implement Authorization:**  Implement authorization to restrict access to sensitive data and functionality.
+-   **Use JSON Web Tokens (JWT):** Use JWTs for secure authentication and authorization.
+
+### 4.4. Data Protection:
+
+-   **Encrypt Sensitive Data:** Encrypt sensitive data at rest and in transit.
+-   **Use HTTPS:**  Use HTTPS to encrypt communication between the client and the server.
+-   **Protect API Keys:** Protect API keys and other sensitive credentials.
+
+### 4.5. Secure API Communication:
+
+-   **Use HTTPS:** Always use HTTPS for API communication to protect data in transit.
+-   **Validate API Responses:** Validate API responses to ensure that the data is valid and not malicious.
+-   **Implement Rate Limiting:** Implement rate limiting to prevent abuse of the API.
+
+## 5. Testing Approaches
+
+### 5.1. Unit Testing:
+
+-   **Test Individual Components:** Unit test individual Three.js components to ensure that they are functioning correctly.
+-   **Use a Testing Framework:** Use a testing framework like Jest or Mocha to write and run unit tests.
+-   **Mock Dependencies:** Mock dependencies to isolate the component being tested.
+
+### 5.2. Integration Testing:
+
+-   **Test Interactions Between Components:** Integration test the interactions between different Three.js components to ensure that they are working together correctly.
+-   **Test Scene Rendering:** Test the rendering of the scene to ensure that the objects are being displayed correctly.
+
+### 5.3. End-to-End Testing:
+
+-   **Test the Entire Application:** End-to-end test the entire application to ensure that all components are working together correctly.
+-   **Use a Testing Tool:** Use a testing tool like Cypress or Puppeteer to automate end-to-end tests.
+
+### 5.4. Test Organization:
+
+-   **Organize Tests by Component:** Organize tests by component to make it easier to find and maintain tests.
+-   **Use Descriptive Test Names:** Use descriptive test names to make it clear what each test is testing.
+-   **Keep Tests Concise:** Keep tests concise and focused on a single aspect of the component being tested.
+
+### 5.5. Mocking and Stubbing:
+
+-   **Mock Three.js Objects:** Mock Three.js objects to isolate the component being tested.
+-   **Stub API Calls:** Stub API calls to prevent the tests from making real API requests.
+-   **Use a Mocking Library:** Use a mocking library like Jest or Sinon to simplify mocking and stubbing.
+
+## 6. Common Pitfalls and Gotchas
+
+### 6.1. Frequent Mistakes:
+
+-   **Not Disposing of Objects:** Forgetting to dispose of Three.js objects, leading to memory leaks.
+-   **Creating Objects in Render Loop:** Creating new objects within the render loop, causing performance issues.
+-   **Ignoring Performance:** Not paying attention to performance and creating inefficient scenes.
+
+### 6.2. Edge Cases:
+
+-   **Mobile Devices:** Mobile devices have limited resources, so optimize performance for mobile.
+-   **Older Browsers:** Older browsers may not support WebGL2, so ensure compatibility with WebGL1.
+-   **Different Screen Sizes:** Different screen sizes require responsive design to ensure the application looks good on all devices.
+
+### 6.3. Version-Specific Issues:
+
+-   **Breaking Changes:** Be aware of breaking changes in new versions of Three.js and update code accordingly.
+-   **Deprecations:** Pay attention to deprecation warnings and update code to use the new APIs.
+
+### 6.4. Compatibility Concerns:
+
+-   **WebGL Support:** Ensure that the user's browser supports WebGL.
+-   **Device Capabilities:** Check the user's device capabilities and adjust the rendering settings accordingly.
+
+### 6.5. Debugging Strategies:
+
+-   **Use the Browser Developer Tools:** Use the browser developer tools to inspect the scene, debug JavaScript code, and profile performance.
+-   **Use the Three.js Inspector:** Use the Three.js inspector to inspect the scene graph, object properties, and shader code.
+-   **Console Logging:** Use console logging to track the execution flow and debug issues.
+
+## 7. Tooling and Environment
+
+### 7.1. Recommended Development Tools:
+
+-   **IDE:** Visual Studio Code, WebStorm
+-   **Browser:** Chrome, Firefox, Safari
+-   **Three.js Inspector:** A browser extension for inspecting Three.js scenes.
+
+### 7.2. Build Configuration:
+
+-   **Use a Bundler:** Use a bundler like Webpack or Parcel to bundle the application's code and dependencies.
+-   **Configure Tree Shaking:** Configure tree shaking to remove unused code from the Three.js library.
+-   **Minify Code:** Minify JavaScript and CSS code to reduce bundle size.
+
+### 7.3. Linting and Formatting:
+
+-   **Use ESLint:** Use ESLint to enforce coding style and identify potential errors.
+-   **Use Prettier:** Use Prettier to format code consistently.
+-   **Configure a Code Editor:** Configure a code editor to automatically format code on save.
+
+### 7.4. Deployment:
+
+-   **Use a CDN:** Use a CDN to host static assets like models and textures.
+-   **Enable Gzip Compression:** Enable Gzip compression on the server to reduce the size of the transferred files.
+-   **Optimize Images:** Optimize images to reduce their size and improve loading times.
+
+### 7.5. CI/CD Integration:
+
+-   **Use a CI/CD Pipeline:** Use a CI/CD pipeline to automate the build, test, and deployment process.
+-   **Run Tests Automatically:** Run tests automatically on every commit.
+-   **Deploy to a Staging Environment:** Deploy to a staging environment before deploying to production.
+
+By following these best practices, you can create high-quality Three.js applications that are efficient, maintainable, and robust. Remember to stay updated with the latest Three.js documentation and community resources to keep your skills sharp and your projects cutting-edge.

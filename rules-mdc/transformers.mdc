@@ -1,0 +1,174 @@
+---
+description: This rule set enforces best practices for developing with the transformers library, covering code organization, performance, security, and testing to promote maintainable and efficient NLP applications.
+globs: **/*.py
+---
+- **Environment Management:**
+  - Use Conda or UV to create isolated environments for consistent dependencies across projects.
+  - Example (Conda): `conda create -n myenv python=3.12`
+  - Example (UV): `uv venv`
+  - Use `environment.yml` or `requirements.txt` to manage dependencies.
+  - Always use Python 3.12.
+
+- **Code Organization and Structure:**
+  - **Directory Structure:** Adopt a modular structure for maintainability.
+    - `src/`: Source code.
+      - `models/`: Transformer model definitions.
+      - `data/`: Data loading and preprocessing.
+      - `training/`: Training scripts and utilities.
+      - `utils/`: Utility functions.
+    - `tests/`: Unit and integration tests.
+    - `notebooks/`: Experimentation and exploration notebooks.
+    - `scripts/`: Deployment and utility scripts.
+    - `config/`: Configuration files.
+  - **File Naming Conventions:**
+    - Use descriptive names: `model.py`, `data_loader.py`, `trainer.py`.
+    - Follow PEP 8 guidelines.
+  - **Module Organization:**
+    - Group related functions and classes into modules.
+    - Use clear and concise module names.
+  - **Component Architecture:**
+    - Implement modular components with well-defined interfaces.
+    - Use classes for stateful components, such as data loaders or model wrappers.
+  - **Code Splitting:**
+    - Split large files into smaller, manageable modules.
+    - Use lazy loading for large models or datasets to improve startup time.
+
+- **Model Training and Evaluation:**
+  - Implement a structured approach for training and evaluating models.
+  - Use Hugging Face Transformers for easy access to pre-trained models.
+  - Log experiments using MLflow or TensorBoard for tracking model performance and versioning.
+  - Create clear separation between training, validation, and test datasets to prevent data leakage.
+  - Use consistent evaluation metrics.
+
+- **Data Handling:**
+  - Preprocess data effectively using libraries like Hugging Face's tokenizers.
+  - Ensure proper tokenization and encoding.
+  - Manage large datasets efficiently with data loaders.
+  - Implement data validation to ensure data quality.
+
+- **Code Structure:**
+  - Organize code into reusable modules and functions.
+  - Follow a consistent naming convention and documentation style (PEP 8) for enhanced readability and collaboration.
+  - Always use classes instead of functions where appropriate to encapsulate state and behavior.
+  - Add docstrings to all functions, classes, and modules.
+
+- **Common Patterns and Anti-patterns:**
+  - **Design Patterns:**
+    - Use the Factory pattern for creating different model architectures.
+    - Use the Strategy pattern for different training strategies.
+    - Use the Decorator pattern for adding functionality to models.
+  - **Recommended Approaches:**
+    - Use pipelines for common tasks like text classification or question answering.
+    - Leverage pre-trained models for transfer learning.
+  - **Anti-patterns:**
+    - Avoid hardcoding configurations.
+    - Avoid global variables.
+    - Avoid deeply nested code.
+  - **State Management:**
+    - Encapsulate state within classes.
+    - Use configuration files to manage hyperparameters.
+  - **Error Handling:**
+    - Implement try-except blocks for error handling.
+    - Log errors and warnings using the `logging` module.
+    - Raise informative exceptions.
+
+- **Performance Considerations:**
+  - Use appropriate batch sizes to optimize GPU utilization.
+  - Utilize mixed-precision training (FP16) for faster training and reduced memory consumption.
+  - Cache intermediate results to avoid redundant computations.
+  - Profile code using tools like `cProfile` to identify bottlenecks.
+  - Use optimized libraries like `torch.compile` when available.
+  - **Memory Management:**
+    - Release unused memory using `torch.cuda.empty_cache()`.
+    - Use data loaders with `num_workers` to parallelize data loading.
+  - **Bundle Size Optimization:**
+    - Remove unused dependencies.
+    - Use code minification and compression.
+  - **Lazy Loading:**
+    - Load models and datasets only when needed.
+    - Use `torch.jit.script` to compile model for inference.
+
+- **Security Best Practices:**
+  - **Common Vulnerabilities:**
+    - Input injection attacks.
+    - Model poisoning attacks.
+  - **Input Validation:**
+    - Validate input data to prevent injection attacks.
+    - Sanitize user input before feeding it to the model.
+  - **Authentication and Authorization:**
+    - Implement authentication and authorization for API endpoints.
+    - Use secure protocols like HTTPS for communication.
+  - **Data Protection:**
+    - Encrypt sensitive data at rest and in transit.
+    - Use appropriate access controls to protect data.
+  - **Secure API Communication:**
+    - Use API keys or tokens for authentication.
+    - Implement rate limiting to prevent abuse.
+
+- **Testing Approaches:**
+  - **Unit Testing:**
+    - Test individual components in isolation.
+    - Use mocking to isolate dependencies.
+    - Cover all code paths with unit tests.
+  - **Integration Testing:**
+    - Test interactions between different components.
+    - Verify that data flows correctly through the system.
+  - **End-to-End Testing:**
+    - Test the entire application from end to end.
+    - Simulate user interactions to verify functionality.
+  - **Test Organization:**
+    - Organize tests into separate directories.
+    - Use descriptive test names.
+  - **Mocking and Stubbing:**
+    - Use mocking frameworks like `unittest.mock` to isolate dependencies.
+    - Stub out external API calls to prevent network access.
+
+- **Common Pitfalls and Gotchas:**
+  - **Frequent Mistakes:**
+    - Incorrectly configuring tokenizers.
+    - Using outdated versions of the library.
+    - Not handling edge cases in data preprocessing.
+  - **Edge Cases:**
+    - Handling long sequences.
+    - Dealing with out-of-vocabulary words.
+  - **Version-Specific Issues:**
+    - Check the release notes for breaking changes.
+    - Test code with different versions of the library.
+  - **Compatibility Concerns:**
+    - Ensure compatibility with different hardware and software configurations.
+    - Check compatibility with other libraries.
+  - **Debugging Strategies:**
+    - Use debuggers like `pdb` to step through code.
+    - Use logging to track program execution.
+
+- **Tooling and Environment:**
+  - **Recommended Tools:**
+    - VS Code with Python extension.
+    - PyCharm.
+    - Jupyter Notebook.
+    - Debuggers: pdb, ipdb.
+  - **Build Configuration:**
+    - Use `setup.py` or `pyproject.toml` for build configuration.
+    - Specify dependencies in `requirements.txt` or `environment.yml`.
+  - **Linting and Formatting:**
+    - Use linters like `flake8` and `pylint` to enforce code style.
+    - Use formatters like `black` and `autopep8` to automatically format code.
+  - **Deployment:**
+    - Use Docker to containerize the application.
+    - Deploy to cloud platforms like AWS, Azure, or GCP.
+  - **CI/CD Integration:**
+    - Use CI/CD pipelines to automate testing and deployment.
+    - Integrate with version control systems like Git.
+
+- **Additional Recommendations:**
+  - Always document your code thoroughly.
+  - Write clear and concise commit messages.
+  - Use version control (Git) to track changes.
+  - Participate in the transformers community to learn from others.
+  - Regularly update the library to benefit from bug fixes and new features.
+
+- **References:**
+  - [Hugging Face Transformers Documentation](https://huggingface.co/transformers/)
+  - [PyTorch Documentation](https://pytorch.org/docs/stable/index.html)
+  - [MLflow Documentation](https://www.mlflow.org/docs/latest/index.html)
+  - [BERT Fine-Tuning Tutorial with PyTorch](http://www.mccormickml.com)

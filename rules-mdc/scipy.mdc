@@ -1,0 +1,56 @@
+---
+description: This rule outlines coding standards, best practices, and common pitfalls for developing scientific computing applications using the SciPy library. It emphasizes clarity, maintainability, performance, and security for efficient SciPy development.
+globs: **/*.py
+---
+- Adhere to PEP 8 style guidelines for Python code. This includes consistent indentation (4 spaces), line length (79 characters for code, 72 for docstrings), and naming conventions (e.g., `lower_case_with_underscores` for functions and variables, `CamelCase` for classes).
+- Write comprehensive docstrings for all functions, classes, and modules. Docstrings should follow the NumPy/SciPy docstring standard, detailing parameters, return values, and examples.
+- Use meaningful and descriptive variable names to enhance code readability. Avoid single-character variable names (except for loop counters) and abbreviations that are not widely understood.
+- Break down complex tasks into smaller, modular functions. Each function should have a single, well-defined purpose.
+- Employ object-oriented programming principles (classes, inheritance, polymorphism) when appropriate to structure and organize your code.
+- Implement unit tests for all critical functions and classes. Use the `unittest` or `pytest` framework to ensure code correctness and prevent regressions.
+- Utilize version control (e.g., Git) to track changes, collaborate effectively, and manage different versions of your code.
+- Comment your code to explain complex logic, algorithms, or design decisions. Comments should be concise and up-to-date.
+- Employ virtual environments (e.g., `venv` or `conda`) to manage project dependencies and ensure reproducibility.
+- Use a linter (e.g., `flake8` or `pylint`) to automatically check your code for style violations, errors, and potential bugs.
+- Format your code using a formatter (e.g., `black` or `autopep8`) to ensure consistent code style.
+- Consider using type hints (using `typing` module) to improve code readability and catch type-related errors early on.
+- Be mindful of performance considerations when using SciPy functions. Vectorize operations whenever possible to avoid explicit loops.
+- Choose appropriate SciPy functions and algorithms based on the specific problem and data characteristics.
+- Avoid unnecessary data copies to minimize memory usage and improve performance.
+- Utilize SciPy's sparse matrix functionality when dealing with large, sparse datasets.
+- Profile your code using tools like `cProfile` to identify performance bottlenecks.
+- Consider using Numba or Cython to accelerate computationally intensive SciPy code.
+- Implement error handling using `try...except` blocks to gracefully handle exceptions and prevent program crashes.
+- Log errors and warnings using the `logging` module to facilitate debugging and monitoring.
+- Validate user inputs to prevent security vulnerabilities, such as code injection or data corruption.
+- Store sensitive data securely using appropriate encryption and access control mechanisms.
+- Keep your SciPy library up-to-date to benefit from bug fixes, performance improvements, and new features.
+- Be aware of the compatibility between different versions of SciPy and other libraries in your project.
+- Refer to the SciPy documentation and community resources for guidance and best practices.
+- Avoid modifying SciPy arrays in place when it can lead to unexpected side effects. Instead, create copies of the arrays and perform the modifications on the copies.
+- When working with random numbers, use `numpy.random.default_rng()` for more modern and controllable random number generation.
+- When writing custom functions that operate on NumPy arrays, make sure to handle different data types correctly.
+- When possible, avoid creating intermediate arrays, by chaining operations and making the maximum use of SciPy functions features. This can decrease memory consumption especially on large arrays.
+- Use the `optimize` module functions whenever possible to avoid manual implementation of optimization algorithms.
+- Use sparse matrices when working with large matrices that have mostly zero values. This will save memory and improve performance.
+- Use the `fft` module for fast Fourier transforms when working with signals and images.
+- Use the `signal` module for signal processing tasks such as filtering, windowing, and spectral analysis.
+- Use the `ndimage` module for image processing tasks such as filtering, segmentation, and feature extraction.
+- Use the `integrate` module for numerical integration tasks such as quadrature and differential equation solving.
+- Use the `interpolate` module for interpolation tasks such as spline interpolation and polynomial interpolation.
+- Use the `stats` module for statistical analysis tasks such as hypothesis testing, probability distributions, and regression analysis.
+- When selecting a statistical test, ensure it's appropriate for your data type (continuous vs. discrete) and number of samples, and take care to interpret p-values correctly.
+- Do not assume that optimized SciPy functions automatically make your overall code efficient; always profile your code.
+- Be cautious when combining SciPy functions with external C/C++ code, ensuring data type consistency and memory management.
+- Document and share your SciPy-based code using appropriate version control and licensing to facilitate collaboration.
+- If you encounter performance issues with SciPy functions, consider trying alternative algorithms or implementations. Different problems may require different solutions.
+- Remember that NumPy is a dependency of SciPy. SciPy builds upon NumPy; leverage the strengths of both libraries in your code. Master basic NumPy array manipulation before diving deeply into SciPy.
+- Make sure to always use `pip install -U scipy` when installing or upgrading scipy package.
+- If possible try to use conda to install dependencies. The management of binary dependencies is much simpler to solve.
+- When collaborating with others, define common interfaces and expectations on what can be changed and what cannot. Do not change interfaces without notifying the other developers.
+- Separate the code from data. Do not include hardcoded data or configuration into the code. Use files, databases, or environment variables.
+- Use code reviews whenever is possible. Code reviews are useful not only to detect errors and bugs, but also to share knowledge and best practices.
+- When generating documentation, if possible add badges that show the test coverage and the status of continuous integration.
+- Test numerical code with randomized inputs to ensure code stability. Numerical algorithms are difficult to be completely covered only with fixed test cases.
+- Try to avoid global shared mutable state, specially if your application needs to run in parallel.
+- Try to use parallelization to improve your code efficiency, but be careful with shared mutable state. Use message passing to synchronize data between processes or threads.

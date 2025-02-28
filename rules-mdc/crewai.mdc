@@ -1,0 +1,179 @@
+---
+description: This rule provides comprehensive best practices for developing with the CrewAI library, covering code organization, performance, security, testing, and common pitfalls. It serves as a guide for building robust and scalable AI applications using CrewAI.
+globs: **/*.py
+---
+- **General Best Practices**:
+  - Leverage structured responses from LLM calls using Pydantic for output validation.
+  - Maintain a modular architecture for flexibility and scalability.
+  - Regularly validate outputs from agents and tasks.
+  - Use UV for dependency management and Python 3.12.
+  - Prioritize classes over functions for better organization and maintainability.
+
+- **Code Organization and Structure**:
+  - **Directory Structure:**
+    - `crewai_project/` (Root directory)
+      - `agents/`: Contains agent definitions (e.g., `research_agent.py`, `writer_agent.py`).
+      - `tasks/`: Contains task definitions (e.g., `research_task.py`, `writing_task.py`).
+      - `tools/`: Contains custom tools for agents (e.g., `web_search.py`, `data_analysis.py`).
+      - `models/`: Contains Pydantic models for structured LLM responses (e.g., `article_summary.py`).
+      - `utils/`: Contains utility functions and helper classes (e.g., `api_utils.py`, `string_formatter.py`).
+      - `config/`: Configuration files (e.g., `config.yaml`, `api_keys.json`). **Important:** Never commit API keys directly to the repo. Use environment variables or secure vault.
+      - `tests/`: Unit and integration tests.
+      - `main.py`: Entry point for the CrewAI application.
+      - `requirements.txt` or `pyproject.toml`: Project dependencies.
+  - **File Naming Conventions:**
+    - Use descriptive, lowercase names with underscores (e.g., `data_processing_agent.py`).
+    - Pydantic models should be singular (e.g., `ArticleSummary.py` -> `article_summary.py` and class `ArticleSummary`)
+    - Tests should mirror the source file name with a `_test` suffix (e.g., `data_processing_agent_test.py`).
+  - **Module Organization:**
+    - Group related agents, tasks, and tools into separate modules.
+    - Use clear and concise module names.
+    - Avoid circular dependencies between modules.
+  - **Component Architecture:**
+    - Follow a layered architecture (e.g., agent layer, task layer, tool layer).
+    - Design components with single responsibilities (Single Responsibility Principle).
+    - Prefer composition over inheritance for agent and task configurations.
+  - **Code Splitting:**
+    - Break down complex tasks into smaller, manageable subtasks.
+    - Use helper functions and classes to encapsulate reusable logic.
+    - Consider using a task orchestration framework (e.g., Celery, Dask) for asynchronous task execution if you have long running tasks.
+
+- **Common Patterns and Anti-patterns**:
+  - **Design Patterns:**
+    - **Hierarchical Task Delegation:** Implement a manager agent to oversee task execution and validate outcomes.
+    - **Tool Abstraction:** Create a tool abstraction layer to allow agents to interact with different tools seamlessly.
+    - **Observer Pattern:**  Implement an observer pattern to monitor task progress and trigger events.
+  - **Recommended Approaches:**
+    - Define clear roles for each agent.
+    - Utilize advanced CrewAI features for task delegation.
+    - Ensure efficient communication among agents through well-defined task interfaces.
+  - **Anti-patterns:**
+    - Hardcoding API keys or sensitive information in the code.
+    - Creating overly complex or tightly coupled agents.
+    - Ignoring error handling and validation.
+    - Neglecting proper logging and monitoring.
+    - Allowing agents unrestricted access to tools and resources.
+  - **State Management:**
+    - Use agent's memory (the `memory` attribute) to persist state between tasks.
+    - Consider using a dedicated state management library (e.g., Redis, Memcached) for complex applications.
+    - Ensure that state is properly serialized and deserialized.
+  - **Error Handling:**
+    - Implement try-except blocks to handle exceptions gracefully.
+    - Log errors with detailed information for debugging.
+    - Define custom exception types for specific error scenarios.
+    - Use retry mechanisms for transient errors (e.g., network timeouts).
+
+- **Performance Considerations:**
+  - **Optimization Techniques:**
+    - Optimize LLM calls by using smaller context windows where possible.
+    - Cache LLM responses to avoid redundant calls.
+    - Use asynchronous operations for I/O-bound tasks.
+    - Optimize tools and utilities for performance.
+    - Implement rate limiting for API calls to avoid exceeding limits.
+  - **Memory Management:**
+    - Be mindful of the memory footprint of agents and tasks.
+    - Avoid storing large amounts of data in agent memory.
+    - Use generators for processing large datasets.
+    - Release resources promptly after use.
+  - **Bundle Size Optimization:** Not directly applicable to CrewAI but important for related web apps or interfaces.
+  - **Lazy Loading:** Not directly applicable to CrewAI but important for related web apps or interfaces.
+
+- **Security Best Practices**:
+  - **Common Vulnerabilities:**
+    - Prompt injection attacks.
+    - Data breaches due to insecure storage of sensitive information.
+    - Unauthorized access to tools and resources.
+  - **Input Validation:**
+    - Validate all inputs from users and external sources.
+    - Sanitize inputs to prevent code injection attacks.
+    - Use regular expressions or validation libraries to enforce input constraints.
+  - **Authentication and Authorization:**
+    - Implement authentication to verify the identity of users and agents.
+    - Use authorization to control access to tools and resources.
+    - Follow the principle of least privilege: grant agents only the necessary permissions.
+  - **Data Protection:**
+    - Encrypt sensitive data at rest and in transit.
+    - Use secure storage mechanisms for API keys and credentials.
+    - Implement data masking to protect sensitive information.
+    - Comply with relevant data privacy regulations (e.g., GDPR, CCPA).
+  - **Secure API Communication:**
+    - Use HTTPS for all API communication.
+    - Implement API rate limiting to prevent abuse.
+    - Validate API responses to prevent data corruption.
+    - Use secure authentication mechanisms for API access.
+
+- **Testing Approaches:**
+  - **Unit Testing:**
+    - Write unit tests for individual agents, tasks, and tools.
+    - Use mocking and stubbing to isolate components during testing.
+    - Assert that components behave as expected under different conditions.
+  - **Integration Testing:**
+    - Write integration tests to verify the interactions between different components.
+    - Test the end-to-end flow of a CrewAI application.
+    - Use realistic test data to simulate real-world scenarios.
+  - **End-to-end Testing:**
+    - Use tools like Selenium or Playwright to test the entire application flow.
+    - Verify that the application meets the specified requirements.
+    - Test the application in different environments.
+  - **Test Organization:**
+    - Organize tests into separate modules that mirror the source code structure.
+    - Use descriptive test names.
+    - Follow a consistent testing style.
+  - **Mocking and Stubbing:**
+    - Use mocking libraries (e.g., `unittest.mock`, `pytest-mock`) to replace external dependencies with mock objects.
+    - Use stubbing to provide canned responses for external dependencies.
+    - Verify that mock objects are called as expected.
+
+- **Common Pitfalls and Gotchas:**
+  - **Frequent Mistakes:**
+    - Using overly complex prompts that are difficult to understand and maintain.
+    - Failing to handle errors and exceptions gracefully.
+    - Neglecting to validate inputs and outputs.
+    - Not monitoring and logging application behavior.
+  - **Edge Cases:**
+    - Handling unexpected LLM responses.
+    - Dealing with rate limits and API errors.
+    - Managing long-running tasks.
+  - **Version-Specific Issues:**
+    - Be aware of breaking changes between CrewAI versions.
+    - Consult the CrewAI changelog for information about new features and bug fixes.
+    - Test your application with different CrewAI versions to ensure compatibility.
+  - **Compatibility Concerns:**
+    - Ensure that CrewAI is compatible with the other libraries and frameworks used in your application.
+    - Be aware of potential conflicts between different versions of dependencies.
+  - **Debugging Strategies:**
+    - Use logging to track application behavior.
+    - Use a debugger to step through the code and inspect variables.
+    - Use print statements to debug simple issues.
+    - Use the CrewAI debugger and introspection tools.
+
+- **Tooling and Environment**:
+  - **Recommended Tools:**
+    - VS Code, PyCharm
+    - Debugger: pdb, ipdb
+    - Profiler: cProfile
+  - **Build Configuration:**
+    - Use `pyproject.toml` for managing dependencies and build settings.
+    - Use Poetry or pip-tools for dependency management.
+  - **Linting and Formatting:**
+    - Use Black for code formatting.
+    - Use Pylint or Flake8 for code linting.
+    - Configure pre-commit hooks to automatically format and lint code before committing.
+  - **Deployment:**
+    - Containerize your CrewAI application using Docker.
+    - Deploy your application to a cloud platform (e.g., AWS, Google Cloud, Azure).
+    - Use a deployment framework (e.g., Docker Compose, Kubernetes) to manage your application.
+  - **CI/CD Integration:**
+    - Use a CI/CD platform (e.g., GitHub Actions, GitLab CI, Jenkins) to automate the build, test, and deployment process.
+    - Write automated tests for your application.
+    - Configure CI/CD pipelines to run tests and deploy your application on every commit.
+
+- **LLMs and CrewAI**
+  - CrewAI uses LLMs to provide context, enable decision-making, and generate human-like responses in the agents.
+  - Configure LLMs with environment variables or advanced features for optimization.
+  - Available Models and Capabilities:
+    - GPT-4: High-accuracy tasks, complex reasoning, 8,192 tokens
+    - GPT-4 Turbo: Long-form content, document analysis, 128,000 tokens
+    - GPT-4o & GPT-4o-mini: Cost-effective large context processing, 128,000 tokens
+    - o3-mini: Fast reasoning, complex reasoning, 200,000 tokens
+  - Structured LLM calls can be used for defining response formats using Pydantic models.

@@ -1,0 +1,5 @@
+---
+description: Comprehensive best practices and coding standards for D3.js projects, covering code organization, performance, security, testing, and common pitfalls.
+globs: **/*.js
+---
+By following these best practices and coding standards, developers can create robust, maintainable, and performant data visualizations using the D3.js library.

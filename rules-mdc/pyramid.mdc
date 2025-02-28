@@ -1,0 +1,176 @@
+---
+description: This rule provides comprehensive best practices for developing secure, maintainable, and performant applications using the Pyramid web framework for Python. It covers code structure, security, testing, and deployment considerations.
+globs: **/*.py
+---
+- **Project Structure and Code Organization:**
+  - **Directory Structure:**
+    - `src/`: Contains the main application code.
+    - `src/<project_name>/`: Main application package.
+      - `__init__.py`: Makes the directory a Python package.
+      - `models.py`: Data models (if using an ORM like SQLAlchemy).
+      - `views.py`: View callables (controllers).
+      - `routes.py`: Route configurations.
+      - `templates/`: Jinja2 or other template files.
+      - `static/`: Static assets (CSS, JavaScript, images).
+      - `scripts/`: Management scripts (e.g., database setup, data migration).
+    - `tests/`: Unit and integration tests.
+      - `__init__.py`: Makes the directory a Python package.
+      - `conftest.py`: pytest configuration file.
+      - `test_*.py`: Test modules.
+    - `docs/`: Project documentation (Sphinx).
+    - `venv/`: Virtual environment (should be excluded from version control).
+  - **File Naming Conventions:**
+    - Python files: `snake_case.py` (e.g., `database_utils.py`).
+    - Class names: `CamelCase` (e.g., `User`).
+    - Variable names: `snake_case` (e.g., `user_id`).
+    - Constants: `UPPER_SNAKE_CASE` (e.g., `DEFAULT_TIMEOUT`).
+  - **Module Organization:**
+    - Group related functionality into modules.
+    - Avoid circular dependencies.
+    - Use relative imports within the application package (e.g., `from .models import User`).
+  - **Component Architecture:**
+    - MVC (Model-View-Controller) is a common pattern in Pyramid.
+    - Models represent data and business logic.
+    - Views handle requests and render responses.
+    - Controllers (view callables) act as intermediaries between models and views.
+  - **Code Splitting:**
+    - Break down large modules into smaller, more manageable files.
+    - Use packages to group related modules.
+    - Consider using a service layer to separate business logic from view callables.
+
+- **Common Patterns and Anti-Patterns:**
+  - **Design Patterns:**
+    - **Repository Pattern:** Abstract data access logic behind a repository interface.
+    - **Service Layer Pattern:** Encapsulate business logic in a separate layer.
+    - **Factory Pattern:** Use factories to create complex objects.
+  - **Recommended Approaches:**
+    - Use URL dispatch for routing requests to view callables.
+    - Use decorators (`@view_config`) to associate views with routes.
+    - Use Jinja2 or another templating engine for rendering dynamic content.
+    - Use SQLAlchemy or another ORM for interacting with databases.
+  - **Anti-Patterns:**
+    - **Fat Views:** Avoid putting too much logic in view callables.
+    - **Tight Coupling:** Design components to be loosely coupled.
+    - **Ignoring Exceptions:** Always handle exceptions appropriately.
+  - **State Management:**
+    - Use request attributes to store request-specific data (e.g., database connection, user session).
+    - Use sessions to store user-specific data across multiple requests.
+    - Avoid storing large amounts of data in sessions.
+  - **Error Handling:**
+    - Use try-except blocks to handle exceptions.
+    - Log exceptions with appropriate severity levels (e.g., `error`, `warning`, `info`).
+    - Provide user-friendly error messages.
+    - Use Pyramid's exception views to handle exceptions globally.
+
+- **Performance Considerations:**
+  - **Optimization Techniques:**
+    - Use caching to store frequently accessed data (e.g., using `dogpile.cache`).
+    - Optimize database queries (e.g., using indexes, avoiding N+1 queries).
+    - Minimize the number of database connections.
+    - Use efficient data structures and algorithms.
+  - **Memory Management:**
+    - Avoid creating unnecessary objects.
+    - Use generators and iterators to process large datasets.
+    - Clean up resources properly (e.g., closing database connections).
+  - **Rendering Optimization:**
+    - Use template caching.
+    - Minimize the amount of data passed to templates.
+    - Optimize template code.
+  - **Bundle Size Optimization:** (If serving static assets)
+    - Minify CSS and JavaScript files.
+    - Use a content delivery network (CDN) to serve static assets.
+  - **Lazy Loading:**
+    - Lazy-load images and other resources.
+    - Defer loading of non-essential JavaScript.
+
+- **Security Best Practices:**
+  - **Common Vulnerabilities:**
+    - **SQL Injection:** Prevent by using parameterized queries or an ORM that escapes input.
+    - **Cross-Site Scripting (XSS):** Prevent by escaping output in templates.
+    - **Cross-Site Request Forgery (CSRF):** Use Pyramid's CSRF protection features.
+    - **Authentication and Authorization Issues:** Implement strong authentication and authorization mechanisms.
+    - **Session Hijacking:** Use secure cookies and regenerate session IDs after login.
+  - **Input Validation:**
+    - Validate all user input.
+    - Use schema validation libraries (e.g., `colander`) to validate input data.
+    - Sanitize input to remove potentially malicious characters.
+  - **Authentication and Authorization:**
+    - Use a robust authentication system (e.g., `pyramid_jwt`, `pyramid_authsanity`).
+    - Implement role-based access control (RBAC).
+    - Secure API endpoints with authentication and authorization checks.
+  - **Data Protection:**
+    - Encrypt sensitive data at rest and in transit.
+    - Use TLS/SSL for secure communication.
+    - Store passwords securely using strong hashing algorithms (e.g., bcrypt, argon2).
+  - **Secure API Communication:**
+    - Use HTTPS for all API requests.
+    - Authenticate API clients using API keys or tokens.
+    - Implement rate limiting to prevent abuse.
+
+- **Testing Approaches:**
+  - **Unit Testing:**
+    - Test individual components in isolation.
+    - Use mocking to isolate components from dependencies.
+    - Use a testing framework (e.g., `pytest`).
+  - **Integration Testing:**
+    - Test the interaction between multiple components.
+    - Test the application's integration with external systems (e.g., databases).
+  - **End-to-End Testing:**
+    - Test the entire application from the user's perspective.
+    - Use a browser automation tool (e.g., `Selenium`, `Playwright`).
+  - **Test Organization:**
+    - Keep tests in a separate `tests/` directory.
+    - Organize tests into modules that correspond to the application's modules.
+    - Use clear and descriptive test names.
+  - **Mocking and Stubbing:**
+    - Use mocking libraries (e.g., `unittest.mock`, `pytest-mock`) to create mock objects.
+    - Use stubs to replace dependencies with simplified versions.
+
+- **Common Pitfalls and Gotchas:**
+  - **Frequent Mistakes:**
+    - **Misunderstanding URL Dispatch:** Carefully define routes and view predicates.
+    - **Insecure Configuration:** Protect sensitive configuration data.
+    - **Insufficient Testing:** Thoroughly test all parts of the application.
+  - **Edge Cases:**
+    - **Handling Unicode:** Ensure proper Unicode handling throughout the application.
+    - **Dealing with Time Zones:** Use a consistent time zone and handle time zone conversions correctly.
+  - **Version-Specific Issues:**
+    - Be aware of compatibility issues when upgrading Pyramid or its dependencies.
+    - Consult the release notes for any breaking changes.
+  - **Compatibility Concerns:**
+    - Ensure compatibility between Pyramid and other technologies used in the application.
+    - Test the application on all supported platforms and browsers.
+  - **Debugging Strategies:**
+    - Use a debugger to step through code and inspect variables.
+    - Use logging to track the flow of execution and identify errors.
+    - Use Pyramid's debugging toolbar to inspect requests, responses, and configuration.
+
+- **Tooling and Environment:**
+  - **Recommended Tools:**
+    - **Virtualenv or venv:** For creating isolated Python environments.
+    - **pip:** For managing dependencies.
+    - **pytest:** For running tests.
+    - **flake8:** For linting code.
+    - **black:** For formatting code.
+  - **Build Configuration:**
+    - Use a `setup.py` or `pyproject.toml` file to define the project's metadata and dependencies.
+    - Use a build system (e.g., `setuptools`, `poetry`) to package the application.
+  - **Linting and Formatting:**
+    - Use a linter (e.g., `flake8`) to enforce code style guidelines.
+    - Use a formatter (e.g., `black`) to automatically format code.
+    - Configure the linter and formatter to use consistent settings.
+  - **Deployment:**
+    - Use a WSGI server (e.g., `gunicorn`, `uWSGI`) to serve the application.
+    - Use a process manager (e.g., `systemd`, `supervisor`) to manage the WSGI server.
+    - Deploy the application to a production environment (e.g., cloud platform, virtual machine).
+  - **CI/CD:**
+    - Use a continuous integration/continuous deployment (CI/CD) system (e.g., `Jenkins`, `GitLab CI`, `GitHub Actions`) to automate the build, test, and deployment process.
+    - Run tests automatically on every commit.
+    - Deploy the application automatically to staging and production environments.
+
+- **Additional Information:**
+  - Regularly update dependencies to patch security vulnerabilities.
+  - Use a security scanner like Bandit to identify potential security flaws in the code.
+  - Follow the principle of least privilege when granting permissions to users and services.
+  - Monitor the application's performance and security logs to detect and respond to incidents.
+  - Document the application's architecture, configuration, and deployment process.

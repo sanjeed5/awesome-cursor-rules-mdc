@@ -13,3 +13,4 @@ awesome-cursorrules/
 .env
 exa_results/
 logs/
+.cache/
