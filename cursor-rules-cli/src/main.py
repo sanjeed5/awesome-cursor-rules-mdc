@@ -144,6 +144,12 @@ def parse_args():
     )
     
     parser.add_argument(
+        "--libraries",
+        type=str,
+        help="Comma-separated list of libraries to match directly (e.g., 'react,vue,django')"
+    )
+    
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable verbose output"
@@ -195,6 +201,88 @@ def main():
     
     # Merge configurations (project config takes precedence)
     config = merge_configs(global_config, project_config)
+    
+    # Handle direct library input if provided
+    if args.libraries:
+        libraries = [lib.strip() for lib in args.libraries.split(",") if lib.strip()]
+        if not libraries:
+            logger.error("No valid libraries provided")
+            return 1
+        logger.info(f"Using directly provided libraries: {', '.join(libraries)}")
+        detected_libraries = libraries
+    else:
+        # Run the scanning phase
+        try:
+            # Use quick scan if requested
+            scan_start_msg = "Quick scanning" if args.quick_scan else "Scanning"
+            logger.info(f"{scan_start_msg} for libraries and frameworks...")
+            
+            # Scan project for libraries
+            logger.info("Scanning for libraries and frameworks...")
+            detected_libraries = scan_project(
+                project_dir=project_dir,
+                quick_scan=args.quick_scan,
+                rules_path=config["rules_json"],
+                use_cache=not args.force
+            )
+            
+            # Get direct match libraries from package files
+            direct_match_libraries = scan_package_files(Path(project_dir))
+            
+            logger.info(f"Detected {len(detected_libraries)} libraries/frameworks.")
+            
+            # Match libraries with rules
+            logger.info("Finding relevant rules...")
+            matching_rules = match_libraries(
+                detected_libraries=detected_libraries,
+                source_url=config["source"],
+                direct_match_libraries=direct_match_libraries,
+                custom_json_path=config["rules_json"],
+                max_results=args.max_results,
+                min_score=args.min_score
+            )
+            
+            if not matching_rules:
+                logger.warning("No matching libraries found for your project.")
+                return 0
+            
+            logger.info(f"Found {Fore.GREEN}{len(matching_rules)}{Style.RESET_ALL} relevant rule files.")
+            
+            # Display and select rules to download
+            selected_rules = display_matched_rules(matching_rules, args.max_results)
+            
+            if not selected_rules:
+                logger.info("No rules selected. Exiting.")
+                return 0
+            
+            # Download selected rules
+            if args.dry_run:
+                logger.info(f"{Fore.YELLOW}DRY RUN:{Style.RESET_ALL} Would download the following rules:")
+                for rule in selected_rules:
+                    logger.info(f"  - {Fore.CYAN}{rule}{Style.RESET_ALL}")
+            else:
+                downloaded_rules = download_rules(selected_rules, config["source"])
+                
+                # Install downloaded rules
+                result = install_rules(downloaded_rules, force=args.force)
+                
+                if result["installed"]:
+                    logger.info(f"{Fore.GREEN}✅ Successfully installed {len(result['installed'])} rules!{Style.RESET_ALL}")
+                
+                if result["failed"]:
+                    logger.warning(f"{Fore.YELLOW}⚠️ Failed to install {len(result['failed'])} rules:{Style.RESET_ALL}")
+                
+            return 0
+        
+        except KeyboardInterrupt:
+            logger.info(f"\n{Fore.YELLOW}Operation cancelled by user.{Style.RESET_ALL}")
+            return 130
+        except Exception as e:
+            logger.error(f"An error occurred: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            return 1
     
     # Override config with command line arguments
     if args.custom_repo is not None:
