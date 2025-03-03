@@ -1,98 +1,128 @@
 # Cursor Rules CLI
 
-A command-line tool to scan your projects and suggest relevant Cursor rules (.mdc files) based on the libraries and frameworks you're using.
+A simple tool that helps you find and install the right Cursor rules for your project. It looks at what libraries and frameworks you're using and suggests matching rules.
 
-## Features
+## What does it do?
 
-- 🔍 Automatically scans your project to detect libraries and frameworks
-- 🔄 Matches detected libraries with available Cursor rules
-- 📥 Downloads and installs relevant rules to your `.cursor/rules` directory
-- 🎨 Interactive and colorful CLI interface
-- 🔀 Supports custom repositories for advanced users
+- 🔍 Looks at your project and figures out what libraries you're using
+- 📝 Lets you directly specify libraries if you know what you want
+- 📥 Downloads and installs the right rules into your Cursor
+- 🎨 Shows everything in a nice, colorful interface
+- 🔀 Works with custom rule repositories too
 
-## Installation
+## Getting Started
 
-### From PyPI (Recommended)
+### Quick Install
 
 ```bash
-# Install from PyPI
 pip install cursor-rules
 ```
 
-### From Source
+### Running it
 
+The easiest way to use it:
 ```bash
-# Clone the repository
-git clone https://github.com/sanjeed5/awesome-cursor-rules-mdc
-cd awesome-cursor-rules-mdc/cursor-rules-cli
-
-# Install using pip
-pip install -e .
+# Just run this in your project folder
+cursor-rules
 ```
 
-## Usage
+This will:
+1. Look at your project
+2. Show you what rules match your project
+3. Let you choose which ones to install
+4. Install them for you
+
+### I know what rules I want
+
+If you already know what libraries you want rules for:
+```bash
+# Just list them with commas
+cursor-rules --libraries "react,tailwind,typescript"
+```
+
+This will:
+1. Skip scanning your project directory
+2. Only match rules for the libraries you specified
+3. Let you choose which ones to install
+4. Install them for you
+
+### Common Use Cases
 
 ```bash
-# Scan the current directory and install relevant rules
-cursor-rules
+# Looking at a specific project folder
+cursor-rules -d /path/to/my/project
 
-# Scan a specific directory
-cursor-rules -d /path/to/project
-
-# Show what would be done without making changes
+# Just want to see what it would do (without installing anything)
 cursor-rules --dry-run
 
-# Force overwrite existing rules
+# Want to replace existing rules
 cursor-rules --force
 
-# Enable verbose output
+# Want to see more details about what's happening
 cursor-rules -v
 ```
 
-## Advanced Usage
+## Making it Work Your Way
 
-### Using a Custom Repository (untested)
-
-You can use your own forked repository of Cursor rules. This is a CLI-wide setting that applies to all projects:
-
+### Want to see fewer/more results?
 ```bash
-# Use a custom repository for the current scan
-cursor-rules --custom-repo username/repo
+# Show only 5 results
+cursor-rules --max-results 5
 
-# Set custom repository globally without running scan
-cursor-rules --custom-repo username/repo --set-repo
-
-# Save this setting as your default configuration
-cursor-rules --custom-repo username/repo --save-config
+# Only show really good matches
+cursor-rules --min-score 0.8
 ```
 
-Note: Custom repository settings are always global and not project-specific. The repository must contain a valid `rules.json` file at the root level.
+### Skip Project Scanning
+```bash
+# Directly specify libraries (skips project scanning)
+cursor-rules --libraries "react,vue,django"
 
-### Configuration Management
+# Useful when you know exactly what you need
+cursor-rules --libraries "pytorch,pandas,matplotlib" --force
+```
+
+### Quick Scan vs Deep Scan
+```bash
+# Do a quick scan (faster but might miss some things)
+cursor-rules --quick-scan
+```
+
+### Using Your Own Rules Repository
+
+Have your own collection of rules? You can use those instead:
+```bash
+# Use rules from your repository
+cursor-rules --custom-repo your-username/your-repo
+
+# Make it remember your repository for next time
+cursor-rules --custom-repo your-username/your-repo --save-config
+```
+
+### Saving Your Preferences
 
 ```bash
-# Show current configuration
+# See what settings you're using
 cursor-rules --show-config
 
-# Save current settings as global configuration
+# Save your current settings for all projects
 cursor-rules --save-config
 
-# Save current settings as project-specific configuration (except repository settings)
+# Save settings just for this project
 cursor-rules --save-project-config
 ```
 
-## Configuration Files
+## Need More Help?
 
-The CLI uses the following configuration files:
+Run this to see all available options:
+```bash
+cursor-rules --help
+```
 
-- Global configuration: `~/.cursor/rules-cli-config.json` (includes custom repository settings)
-- Project-specific configuration: `.cursor-rules-cli.json` in the project directory (excludes repository settings)
-
-Project-specific configuration takes precedence over global configuration for project-specific settings.
-
-## Available Options
+This will show you all the options:
 
 ```
+Options:
   -h, --help            Show this help message and exit
   -d DIRECTORY, --directory DIRECTORY
                         Project directory to scan (default: current directory)
@@ -106,14 +136,22 @@ Project-specific configuration takes precedence over global configuration for pr
                         Path to custom rules.json file
   --save-config         Save current settings as default configuration
   --save-project-config
-                        Save current settings as project-specific configuration (except repository settings)
+                        Save current settings as project-specific configuration
   --show-config         Show current configuration
+  --quick-scan          Perform a quick scan (only check package files, not imports)
+  --max-results MAX_RESULTS
+                        Maximum number of rules to display (default: 20)
+  --min-score MIN_SCORE
+                        Minimum relevance score for rules (0-1, default: 0.5)
+  --libraries LIBRARIES
+                        Comma-separated list of libraries to match directly (e.g., 'react,vue,django'). 
+                        When specified, project scanning is skipped.
   -v, --verbose         Enable verbose output
 ```
 
 ## License
 
-MIT 
+MIT
 
 ## Todo:
-- [ ] Test the custom repo
+- [ ] Test the custom repo feature
