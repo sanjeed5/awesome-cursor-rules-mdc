@@ -28,16 +28,11 @@ if readme_path.exists():
 project_root = Path(__file__).parent.parent
 root_rules_json = project_root / "rules.json"
 package_rules_json = Path("rules.json")
-src_rules_json = Path("src/rules.json")
 
 if root_rules_json.exists():
-    # Copy to package root
+    # Copy to package root only
     shutil.copy2(root_rules_json, package_rules_json)
     print(f"Copied rules.json from project root to package root")
-    
-    # Copy to src directory
-    shutil.copy2(root_rules_json, src_rules_json)
-    print(f"Copied rules.json from project root to {src_rules_json}")
 else:
     print("Warning: rules.json not found in project root")
 
