@@ -1,5 +1,7 @@
 # Cursor Rules CLI
 
+> **Disclaimer:** This project is not officially associated with or endorsed by Cursor. It is a community-driven initiative to enhance the Cursor experience.
+
 A simple tool that helps you find and install the right Cursor rules for your project. It scans your project to identify libraries and frameworks you're using and suggests matching rules.
 
 ## Features
