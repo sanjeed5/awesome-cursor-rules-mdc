@@ -203,6 +203,7 @@ def main():
     config = merge_configs(global_config, project_config)
     
     # Handle direct library input if provided
+    libraries_directly_provided = False
     if args.libraries:
         libraries = [lib.strip() for lib in args.libraries.split(",") if lib.strip()]
         if not libraries:
@@ -210,6 +211,7 @@ def main():
             return 1
         logger.info(f"Using directly provided libraries: {', '.join(libraries)}")
         detected_libraries = libraries
+        libraries_directly_provided = True
     else:
         # Run the scanning phase
         try:
@@ -356,25 +358,31 @@ def main():
         source_url = f"https://raw.githubusercontent.com/{config['custom_repo']}/main"
         logger.info(f"Using custom repository: {Fore.CYAN}{config['custom_repo']}{Style.RESET_ALL}")
     
-    # Run the scanning phase
+    # Run the scanning phase only if libraries were not directly provided
     try:
-        # Use quick scan if requested
-        scan_start_msg = "Quick scanning" if args.quick_scan else "Scanning"
-        logger.info(f"{scan_start_msg} for libraries and frameworks...")
-        
-        # Scan project for libraries
-        logger.info("Scanning for libraries and frameworks...")
-        detected_libraries = scan_project(
-            project_dir=project_dir,
-            quick_scan=args.quick_scan,
-            rules_path=config["rules_json"],
-            use_cache=not args.force
-        )
-        
-        # Get direct match libraries from package files
-        direct_match_libraries = scan_package_files(Path(project_dir))
-        
-        logger.info(f"Detected {len(detected_libraries)} libraries/frameworks.")
+        # Skip scanning if libraries were directly provided
+        if not libraries_directly_provided:
+            # Use quick scan if requested
+            scan_start_msg = "Quick scanning" if args.quick_scan else "Scanning"
+            logger.info(f"{scan_start_msg} for libraries and frameworks...")
+            
+            # Scan project for libraries
+            logger.info("Scanning for libraries and frameworks...")
+            detected_libraries = scan_project(
+                project_dir=project_dir,
+                quick_scan=args.quick_scan,
+                rules_path=config["rules_json"],
+                use_cache=not args.force
+            )
+            
+            # Get direct match libraries from package files
+            direct_match_libraries = scan_package_files(Path(project_dir))
+            
+            logger.info(f"Detected {len(detected_libraries)} libraries/frameworks.")
+        else:
+            # For directly provided libraries, we don't need to scan package files
+            direct_match_libraries = set(detected_libraries)
+            logger.info(f"{Fore.CYAN}Skipping project scan - using directly provided libraries only{Style.RESET_ALL}")
         
         # Match libraries with rules
         logger.info("Finding relevant rules...")
