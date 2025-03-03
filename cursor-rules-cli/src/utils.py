@@ -502,27 +502,36 @@ def load_library_data(rules_path: Optional[str] = None) -> Dict[str, Any]:
     Returns:
         Dictionary of library data
     """
-    if not rules_path:
+    # If a specific path is provided, use it first
+    if rules_path and Path(rules_path).exists():
+        logger.debug(f"Using specified rules.json at {rules_path}")
+        path_to_use = Path(rules_path)
+    else:
+        # Search for rules.json in priority order
         possible_paths = [
-            Path(__file__).parent / "rules.json",
-            Path(__file__).parent.parent / "rules.json",
-            Path.cwd() / "rules.json"
+            Path(__file__).parent / "rules.json",  # src/rules.json
+            Path(__file__).parent.parent / "rules.json",  # package root rules.json
+            Path.cwd() / "rules.json"  # current directory rules.json
         ]
         
+        path_to_use = None
         for path in possible_paths:
             if path.exists():
-                rules_path = str(path)
+                path_to_use = path
+                logger.debug(f"Found rules.json at {path}")
                 break
     
-    if not rules_path or not Path(rules_path).exists():
-        logger.warning("rules.json not found, using default library detection")
+    if not path_to_use or not path_to_use.exists():
+        logger.warning("rules.json not found in any standard location, using default library detection")
         return {}
     
     try:
-        with open(rules_path, 'r') as f:
-            return json.load(f)
+        with open(path_to_use, 'r') as f:
+            data = json.load(f)
+            logger.info(f"Successfully loaded rules.json from {path_to_use}")
+            return data
     except (json.JSONDecodeError, IOError) as e:
-        logger.warning(f"Error loading rules.json: {e}")
+        logger.warning(f"Error loading rules.json from {path_to_use}: {e}")
         return {}
 
 def normalize_library_name(name: str, library_data: Dict[str, Any]) -> str:
