@@ -509,7 +509,6 @@ def load_library_data(rules_path: Optional[str] = None) -> Dict[str, Any]:
     else:
         # Search for rules.json in priority order
         possible_paths = [
-            Path(__file__).parent / "rules.json",  # src/rules.json
             Path(__file__).parent.parent / "rules.json",  # package root rules.json
             Path.cwd() / "rules.json"  # current directory rules.json
         ]
