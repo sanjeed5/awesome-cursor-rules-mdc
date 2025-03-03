@@ -14,3 +14,4 @@ awesome-cursorrules/
 exa_results/
 logs/
 .cache/
+.DS_Store
