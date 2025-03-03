@@ -23,9 +23,9 @@ from cursor_rules_cli.matcher import match_libraries
 from cursor_rules_cli.downloader import download_rules
 from cursor_rules_cli.installer import install_rules
 from cursor_rules_cli.utils import (
-    load_config, save_config, 
-    load_project_config, save_project_config, 
-    merge_configs, validate_github_repo
+    load_config, save_config, get_config_file, 
+    load_project_config, save_project_config, get_project_config_file,
+    merge_configs, validate_github_repo, DEFAULT_RULES_PATH
 )
 
 # Configure logging with colors
@@ -202,6 +202,14 @@ def main():
     # Merge configurations (project config takes precedence)
     config = merge_configs(global_config, project_config)
     
+    # Ensure rules_json is in config
+    if "rules_json" not in config:
+        config["rules_json"] = str(DEFAULT_RULES_PATH)
+    
+    # Ensure source is in config
+    if "source" not in config:
+        config["source"] = "https://raw.githubusercontent.com/sanjeed5/awesome-cursor-rules-mdc/main"
+    
     # Handle direct library input if provided
     libraries_directly_provided = False
     if args.libraries:
@@ -300,7 +308,7 @@ def main():
     if args.rules_json is not None:
         config["rules_json"] = args.rules_json
     elif "rules_json" not in config:
-        config["rules_json"] = None
+        config["rules_json"] = str(DEFAULT_RULES_PATH)
         
     if args.source != "https://raw.githubusercontent.com/sanjeed5/awesome-cursor-rules-mdc/main":
         config["source"] = args.source
