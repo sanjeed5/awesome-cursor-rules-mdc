@@ -4,6 +4,8 @@
 
 A simple tool that helps you find and install the right Cursor rules for your project. It scans your project to identify libraries and frameworks you're using and suggests matching rules.
 
+![Cursor Rules CLI Demo](cursor-rules-cli.gif)
+
 ## Features
 
 - 🔍 Auto-detects libraries in your project
