@@ -24,12 +24,22 @@ if readme_path.exists():
     with open(readme_path, "r", encoding="utf-8") as f:
         long_description = f.read()
 
-# Copy rules.json to src directory if it doesn't exist
-rules_json_src = Path("rules.json")
-rules_json_dest = Path("src/rules.json")
-if rules_json_src.exists() and not rules_json_dest.exists():
-    shutil.copy2(rules_json_src, rules_json_dest)
-    print(f"Copied rules.json to {rules_json_dest}")
+# Always copy the latest rules.json from project root to ensure consistency
+project_root = Path(__file__).parent.parent
+root_rules_json = project_root / "rules.json"
+package_rules_json = Path("rules.json")
+src_rules_json = Path("src/rules.json")
+
+if root_rules_json.exists():
+    # Copy to package root
+    shutil.copy2(root_rules_json, package_rules_json)
+    print(f"Copied rules.json from project root to package root")
+    
+    # Copy to src directory
+    shutil.copy2(root_rules_json, src_rules_json)
+    print(f"Copied rules.json from project root to {src_rules_json}")
+else:
+    print("Warning: rules.json not found in project root")
 
 setup(
     name="cursor-rules",
