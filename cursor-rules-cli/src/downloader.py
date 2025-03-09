@@ -8,6 +8,8 @@ import os
 import time
 import logging
 import requests
+import re
+import base64
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -30,6 +32,36 @@ class DownloadError(Exception):
 class ValidationError(Exception):
     """Custom exception for validation errors."""
     pass
+
+def extract_repo_info(source_url: str) -> Tuple[str, str, str]:
+    """
+    Extract owner and repo name from GitHub URL.
+    
+    Args:
+        source_url: GitHub URL
+        
+    Returns:
+        Tuple of (owner, repo, branch)
+        
+    Raises:
+        ValueError: If URL is not a valid GitHub repository URL
+    """
+    # Handle various GitHub URL formats
+    github_patterns = [
+        r"https?://github\.com/([^/]+)/([^/]+)(?:/tree/([^/]+))?",  # github.com URLs
+        r"https?://raw\.githubusercontent\.com/([^/]+)/([^/]+)/([^/]+)"  # raw.githubusercontent.com URLs
+    ]
+    
+    for pattern in github_patterns:
+        match = re.match(pattern, source_url)
+        if match:
+            groups = match.groups()
+            owner = groups[0]
+            repo = groups[1]
+            branch = groups[2] if len(groups) > 2 and groups[2] else "main"
+            return owner, repo, branch
+    
+    raise ValueError(f"Invalid GitHub URL format: {source_url}")
 
 def create_session() -> requests.Session:
     """
@@ -56,10 +88,10 @@ def create_session() -> requests.Session:
 
 def verify_source_url(source_url: str, session: requests.Session = None) -> Tuple[bool, str]:
     """
-    Verify that the source URL is accessible.
+    Verify that the source URL is a valid GitHub repository.
     
     Args:
-        source_url: Base URL to verify
+        source_url: GitHub repository URL
         session: Optional requests session to use
         
     Returns:
@@ -69,24 +101,35 @@ def verify_source_url(source_url: str, session: requests.Session = None) -> Tupl
         session = create_session()
         
     try:
-        # Check if the source URL is accessible
-        # Try a few different paths to ensure it's a valid repository
-        repo_paths = [
-            "",  # Base URL
-            "/rules.json",  # Rules index file
-            "/rules-mdc"  # Rules directory
-        ]
+        # Extract repo information
+        owner, repo, branch = extract_repo_info(source_url)
         
-        for path in repo_paths:
-            url = f"{source_url}{path}"
-            response = session.head(url, timeout=DEFAULT_TIMEOUT)
+        # Check if the repository exists using GitHub API
+        api_url = f"https://api.github.com/repos/{owner}/{repo}"
+        response = session.get(api_url, timeout=DEFAULT_TIMEOUT)
+        
+        if response.status_code >= 400:
+            return False, f"GitHub repository not found: {owner}/{repo} (Status code: {response.status_code})"
+        
+        # Check if the branch exists
+        branches_url = f"{api_url}/branches/{branch}"
+        response = session.get(branches_url, timeout=DEFAULT_TIMEOUT)
+        
+        if response.status_code >= 400:
+            return False, f"Branch not found: {branch} (Status code: {response.status_code})"
             
-            if response.status_code >= 400:
-                return False, f"Source URL is not accessible: {url} (Status code: {response.status_code})"
+        # Check if the rules-mdc directory exists
+        contents_url = f"{api_url}/contents/rules-mdc?ref={branch}"
+        response = session.get(contents_url, timeout=DEFAULT_TIMEOUT)
+        
+        if response.status_code >= 400:
+            return False, f"Rules directory not found: rules-mdc (Status code: {response.status_code})"
                 
         return True, ""
+    except ValueError as e:
+        return False, str(e)
     except requests.RequestException as e:
-        return False, f"Failed to connect to source URL: {e}"
+        return False, f"Failed to connect to GitHub: {e}"
     except Exception as e:
         return False, f"Unexpected error verifying source URL: {e}"
 
@@ -99,11 +142,11 @@ def download_rules(
     max_workers: int = 4,
 ) -> List[Dict[str, Any]]:
     """
-    Download selected MDC rule files.
+    Download selected MDC rule files from GitHub.
     
     Args:
         rules: List of rule metadata to download
-        source_url: Base URL for the repository
+        source_url: GitHub repository URL
         temp_dir: Temporary directory to store downloaded files
         rate_limit: Maximum requests per second
         max_retries: Maximum number of retries for failed downloads
@@ -136,6 +179,14 @@ def download_rules(
         logger.error(f"Source URL verification failed: {error_msg}")
         logger.error(f"Please check if the source URL is correct: {source_url}")
         raise DownloadError(f"Source URL is not accessible: {error_msg}")
+    
+    # Get repository information
+    try:
+        owner, repo, branch = extract_repo_info(source_url)
+        logger.info(f"Using GitHub repository: {owner}/{repo}, branch: {branch}")
+    except ValueError as e:
+        logger.error(f"Invalid GitHub URL: {str(e)}")
+        raise DownloadError(f"Invalid GitHub URL: {str(e)}")
         
     # Download rules in parallel
     downloaded_rules = []
@@ -145,8 +196,11 @@ def download_rules(
         # Submit download tasks
         future_to_rule = {
             executor.submit(
-                download_rule,
+                download_rule_from_github,
                 rule,
+                owner,
+                repo,
+                branch,
                 temp_dir,
                 rate_limiter,
                 session,
@@ -192,18 +246,24 @@ def download_rules(
     
     return downloaded_rules
 
-def download_rule(
+def download_rule_from_github(
     rule: Dict[str, Any],
+    owner: str,
+    repo: str,
+    branch: str,
     temp_dir: Path,
     rate_limiter: utils.RateLimiter,
     session: requests.Session,
     max_retries: int,
 ) -> Optional[Dict[str, Any]]:
     """
-    Download a single MDC rule file with validation.
+    Download a single MDC rule file from GitHub with validation.
     
     Args:
         rule: Rule metadata
+        owner: GitHub repository owner
+        repo: GitHub repository name
+        branch: GitHub repository branch
         temp_dir: Temporary directory to store downloaded file
         rate_limiter: Rate limiter instance
         session: Requests session
@@ -215,13 +275,11 @@ def download_rule(
     Raises:
         ValidationError: If the downloaded content fails validation
     """
-    url = rule["url"]
     name = rule["name"]
+    file_path = f"rules-mdc/{name}.mdc"
     
-    # Validate URL
-    is_trusted, error_msg = utils.is_url_trusted(url)
-    if not is_trusted:
-        raise ValidationError(f"URL validation failed for {name}: {error_msg}")
+    # Create the GitHub API URL for the file
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}?ref={branch}"
     
     # Create local file path
     local_path = temp_dir / f"{name}.mdc"
@@ -232,10 +290,17 @@ def download_rule(
             # Respect rate limit
             rate_limiter.wait()
             
-            # Download the file
-            response = session.get(url, timeout=DEFAULT_TIMEOUT)
+            # Download the file using GitHub API
+            response = session.get(api_url, timeout=DEFAULT_TIMEOUT)
             response.raise_for_status()
-            content = response.text
+            
+            # Extract content from GitHub API response
+            data = response.json()
+            if "content" not in data:
+                raise ValidationError(f"GitHub API response doesn't contain file content for {name}")
+                
+            # Decode base64 content
+            content = base64.b64decode(data["content"].replace("\n", "")).decode("utf-8")
             
             # Validate content
             is_valid, error_msg = utils.validate_mdc_content(content)
@@ -312,18 +377,12 @@ def preview_rule_content(rule: Dict[str, Any], max_lines: int = 10) -> str:
     if "content" not in rule:
         return "Content not available"
     
-    content = rule["content"]
-    lines = content.split("\n")
-    
+    lines = rule["content"].splitlines()
     if len(lines) <= max_lines:
-        return content
+        return rule["content"]
     
-    # Show first few lines and indicate there's more
-    preview_lines = lines[:max_lines]
-    preview = "\n".join(preview_lines)
-    preview += f"\n... ({len(lines) - max_lines} more lines)"
-    
-    return preview
+    # Show first few lines
+    return "\n".join(lines[:max_lines]) + f"\n... (and {len(lines) - max_lines} more lines)"
 
 if __name__ == "__main__":
     # For testing

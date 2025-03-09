@@ -83,8 +83,8 @@ def parse_args():
     
     parser.add_argument(
         "--source",
-        default="https://raw.githubusercontent.com/sanjeed5/awesome-cursor-rules-mdc/main",
-        help="Base URL for downloading rules"
+        default="https://github.com/sanjeed5/awesome-cursor-rules-mdc",
+        help="GitHub repository URL for downloading rules"
     )
     
     parser.add_argument(
