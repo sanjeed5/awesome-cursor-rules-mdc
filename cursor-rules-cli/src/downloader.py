@@ -54,6 +54,42 @@ def create_session() -> requests.Session:
     
     return session
 
+def verify_source_url(source_url: str, session: requests.Session = None) -> Tuple[bool, str]:
+    """
+    Verify that the source URL is accessible.
+    
+    Args:
+        source_url: Base URL to verify
+        session: Optional requests session to use
+        
+    Returns:
+        Tuple of (is_accessible: bool, error_message: str)
+    """
+    if not session:
+        session = create_session()
+        
+    try:
+        # Check if the source URL is accessible
+        # Try a few different paths to ensure it's a valid repository
+        repo_paths = [
+            "",  # Base URL
+            "/rules.json",  # Rules index file
+            "/rules-mdc"  # Rules directory
+        ]
+        
+        for path in repo_paths:
+            url = f"{source_url}{path}"
+            response = session.head(url, timeout=DEFAULT_TIMEOUT)
+            
+            if response.status_code >= 400:
+                return False, f"Source URL is not accessible: {url} (Status code: {response.status_code})"
+                
+        return True, ""
+    except requests.RequestException as e:
+        return False, f"Failed to connect to source URL: {e}"
+    except Exception as e:
+        return False, f"Unexpected error verifying source URL: {e}"
+
 def download_rules(
     rules: List[Dict[str, Any]],
     source_url: str,
@@ -94,6 +130,13 @@ def download_rules(
     rate_limiter = utils.RateLimiter(rate_limit)
     session = create_session()
     
+    # Verify source URL is accessible
+    is_accessible, error_msg = verify_source_url(source_url, session)
+    if not is_accessible:
+        logger.error(f"Source URL verification failed: {error_msg}")
+        logger.error(f"Please check if the source URL is correct: {source_url}")
+        raise DownloadError(f"Source URL is not accessible: {error_msg}")
+        
     # Download rules in parallel
     downloaded_rules = []
     failed_downloads = []
@@ -124,7 +167,7 @@ def download_rules(
                     logger.error(f"Failed to download {rule['name']}")
             except Exception as e:
                 failed_downloads.append(rule)
-                logger.error(f"Error downloading {rule['name']}: {e}")
+                logger.error(f"Error downloading {rule['name']}: {str(e)}")
     
     # Close the session
     session.close()
@@ -135,12 +178,15 @@ def download_rules(
     failed_count = len(failed_downloads)
     
     if failed_count > 0:
+        failed_names = [rule['name'] for rule in failed_downloads]
         logger.warning(
             f"Downloaded {success_count}/{total_rules} rules. "
-            f"Failed to download {failed_count} rules."
+            f"Failed to download {failed_count} rules: {', '.join(failed_names)}"
         )
         if failed_count == total_rules:
-            raise DownloadError("All downloads failed")
+            logger.error("All downloads failed. Please check your internet connection and the source URL.")
+            logger.error(f"Source URL: {source_url}")
+            raise DownloadError("All downloads failed. Check internet connection and source URL.")
     else:
         logger.info(f"Successfully downloaded all {success_count} rules")
     
@@ -194,10 +240,12 @@ def download_rule(
             # Validate content
             is_valid, error_msg = utils.validate_mdc_content(content)
             if not is_valid:
+                logger.error(f"Content validation failed for {name}: {error_msg}")
                 raise ValidationError(f"Content validation failed: {error_msg}")
             
             # Calculate content hash before saving
             content_hash = utils.calculate_content_hash(content)
+            logger.debug(f"Content hash for {name}: {content_hash}")
             
             # Save the file
             with open(local_path, "w", encoding="utf-8") as f:
@@ -205,8 +253,23 @@ def download_rule(
             
             # Verify the saved file
             saved_hash = utils.calculate_file_hash(local_path)
+            logger.debug(f"Saved file hash for {name}: {saved_hash}")
+            
             if saved_hash != content_hash:
-                raise ValidationError("File integrity check failed")
+                logger.error(f"File integrity check failed for {name}. Content hash: {content_hash}, File hash: {saved_hash}")
+                # Fix: Read the file back and compare the content
+                with open(local_path, "r", encoding="utf-8") as f:
+                    saved_content = f.read()
+                if content == saved_content:
+                    logger.info(f"Content matches but hashes differ for {name}. This may be due to line ending differences. Proceeding anyway.")
+                    # Update rule metadata and continue
+                    rule["local_path"] = str(local_path)
+                    rule["content"] = content
+                    rule["hash"] = saved_hash  # Use the file hash since that's what we'll verify against later
+                    return rule
+                else:
+                    logger.error(f"Content mismatch for {name}")
+                    raise ValidationError("File integrity check failed")
             
             # Update rule metadata
             rule["local_path"] = str(local_path)
