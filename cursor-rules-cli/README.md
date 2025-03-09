@@ -16,6 +16,7 @@ A simple tool that helps you find and install the right Cursor rules for your pr
 - 🎨 Provides a colorful, user-friendly interface
 - 🔀 Works with custom rule repositories
 - 🔒 100% privacy-focused (all scanning happens locally)
+- 🔄 GitHub API integration for reliable downloads
 
 ## Installation
 
@@ -46,14 +47,29 @@ cursor-rules -d /path/to/my/project
 | `--quick-scan` | Faster scan (checks package files only) |
 | `--max-results N` | Show top N results (default: 20) |
 
-## Custom Repositories (not tested yet)
+## Custom Repositories
 
 ```bash
-# Use rules from your own repository
-cursor-rules --custom-repo your-username/your-repo
+# Use rules from your own GitHub repository
+cursor-rules --source https://github.com/your-username/your-repo
 
 # Save repository setting for future use
-cursor-rules --custom-repo your-username/your-repo --save-config
+cursor-rules --source https://github.com/your-username/your-repo --save-config
+```
+
+## Repository URL Format
+
+The tool now uses the GitHub API to reliably download rules. You can specify the repository URL in several formats:
+
+```bash
+# Standard GitHub repository URL (recommended)
+cursor-rules --source https://github.com/username/repo
+
+# With a specific branch
+cursor-rules --source https://github.com/username/repo/tree/branch-name
+
+# Legacy raw content URL will also work
+cursor-rules --source https://raw.githubusercontent.com/username/repo/branch
 ```
 
 ## Configuration
