@@ -15,20 +15,6 @@ This project generates Cursor MDC (Markdown Cursor) rule files from a structured
 - Tracks progress to allow resuming interrupted runs
 - Smart retry system that focuses on failed libraries by default
 
-## CLI Tool
-
-We provide a [CLI tool](./cursor-rules-cli/README.md) that helps developers find and install the right Cursor rules for their projects. It scans projects to identify libraries and frameworks, then suggests and installs matching rules.
-
-```bash
-# Install the CLI tool
-uv add cursor-rules
-
-# Scan your project and install matching rules
-cursor-rules
-```
-
-See the [CLI README](./cursor-rules-cli/README.md) for more details.
-
 ## Prerequisites
 
 - Python 3.8+
@@ -134,7 +120,7 @@ The script uses a `config.yaml` file for configuration. You can modify this file
 
 ```
 .
-├── cursor-rules-cli/     # CLI tool for finding and installing rules
+├── cursor-rules-cli/     # CLI tool for finding and installing rules (deprecated)
 │   ├── src/              # CLI source code
 │   ├── docs/             # CLI documentation
 │   └── README.md         # CLI usage instructions
