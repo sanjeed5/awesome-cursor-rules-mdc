@@ -83,8 +83,8 @@ def parse_args():
     
     parser.add_argument(
         "--source",
-        default="https://raw.githubusercontent.com/sanjeed5/awesome-cursor-rules-mdc/main",
-        help="Base URL for downloading rules"
+        default="https://github.com/sanjeed5/awesome-cursor-rules-mdc",
+        help="GitHub repository URL for downloading rules"
     )
     
     parser.add_argument(
@@ -271,18 +271,29 @@ def main():
                 for rule in selected_rules:
                     logger.info(f"  - {Fore.CYAN}{rule}{Style.RESET_ALL}")
             else:
-                downloaded_rules = download_rules(selected_rules, config["source"])
-                
-                # Install downloaded rules
-                result = install_rules(downloaded_rules, force=args.force)
-                
-                if result["installed"]:
-                    logger.info(f"{Fore.GREEN}✅ Successfully installed {len(result['installed'])} rules!{Style.RESET_ALL}")
-                
-                if result["failed"]:
-                    logger.warning(f"{Fore.YELLOW}⚠️ Failed to install {len(result['failed'])} rules:{Style.RESET_ALL}")
-                
-            return 0
+                try:
+                    # Normalize source URL if needed (remove trailing slashes)
+                    source_url = config["source"].rstrip('/')
+                    
+                    # Log source information
+                    logger.info(f"Using source URL: {source_url}")
+                    
+                    # Download selected rules
+                    downloaded_rules = download_rules(selected_rules, source_url)
+                    
+                    # Install downloaded rules
+                    result = install_rules(downloaded_rules, force=args.force)
+                    
+                    if result["installed"]:
+                        logger.info(f"{Fore.GREEN}✅ Successfully installed {len(result['installed'])} rules!{Style.RESET_ALL}")
+                    
+                    if result["failed"]:
+                        logger.warning(f"{Fore.YELLOW}⚠️ Failed to install {len(result['failed'])} rules:{Style.RESET_ALL}")
+                        for rule in result["failed"]:
+                            logger.warning(f"  - {Fore.CYAN}{rule}{Style.RESET_ALL}")
+                except Exception as e:
+                    logger.error(f"An error occurred: {str(e)}")
+                    return 1
         
         except KeyboardInterrupt:
             logger.info(f"\n{Fore.YELLOW}Operation cancelled by user.{Style.RESET_ALL}")
@@ -432,7 +443,8 @@ def main():
             
             if result["failed"]:
                 logger.warning(f"{Fore.YELLOW}⚠️ Failed to install {len(result['failed'])} rules:{Style.RESET_ALL}")
-                
+                for rule in result["failed"]:
+                    logger.warning(f"  - {Fore.CYAN}{rule}{Style.RESET_ALL}")
             
         return 0
     

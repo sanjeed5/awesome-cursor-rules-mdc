@@ -56,7 +56,7 @@ def match_libraries(
     for rule in matched_rules:
         rule_name = rule.get("rule")
         rule["name"] = rule_name
-        rule["url"] = f"{source_url}/rules-mdc/{rule_name}.mdc"
+        # We don't construct a URL here anymore - the downloader will handle this using GitHub API
         
         # Mark direct matches
         if direct_match_libraries and rule_name.lower() in (lib.lower() for lib in direct_match_libraries):

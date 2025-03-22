@@ -62,6 +62,8 @@ def calculate_content_hash(content: str) -> str:
     Returns:
         SHA-256 hash as hex string
     """
+    # Normalize line endings to '\n'
+    content = content.replace('\r\n', '\n').replace('\r', '\n')
     return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
 def get_cursor_dir() -> Path:
@@ -289,12 +291,15 @@ def calculate_file_hash(file_path: Path) -> Optional[str]:
         SHA-256 hash as a hex string, or None if failed
     """
     try:
-        with open(file_path, "rb") as f:
-            file_hash = hashlib.sha256()
-            # Read in chunks to handle large files
-            for chunk in iter(lambda: f.read(4096), b""):
-                file_hash.update(chunk)
-        return file_hash.hexdigest()
+        # Read the file as text and normalize line endings
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # Normalize line endings to '\n'
+        content = content.replace('\r\n', '\n').replace('\r', '\n')
+        
+        # Calculate hash from normalized content
+        return hashlib.sha256(content.encode('utf-8')).hexdigest()
     except IOError as e:
         logger.error(f"Failed to calculate hash for {file_path}: {e}")
         return None
