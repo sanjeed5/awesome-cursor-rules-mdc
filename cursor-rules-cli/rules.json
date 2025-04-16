@@ -57,6 +57,10 @@
       "tags": ["frontend", "framework", "javascript"]
     },
     {
+      "name": "astro",
+      "tags": ["frontend", "framework", "javascript", "ssr"]
+    },
+    {
       "name": "express",
       "tags": ["backend", "framework", "javascript", "nodejs"]
     },
