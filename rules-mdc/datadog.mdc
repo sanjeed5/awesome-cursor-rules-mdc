@@ -1,6 +1,6 @@
 ---
 description: This rule outlines best practices for coding standards, observability, and effective use of the Datadog library in Python projects. It covers coding style, metric/tag naming, dashboard design, security, and performance optimization.
-globs: **/*.py
+globs: *.py
 ---
 - **Coding Standards**
   - Use `black` for code formatting to ensure consistent style.

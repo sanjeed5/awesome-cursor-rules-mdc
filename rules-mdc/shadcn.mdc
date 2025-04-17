@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for developing with Shadcn UI, covering code organization, performance, security, and testing.
-globs: **/*.{js,jsx,ts,tsx}
+globs: *.js,*.jsx,*.ts,*.tsx
 ---
 # Shadcn UI Best Practices
 

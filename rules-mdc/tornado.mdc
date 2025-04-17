@@ -1,6 +1,6 @@
 ---
 description: Comprehensive best practices and coding standards for the Tornado framework. This rule provides guidelines on code organization, performance, security, testing, and common pitfalls when developing Tornado applications.
-globs: **/*.py
+globs: *.py
 ---
 ## 1. Code Organization and Structure
 

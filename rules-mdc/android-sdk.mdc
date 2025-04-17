@@ -1,6 +1,6 @@
 ---
 description: This rule file provides comprehensive best practices for Android SDK development, encompassing code organization, performance, security, testing, and common pitfalls. It aims to guide developers in creating robust, maintainable, and efficient Android applications and libraries.
-globs: **/*.{java,kt,xml,gradle,properties}
+globs: *.java,*.kt,*.xml,*.gradle,*.properties
 ---
 - MUST be under source control management (SCM). RECOMMENDED source control management is git
 - If you intend your source repo to be public ensure you have received the necessary management and legal approval

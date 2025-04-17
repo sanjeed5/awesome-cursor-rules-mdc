@@ -1,6 +1,6 @@
 ---
 description: Provides guidelines for using gcp-cli, including best practices for scripting, configuration management, security, and performance. Focuses on automation, predictable output, and secure authentication within Google Cloud environments.
-globs: **/*.{sh,yaml,tf,py}
+globs: *.sh,*.yaml,*.tf,*.py
 ---
 - **Scripting Best Practices**:
   - **Use the `--quiet` flag**: Suppress prompts for non-interactive script execution.

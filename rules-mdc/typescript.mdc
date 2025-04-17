@@ -1,6 +1,6 @@
 ---
 description: Enforces best practices for TypeScript development, including coding standards, performance considerations, and common pitfalls. This rule provides actionable guidance for developers to write clean, maintainable, and scalable TypeScript code.
-globs: **/*.ts?(x)
+globs: *.ts?(x)
 ---
 # TypeScript Best Practices and Coding Standards
 

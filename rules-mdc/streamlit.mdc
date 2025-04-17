@@ -1,6 +1,6 @@
 ---
 description: This rule provides guidelines and best practices for developing maintainable, performant, and secure Streamlit applications. It covers code organization, performance optimization, security considerations, testing strategies, and common pitfalls to avoid.
-globs: **/*.py
+globs: *.py
 ---
 - **Code Organization and Structure**:
   - **Directory Structure**: Structure your Streamlit application using a modular directory structure to improve maintainability and collaboration. A suggested layout includes folders for pages, services, models, components, and utilities.

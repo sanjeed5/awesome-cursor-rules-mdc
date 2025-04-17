@@ -1,6 +1,6 @@
 ---
 description: This rule file outlines best practices for Netlify development, covering code structure, performance, security, testing, and deployment. It aims to provide a comprehensive guide for building robust and scalable applications on Netlify.
-globs: **/*.{js,jsx,ts,tsx,html,css,scss,md}
+globs: *.js,*.jsx,*.ts,*.tsx,*.html,*.css,*.scss,*.md
 ---
 # Netlify Library Best Practices and Coding Standards
 

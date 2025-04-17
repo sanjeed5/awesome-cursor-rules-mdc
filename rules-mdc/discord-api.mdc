@@ -1,6 +1,6 @@
 ---
 description: This rule provides best practices and coding standards for developing applications with the discord-api library. It covers code organization, performance, security, testing, and common pitfalls to ensure robust and maintainable Discord integrations.
-globs: **/*.{js,ts,jsx,tsx,py,cs}
+globs: *.js,*.ts,*.jsx,*.tsx,*.py,*.cs
 ---
 ## 1. Code Organization and Structure
 

@@ -1,6 +1,6 @@
 ---
 description: Enforces best practices for Java development, covering code style, performance, security, and testing. Provides guidelines for writing clean, maintainable, and efficient Java code.
-globs: **/*.java
+globs: *.java
 ---
 - # Java Best Practices
 

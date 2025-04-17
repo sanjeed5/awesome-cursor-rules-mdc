@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for Rust development, covering code organization, common patterns, performance, security, testing, pitfalls, and tooling. It aims to guide developers in writing idiomatic, efficient, secure, and maintainable Rust code.
-globs: **/*.rs
+globs: *.rs
 ---
 # Rust Best Practices
 

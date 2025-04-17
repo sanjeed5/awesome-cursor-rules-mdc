@@ -1,6 +1,6 @@
 ---
 description: This rule provides guidelines for best practices when working with the Hugging Face Transformers library, covering code organization, performance, testing, security, and common pitfalls. It emphasizes community standards and maintainability.
-globs: **/*.py
+globs: *.py
 ---
 # Hugging Face Transformers Library Best Practices
 

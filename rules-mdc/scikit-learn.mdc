@@ -1,6 +1,6 @@
 ---
 description: Enforces best practices and coding standards for scikit-learn projects, promoting maintainability, performance, and security. This rule provides guidelines on code organization, common patterns, performance optimization, testing, and common pitfalls.
-globs: **/*.py
+globs: *.py
 ---
 # Scikit-learn Best Practices and Coding Standards
 

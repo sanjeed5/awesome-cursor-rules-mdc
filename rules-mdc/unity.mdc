@@ -1,6 +1,6 @@
 ---
 description: This rule provides best practices for Unity C# development, covering code style, organization, performance, and security to ensure maintainable and efficient projects.
-globs: **/*.cs
+globs: *.cs
 ---
 # Unity C# Best Practices and Coding Standards
 

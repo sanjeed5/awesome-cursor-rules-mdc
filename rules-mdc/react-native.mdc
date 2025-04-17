@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices and coding standards for React Native development, covering code organization, performance, security, testing, and common pitfalls.
-globs: **/*.{js,jsx,ts,tsx}
+globs: *.js,*.jsx,*.ts,*.tsx
 ---
 - Use TypeScript for type safety and improved code maintainability.
 - Prefer functional components with hooks over class components for simplicity and reusability.

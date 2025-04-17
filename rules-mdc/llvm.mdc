@@ -1,6 +1,6 @@
 ---
 description: This rule enforces LLVM's coding standards and promotes best practices for writing efficient, maintainable, and robust code within the LLVM ecosystem. It covers style, language usage, optimization strategies, and more.
-globs: **/*.{h,hpp,c,cc,cpp,ll,mlir}
+globs: *.h,*.hpp,*.c,*.cc,*.cpp,*.ll,*.mlir
 ---
 - Adhere to LLVM's coding standards to ensure code consistency, readability, and maintainability.
 - Always follow the [LLVM Coding Standards](https://llvm.org/docs/CodingStandards.html) and [LLVM Developer Policy](https://llvm.org/docs/DeveloperPolicy.html).

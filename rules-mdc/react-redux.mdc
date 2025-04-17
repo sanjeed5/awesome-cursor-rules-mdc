@@ -1,6 +1,6 @@
 ---
 description: Enforces best practices for structuring and maintaining React-Redux applications, focusing on code organization, performance, and maintainability. This rule provides guidelines for developers to write efficient, scalable, and testable React-Redux code.
-globs: **/*.{js,jsx,ts,tsx}
+globs: *.js,*.jsx,*.ts,*.tsx
 ---
 # React-Redux Best Practices
 

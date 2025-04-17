@@ -1,6 +1,6 @@
 ---
 description: This rule file provides comprehensive guidelines for using Font Awesome effectively, covering setup, styling, accessibility, performance, and security best practices. It ensures consistent and optimized usage across projects.
-globs: **/*.{html,css,js,jsx,ts,tsx}
+globs: *.html,*.css,*.js,*.jsx,*.ts,*.tsx
 ---
 # Font Awesome Best Practices
 

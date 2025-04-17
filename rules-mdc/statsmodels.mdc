@@ -1,6 +1,6 @@
 ---
 description: A comprehensive guide to best practices for using the statsmodels library in Python, covering code organization, performance, testing, and common pitfalls. These guidelines promote maintainable, reliable, and efficient statsmodels code.
-globs: **/*.py
+globs: *.py
 ---
 # Statsmodels Library Best Practices
 

@@ -1,6 +1,6 @@
 ---
 description: This rule provides best practices and coding standards for Solidity smart contract development, covering code organization, security, performance, and testing.
-globs: **/*.sol
+globs: *.sol
 ---
 # Solidity Smart Contract Best Practices and Coding Standards
 

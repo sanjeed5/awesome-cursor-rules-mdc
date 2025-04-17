@@ -1,6 +1,6 @@
 ---
 description: This rule file provides comprehensive guidelines for PyQt development, covering code organization, common patterns, performance, security, testing, and tooling. It aims to help developers create maintainable, efficient, and secure PyQt applications.
-globs: **/*.py
+globs: *.py
 ---
 - **Follow Consistent Importing:**
   - Avoid wildcard imports like `from PyQt5.QtGui import *`. They clutter the namespace and can lead to naming conflicts.

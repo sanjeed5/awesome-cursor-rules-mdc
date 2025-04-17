@@ -1,6 +1,6 @@
 ---
 description: This rule enforces best practices for using react-query in React applications, covering code organization, performance, security, and testing.
-globs: **/*.{js,jsx,ts,tsx}
+globs: *.js,*.jsx,*.ts,*.tsx
 ---
 # react-query Best Practices
 

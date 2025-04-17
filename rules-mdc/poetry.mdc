@@ -1,6 +1,6 @@
 ---
 description: This rule set provides comprehensive guidance on best practices for using Poetry in Python projects, including dependency management, project structure, and coding standards. It covers various aspects such as code organization, performance considerations, security, testing, and tooling.
-globs: **/*.py
+globs: *.py
 ---
 # Poetry Python Library Best Practices
 

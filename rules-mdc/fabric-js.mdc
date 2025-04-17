@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for developing applications with Fabric.js, covering code organization, performance optimization, security considerations, and testing strategies. It aims to help developers create efficient, maintainable, and secure Fabric.js-based applications.
-globs: **/*.js
+globs: *.js
 ---
 # Fabric.js Best Practices and Coding Standards
 

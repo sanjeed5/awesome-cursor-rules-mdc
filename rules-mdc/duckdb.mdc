@@ -1,6 +1,6 @@
 ---
 description: This rule file outlines best practices for developing with DuckDB, covering code organization, performance optimization, security considerations, and testing strategies. It aims to improve code quality, maintainability, and overall project health when using DuckDB.
-globs: **/*.{sql,ddl,md,duckdb}
+globs: *.sql,*.ddl,*.md,*.duckdb
 ---
 # DuckDB Best Practices and Coding Standards
 

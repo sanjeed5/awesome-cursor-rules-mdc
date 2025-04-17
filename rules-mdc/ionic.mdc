@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for Ionic Framework development, covering code organization, performance, security, testing, and more.  Following these guidelines will result in more maintainable, performant, and secure Ionic applications.
-globs: **/*.{ts,html,scss}
+globs: *.ts,*.html,*.scss
 ---
 ---
 # Ionic Framework Best Practices

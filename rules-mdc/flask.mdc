@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for developing Flask applications, covering code structure, security, performance, and testing.
-globs: **/*.py
+globs: *.py
 ---
 - ## Code Organization and Structure:
   - **Directory Structure Best Practices:**

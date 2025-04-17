@@ -1,6 +1,6 @@
 ---
 description: This rule enforces best practices for using the `net/http` ServeMux in Go, promoting clean, maintainable, and efficient code. It covers routing, handler design, and error handling specifics to help developers leverage ServeMux effectively.
-globs: **/*.go
+globs: *.go
 ---
 ---
 # servemux Best Practices and Coding Standards

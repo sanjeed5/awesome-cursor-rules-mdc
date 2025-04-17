@@ -1,6 +1,6 @@
 ---
 description: This rule outlines comprehensive best practices for Laravel development, covering coding standards, security, performance, and testing to ensure maintainable, efficient, and secure applications. It provides guidelines for code organization, common patterns, performance considerations, security best practices, testing approaches, common pitfalls, and tooling.
-globs: **/*.php
+globs: *.php
 ---
 - Adhere to PSR coding standards (PSR-1, PSR-2, PSR-12).
 - Use meaningful and descriptive variable, function, and class names.

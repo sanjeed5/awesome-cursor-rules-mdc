@@ -1,6 +1,6 @@
 ---
 description: Comprehensive guidelines and best practices for Flutter development, covering code organization, performance optimization, security, testing, and tooling.
-globs: **/*.dart
+globs: *.dart
 ---
 - Adhere to the official Flutter style guide.  This forms the foundation for maintainable and consistent code.
 - Utilize the latest stable version of Flutter, keeping up-to-date with new features and security patches. Review Flutter's breaking changes and migration guides during updates.

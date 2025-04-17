@@ -1,11 +1,11 @@
 ---
 description: Comprehensive guide for Tailwind CSS best practices, covering code organization, performance optimization, security considerations, and common pitfalls. This rule provides actionable guidance for developers to build scalable and maintainable Tailwind CSS projects.
-globs: **/*.{html,js,jsx,ts,tsx,vue}
+globs: *.html,*.js,*.jsx,*.ts,*.tsx,*.vue
 ---
 - Leverage Tailwind's PurgeCSS to remove unused styles in production. Configure `purge` in `tailwind.config.js` to specify files to scan for Tailwind classes.  Example:
   javascript
   module.exports = {
-    purge: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
+    purge: ['./src/*.js,*.jsx,*.ts,*.tsx', './public/index.html'],
     darkMode: false, // or 'media' or 'class'
     theme: {
       extend: {},

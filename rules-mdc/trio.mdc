@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for developing with the Trio asynchronous I/O library in Python, covering code organization, performance, testing, and common pitfalls.
-globs: **/*.py
+globs: *.py
 ---
 - Use `flake8-async` to check for issues in Trio code. `@file:flake8_async_rules.mdc`
 - Utilize Trio's nursery feature for managing concurrent tasks to prevent orphaned tasks and improve error handling. Use `async with trio.open_nursery() as nursery: nursery.start_soon(my_task)`. See Trio documentation for advanced usage.

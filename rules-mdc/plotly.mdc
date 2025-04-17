@@ -1,6 +1,6 @@
 ---
 description: This rule file provides best practices and coding standards for using the Plotly library, focusing on code organization, performance, security, testing, and common pitfalls. It aims to guide developers in creating maintainable, efficient, and secure Plotly applications.
-globs: **/*.py
+globs: *.py
 ---
 # Plotly Best Practices and Coding Standards
 

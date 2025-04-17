@@ -1,6 +1,6 @@
 ---
 description: Provides comprehensive guidance on best practices for coding standards, performance, security, and testing in NLTK projects. This rule helps developers write clean, maintainable, and efficient NLP code using NLTK.
-globs: **/*.py
+globs: *.py
 ---
 - Follow these guidelines for consistency and maintainability of your code.
 
