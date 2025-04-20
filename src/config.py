@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
-from constants import CONFIG_FILE
+from constants import CONFIG_FILE, SCRIPT_DIR
 import yaml
+from typing import Optional
 
 @dataclass
 class Paths:
@@ -50,4 +51,18 @@ class Config:
       api=ApiConfig(**data["api"]),
       exa_api=ExaApiConfig(**data["exa_api"]),
       processing=ProcessingConfig(**data["processing"])
-    ) 
+    )
+
+# Global CONFIG instance
+_config_instance: Optional[Config] = None
+
+def get_config() -> Config:
+    """Get the global CONFIG instance, initializing it if necessary."""
+    global _config_instance
+    if _config_instance is None:
+        config_path = SCRIPT_DIR / CONFIG_FILE
+        _config_instance = Config.load(str(config_path))
+    return _config_instance
+
+# Initialize the global CONFIG instance
+CONFIG = get_config() 
