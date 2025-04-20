@@ -2,8 +2,8 @@
 Logging configuration for the MDC generation process.
 """
 
-import logging
 import datetime
+import logging
 from pathlib import Path
 
 # Get the script directory for absolute path resolution
@@ -21,12 +21,9 @@ log_file = logs_dir / f"mdc_generation_{timestamp}.log"
 # Configure logging to both console and file
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
 )
 
 logger = logging.getLogger(__name__)
-logger.info(f"Starting MDC generation. Logs will be saved to {log_file}") 
+logger.info(f"Starting MDC generation. Logs will be saved to {log_file}")
