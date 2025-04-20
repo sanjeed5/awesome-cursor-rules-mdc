@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from config import CONFIG
 from constants import SCRIPT_DIR
 from logger import logger
-from mdc import process_rules_json
+from mdc_generator import process_rules_json
 
 # Enable JSON schema validation in LiteLLM
 litellm.enable_json_schema_validation = True
