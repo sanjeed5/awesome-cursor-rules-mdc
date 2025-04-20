@@ -14,9 +14,9 @@ import argparse
 from exa_py import Exa
 import concurrent.futures
 from functools import partial
-import yaml
 import sys
 import shutil
+from config import Config
 
 # Enable JSON schema validation in LiteLLM
 import litellm
@@ -49,68 +49,8 @@ logger.info(f"Starting MDC generation. Logs will be saved to {log_file}")
 # Load environment variables
 load_dotenv()
 
-# Default configuration
-DEFAULT_CONFIG = {
-    "paths": {
-        "mdc_instructions": "mdc-instructions.txt",
-        "rules_json": "../rules.json",
-        "output_dir": "../rules-mdc",
-        "exa_results_dir": "../exa_results",  # Directory to store Exa results
-    },
-    "api": {
-        "llm_model": "gemini/gemini-2.0-flash",
-        "rate_limit_calls": 2000,
-        "rate_limit_period": 60,
-        "max_retries": 3,
-        "retry_min_wait": 4,
-        "retry_max_wait": 10
-    },
-    "exa_api": {
-        "rate_limit_calls": 5,
-        "rate_limit_period": 1,
-        "max_retries": 3,
-        "retry_min_wait": 1,
-        "retry_max_wait": 5
-    },
-    "processing": {
-        "max_workers": 4,
-        "chunk_size": 50000,
-        "retry_failed_only": True  # Default to retry only failed libraries
-    }
-}
-
-# Load or create configuration
-def load_config() -> Dict[str, Any]:
-    """Load configuration from config.yaml or create default if not exists."""
-    config_path = SCRIPT_DIR / "config.yaml"
-    if config_path.exists():
-        try:
-            with open(config_path, "r") as f:
-                config = yaml.safe_load(f)
-                logger.info("Loaded configuration from config.yaml")
-                # Merge with defaults to ensure all required keys exist
-                merged_config = DEFAULT_CONFIG.copy()
-                for section, values in config.items():
-                    if section in merged_config and isinstance(values, dict):
-                        merged_config[section].update(values)
-                    else:
-                        merged_config[section] = values
-                return merged_config
-        except Exception as e:
-            logger.warning(f"Error loading config.yaml: {str(e)}. Using default configuration.")
-            return DEFAULT_CONFIG
-    else:
-        # Create default config file
-        try:
-            with open(config_path, "w") as f:
-                yaml.dump(DEFAULT_CONFIG, f, default_flow_style=False)
-            logger.info("Created default configuration file config.yaml")
-        except Exception as e:
-            logger.warning(f"Could not create config.yaml: {str(e)}")
-        return DEFAULT_CONFIG
-
 # Global configuration
-CONFIG = load_config()
+CONFIG = Config.load(SCRIPT_DIR / "config.yaml")
 
 class MDCRule(BaseModel):
     """Model for MDC rule data."""
@@ -197,7 +137,7 @@ def validate_environment_variables() -> bool:
     required_vars = []
     
     # Check for LiteLLM API key (depends on the model being used)
-    model = CONFIG["api"]["llm_model"]
+    model = CONFIG.api.llm_model
     if model.startswith("gemini"):
         required_vars.append("GEMINI_API_KEY")
     elif model.startswith("gpt") or model.startswith("openai"):
@@ -229,10 +169,10 @@ def initialize_exa_client() -> Optional[Exa]:
         logger.error(f"Failed to initialize Exa client: {str(e)}")
         return None
 
-@retry(stop=stop_after_attempt(CONFIG["exa_api"]["max_retries"]), 
-       wait=wait_exponential(multiplier=1, min=CONFIG["exa_api"]["retry_min_wait"], max=CONFIG["exa_api"]["retry_max_wait"]))
+@retry(stop=stop_after_attempt(CONFIG.exa_api.max_retries), 
+       wait=wait_exponential(multiplier=1, min=CONFIG.exa_api.retry_min_wait, max=CONFIG.exa_api.retry_max_wait))
 @sleep_and_retry
-@limits(calls=CONFIG["exa_api"]["rate_limit_calls"], period=CONFIG["exa_api"]["rate_limit_period"])
+@limits(calls=CONFIG.exa_api.rate_limit_calls, period=CONFIG.exa_api.rate_limit_period)
 def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] = None, tags: List[str] = None) -> Dict[str, Any]:
     """Use Exa to search for best practices for a library."""
     if exa_client is None:
@@ -261,7 +201,7 @@ def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] 
         }
         
         # Save the Exa result to a file
-        exa_results_dir = SCRIPT_DIR / CONFIG["paths"]["exa_results_dir"]
+        exa_results_dir = SCRIPT_DIR / CONFIG.paths.exa_results_dir
         exa_results_dir.mkdir(parents=True, exist_ok=True)
         
         # Create a safe filename
@@ -286,14 +226,14 @@ def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] 
         return {"answer": "", "citations": []}
 
 @sleep_and_retry
-@limits(calls=CONFIG["api"]["rate_limit_calls"], period=CONFIG["api"]["rate_limit_period"])
-@retry(stop=stop_after_attempt(CONFIG["api"]["max_retries"]), 
-       wait=wait_exponential(multiplier=1, min=CONFIG["api"]["retry_min_wait"], max=CONFIG["api"]["retry_max_wait"]))
+@limits(calls=CONFIG.api.rate_limit_calls, period=CONFIG.api.rate_limit_period)
+@retry(stop=stop_after_attempt(CONFIG.api.max_retries), 
+       wait=wait_exponential(multiplier=1, min=CONFIG.api.retry_min_wait, max=CONFIG.api.retry_max_wait))
 def generate_mdc_rules_from_exa(library_info: LibraryInfo, exa_results: Dict[str, Any]) -> List[MDCRule]:
     """Generate MDC rules for a library using LLM directly from Exa results."""
     try:
         # Load MDC instructions
-        mdc_instructions_path = SCRIPT_DIR / CONFIG["paths"]["mdc_instructions"]
+        mdc_instructions_path = SCRIPT_DIR / CONFIG.paths.mdc_instructions
         if not mdc_instructions_path.exists():
             logger.warning(f"MDC instructions file not found at {mdc_instructions_path}")
             mdc_instructions = "Create rules with clear descriptions and appropriate glob patterns."
@@ -408,7 +348,7 @@ Your guidance should be useful for both beginners and experienced developers.
             )
         else:
             # Use existing Exa content
-            chunk_size = CONFIG["processing"]["chunk_size"]
+            chunk_size = CONFIG.processing.chunk_size
             exa_content_section = f"""Based on the following information about {library_info.name} best practices:
 
 Exa search results:
@@ -430,7 +370,7 @@ Add any important best practices that might be missing from the search results.
         
         logger.info(f"Sending enhanced prompt to LLM for {library_info.name}")
         response = completion(
-            model=CONFIG["api"]["llm_model"],
+            model=CONFIG.api.llm_model,
             messages=[{"role": "user", "content": prompt}],
             response_format={
                 "type": "json_object",
@@ -555,7 +495,7 @@ def process_single_library(library_info: Dict[str, Any], output_dir: str, exa_cl
 
 def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
                       specific_library: Optional[str] = None, specific_tag: Optional[str] = None,
-                      retry_failed_only: bool = False):
+                      retry_failed_only: bool = CONFIG.processing.retry_failed_only):
     """Process rules.json and generate MDC files."""
     # Check if rules.json exists
     json_path = Path(json_path)
@@ -652,7 +592,7 @@ def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
         return
     
     # Process libraries in parallel
-    max_workers = CONFIG["processing"]["max_workers"]
+    max_workers = CONFIG.processing.max_workers
     logger.info(f"Processing {len(libraries_to_process)} libraries with {max_workers} workers")
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -687,8 +627,8 @@ def main():
     parser.add_argument("--library", type=str, help="Process only a specific library")
     parser.add_argument("--output", type=str, default=None, help="Output directory for MDC files")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
-    parser.add_argument("--workers", type=int, help=f"Number of parallel workers (default: {CONFIG['processing']['max_workers']})")
-    parser.add_argument("--rate-limit", type=int, help=f"API rate limit calls per minute (default: {CONFIG['api']['rate_limit_calls']})")
+    parser.add_argument("--workers", type=int, help=f"Number of parallel workers (default: {CONFIG.processing.max_workers})")
+    parser.add_argument("--rate-limit", type=int, help=f"API rate limit calls per minute (default: {CONFIG.api.rate_limit_calls})")
     parser.add_argument("--log-dir", type=str, default="logs", help="Directory to save log files")
     parser.add_argument("--exa-results-dir", type=str, default=None, help="Directory to save Exa results")
     parser.add_argument("--regenerate-all", action="store_true", help="Regenerate all libraries, including previously completed ones")
@@ -702,17 +642,17 @@ def main():
     
     # Override config with command line arguments
     if args.workers:
-        CONFIG["processing"]["max_workers"] = args.workers
+        CONFIG.processing.max_workers = args.workers
     
     if args.rate_limit:
-        CONFIG["api"]["rate_limit_calls"] = args.rate_limit
+        CONFIG.api.rate_limit_calls = args.rate_limit
     
     if args.exa_results_dir:
-        CONFIG["paths"]["exa_results_dir"] = args.exa_results_dir
+        CONFIG.paths.exa_results_dir = args.exa_results_dir
     
     # Set paths with absolute paths
-    rules_json_path = SCRIPT_DIR / Path(CONFIG["paths"]["rules_json"])
-    output_dir = args.output if args.output else SCRIPT_DIR / Path(CONFIG["paths"]["output_dir"])
+    rules_json_path = SCRIPT_DIR / Path(CONFIG.paths.rules_json)
+    output_dir = args.output if args.output else SCRIPT_DIR / Path(CONFIG.paths.output_dir)
     
     # Check if rules.json exists
     if not rules_json_path.exists():
