@@ -11,6 +11,7 @@ from constants import CONFIG_FILE, SCRIPT_DIR
 class Paths:
     mdc_instructions: Path
     llm_instructions: Path
+    failover_exa_instructions: Path
     rules_json: Path
     output_dir: Path
     exa_results_dir: Path

@@ -1,6 +1,7 @@
 paths:
   mdc_instructions: "mdc-instructions.txt"
   llm_instructions: "llm-instructions.txt"
+  failover_exa_instructions: "failover-exa-instructions.txt"
   rules_json: "../rules.json"
   output_dir: "../rules-mdc"
   exa_results_dir: "../exa_results"

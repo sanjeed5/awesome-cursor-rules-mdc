@@ -1,0 +1,1 @@
+Research and generate a concise and comprehensive best practices guide from your knowledge. Your guidance should be useful for both beginners and experienced developers.

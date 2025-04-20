@@ -55,6 +55,24 @@ def generate_mdc_rules_from_exa(
                 logger.warning(f"Could not read LLM instructions file: {str(e)}")
                 llm_instructions = "Create rules with clear descriptions and appropriate glob patterns."
 
+        # Load LLM instructions failover
+        failover_exa_instructions_path = CONFIG.paths.failover_exa_instructions
+        if not failover_exa_instructions_path.exists():
+            logger.warning(
+                f"LLM instructions failover file not found at {failover_exa_instructions_path}"
+            )
+            failover_exa_instructions = (
+                "Create rules with clear descriptions and appropriate glob patterns."
+            )
+        else:
+            try:
+                failover_exa_instructions = failover_exa_instructions_path.read_text()
+            except Exception as e:
+                logger.warning(
+                    f"Could not read LLM instructions failover file: {str(e)}"
+                )
+                failover_exa_instructions = "Create rules with clear descriptions and appropriate glob patterns."
+
         # Extract Exa answer and citations
         exa_answer = exa_results.get("answer", "")
         citations = exa_results.get("citations", [])
@@ -96,18 +114,14 @@ Format your response as a valid JSON object with exactly these keys:
         # Determine if we need to generate content from scratch
         if len(exa_answer.strip()) < 100 and len(all_citation_text.strip()) < 200:
             # Not enough content from Exa, generate from scratch
-            exa_content_section = f"""I need you to research and generate comprehensive best practices for {library_info.name} from your knowledge.
-
-Please be extremely thorough and detailed, covering all aspects of {library_info.name} development.
-Your guidance should be useful for both beginners and experienced developers.
-"""
+            exa_content_section = f"""{llm_instructions}"""
 
             prompt = enhanced_prompt_template.format(
                 library_name=library_info.name,
                 tags=tags_str,
                 exa_content_section=exa_content_section,
                 mdc_instructions=mdc_instructions,
-                llm_instructions=llm_instructions,
+                llm_instructions=failover_exa_instructions,
             )
         else:
             # Use existing Exa content
