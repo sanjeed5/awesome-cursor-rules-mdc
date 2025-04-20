@@ -2,7 +2,7 @@ paths:
   mdc_instructions: "mdc-instructions.txt"
   rules_json: "../rules.json"
   output_dir: "../rules-mdc"
-  exa_results_dir: "exa_results"
+  exa_results_dir: "../exa_results"
 
 api:
   llm_model: "gemini/gemini-2.0-flash"

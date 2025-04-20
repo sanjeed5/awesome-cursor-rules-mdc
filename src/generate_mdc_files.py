@@ -27,7 +27,7 @@ SCRIPT_DIR = Path(__file__).parent.absolute()
 
 # Configure logging
 # Create logs directory if it doesn't exist
-logs_dir = SCRIPT_DIR / "logs"
+logs_dir = Path(SCRIPT_DIR).parent / "..logs"
 logs_dir.mkdir(exist_ok=True)
 
 # Create a timestamp for the log file
@@ -55,7 +55,7 @@ DEFAULT_CONFIG = {
         "mdc_instructions": "mdc-instructions.txt",
         "rules_json": "../rules.json",
         "output_dir": "../rules-mdc",
-        "exa_results_dir": "exa_results"  # Directory to store Exa results
+        "exa_results_dir": "../exa_results",  # Directory to store Exa results
     },
     "api": {
         "llm_model": "gemini/gemini-2.0-flash",
