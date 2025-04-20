@@ -39,6 +39,22 @@ def generate_mdc_rules_from_exa(
                 logger.warning(f"Could not read MDC instructions file: {str(e)}")
                 mdc_instructions = "Create rules with clear descriptions and appropriate glob patterns."
 
+        # Load LLM instructions
+        llm_instructions_path = CONFIG.paths.llm_instructions
+        if not llm_instructions_path.exists():
+            logger.warning(
+                f"LLM instructions file not found at {llm_instructions_path}"
+            )
+            llm_instructions = (
+                "Create rules with clear descriptions and appropriate glob patterns."
+            )
+        else:
+            try:
+                llm_instructions = llm_instructions_path.read_text()
+            except Exception as e:
+                logger.warning(f"Could not read LLM instructions file: {str(e)}")
+                llm_instructions = "Create rules with clear descriptions and appropriate glob patterns."
+
         # Extract Exa answer and citations
         exa_answer = exa_results.get("answer", "")
         citations = exa_results.get("citations", [])
@@ -68,56 +84,7 @@ Library Information:
 
 {exa_content_section}
 
-Your task is to create an EXTREMELY DETAILED and COMPREHENSIVE guide that covers:
-
-1. Code Organization and Structure:
-   - Directory structure best practices for {library_name}
-   - File naming conventions specific to {library_name}
-   - Module organization best practices for projects using {library_name}
-   - Component architecture recommendations for {library_name}
-   - Code splitting strategies appropriate for {library_name}
-
-2. Common Patterns and Anti-patterns:
-   - Design patterns specific to {library_name}
-   - Recommended approaches for common tasks with {library_name}
-   - Anti-patterns and code smells to avoid when using {library_name}
-   - State management best practices for {library_name} applications
-   - Error handling patterns appropriate for {library_name}
-
-3. Performance Considerations:
-   - Optimization techniques specific to {library_name}
-   - Memory management considerations for applications using {library_name}
-   - Rendering optimization for {library_name} (if applicable)
-   - Bundle size optimization strategies for projects using {library_name}
-   - Lazy loading strategies appropriate for {library_name}
-
-4. Security Best Practices:
-   - Common vulnerabilities and how to prevent them with {library_name}
-   - Input validation best practices for {library_name}
-   - Authentication and authorization patterns for {library_name}
-   - Data protection strategies relevant to {library_name}
-   - Secure API communication with {library_name}
-
-5. Testing Approaches:
-   - Unit testing strategies for {library_name} components
-   - Integration testing approaches for {library_name} applications
-   - End-to-end testing recommendations for {library_name} projects
-   - Test organization best practices for {library_name}
-   - Mocking and stubbing techniques specific to {library_name}
-
-6. Common Pitfalls and Gotchas:
-   - Frequent mistakes developers make when using {library_name}
-   - Edge cases to be aware of when using {library_name}
-   - Version-specific issues with {library_name}
-   - Compatibility concerns between {library_name} and other technologies
-   - Debugging strategies for {library_name} applications
-
-7. Tooling and Environment:
-   - Recommended development tools for {library_name}
-   - Build configuration best practices for projects using {library_name}
-   - Linting and formatting recommendations for {library_name} code
-   - Deployment best practices for {library_name} applications
-   - CI/CD integration strategies for {library_name} projects
+{llm_instructions}
 
 Format your response as a valid JSON object with exactly these keys:
   - name: a short descriptive name for the rule (e.g., "{library_name} Best Practices")
@@ -140,6 +107,7 @@ Your guidance should be useful for both beginners and experienced developers.
                 tags=tags_str,
                 exa_content_section=exa_content_section,
                 mdc_instructions=mdc_instructions,
+                llm_instructions=llm_instructions,
             )
         else:
             # Use existing Exa content
@@ -161,6 +129,7 @@ Add any important best practices that might be missing from the search results.
                 tags=tags_str,
                 exa_content_section=exa_content_section,
                 mdc_instructions=mdc_instructions,
+                llm_instructions=llm_instructions,
             )
 
         logger.info(f"Sending enhanced prompt to LLM for {library_info.name}")

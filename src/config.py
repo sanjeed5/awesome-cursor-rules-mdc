@@ -10,6 +10,7 @@ from constants import CONFIG_FILE, SCRIPT_DIR
 @dataclass
 class Paths:
     mdc_instructions: Path
+    llm_instructions: Path
     rules_json: Path
     output_dir: Path
     exa_results_dir: Path
