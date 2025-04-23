@@ -20,17 +20,22 @@ from logger import logger
     ),
 )
 @sleep_and_retry
-@limits(calls=CONFIG.exa_api.rate_limit_calls, period=CONFIG.exa_api.rate_limit_period)
-def get_library_best_practices_exa(
-    library_name: str, exa_client: Optional[Exa] = None, tags: List[str] = None
+@limits(
+    calls=CONFIG.exa_api.rate_limit_calls,
+    period=CONFIG.exa_api.rate_limit_period,
+)
+def search_for_best_practices(
+    library_name: str,
+    exa_client: Optional[Exa] = None,
+    tags: List[str] = None,
 ) -> Dict[str, Any]:
-    """Use Exa to search for best practices for a library."""
+    """Use Exa to search for best practices for a given library."""
+
     if exa_client is None:
         logger.warning("Exa client not initialized, falling back to LLM generation")
         return {"answer": "", "citations": []}
 
     try:
-        # Construct a query for best practices that includes tags for better context
         if tags and len(tags) > 0:
             # Select up to 3 most relevant tags to keep the query focused
             relevant_tags = tags[:3] if len(tags) > 3 else tags
@@ -43,34 +48,45 @@ def get_library_best_practices_exa(
 
         # Call Exa API
         result = exa_client.answer(query, text=True)
+        logger.info(f"Exa search results: {result}")
+        return result
 
-        # Convert the AnswerResponse object to a dictionary
-        result_dict = {
-            "answer": result.answer if hasattr(result, "answer") else "",
-            "citations": result.citations if hasattr(result, "citations") else [],
-        }
+    except Exception as e:
+        logger.error(f"Error searching Exa for {library_name}: {str(e)}")
+        return {"answer": "", "citations": []}
 
-        # Save the Exa result to a file
-        exa_results_dir = SCRIPT_DIR / CONFIG.paths.exa_results_dir
-        exa_results_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create a safe filename
-        safe_name = re.sub("[^a-z0-9-]+", "-", library_name.lower()).strip("-")
-        result_file = exa_results_dir / f"{safe_name}_exa_result.json"
+def save_exa_results_to_file(result: object, library_name: str):
+    """Save Exa search results to a file."""
+    result_dict = {
+        "answer": result.answer if hasattr(result, "answer") else "",
+        "citations": result.citations if hasattr(result, "citations") else [],
+    }
 
-        with open(result_file, "w", encoding="utf-8") as f:
-            json.dump(result_dict, f, indent=2, default=str)
+    exa_results_dir = SCRIPT_DIR / CONFIG.paths.exa_results_dir
+    exa_results_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Saved Exa result for {library_name} to {result_file}")
+    safe_name = re.sub("[^a-z0-9-]+", "-", library_name.lower()).strip("-")
+    results_file = exa_results_dir / f"{safe_name}_exa_result.json"
 
-        if result_dict["answer"]:
-            logger.info(f"Successfully retrieved Exa results for {library_name}")
-            return result_dict
+    with open(results_file, "w", encoding="utf-8") as f:
+        json.dump(result_dict, f, indent=2, default=str)
 
-        # If no results found, return empty
+    logger.info(f"Saved Exa search results for {library_name} to {results_file}")
+
+    if result_dict["answer"]:
+        logger.info(f"Successfully retrieved Exa results for {library_name}")
+        return result_dict
+    else:
         logger.warning(f"No results found via Exa for {library_name}")
         return {"answer": "", "citations": []}
 
-    except Exception as e:
-        logger.error(f"Error fetching from Exa for {library_name}: {str(e)}")
-        return {"answer": "", "citations": []}
+
+def get_library_best_practices_exa(
+    library_name: str, exa_client: Optional[Exa] = None, tags: List[str] = None
+) -> Dict[str, Any]:
+    """Get best practices for a given library using Exa."""
+
+    result = search_for_best_practices(library_name, exa_client, tags)
+    save_exa_results_to_file(result, library_name)
+    return result
