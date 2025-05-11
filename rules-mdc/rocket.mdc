@@ -1,6 +1,6 @@
 ---
 description: Comprehensive guidelines for developing robust and maintainable web applications with the Rocket web framework, covering code organization, security, performance, testing, and more.
-globs: **/*.rs
+globs: *.rs
 ---
 - **Code Organization and Structure:**
   - **Directory Structure:** Organize your project with a clear and maintainable directory structure. A common pattern is:

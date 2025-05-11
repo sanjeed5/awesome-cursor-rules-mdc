@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for htmx development, covering code organization, security, performance, testing, and common pitfalls. It aims to guide developers in building robust, maintainable, and secure htmx applications.
-globs: **/*.html
+globs: *.html
 ---
 # htmx Best Practices and Coding Standards
 

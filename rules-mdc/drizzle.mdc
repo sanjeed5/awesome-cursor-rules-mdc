@@ -1,6 +1,6 @@
 ---
 description: This rule outlines best practices for using Drizzle ORM in TypeScript and JavaScript projects. It covers code organization, performance, security, testing, and common pitfalls.
-globs: **/*.ts,**/*.tsx,**/*.js,**/*.jsx
+globs: *.ts,*.tsx,*.js,*.jsx
 ---
 # Drizzle ORM Best Practices and Coding Standards
 

@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices, coding standards, and guidelines for developing applications using Vite, covering aspects from code organization and performance to security and testing.
-globs: **/*.{js,jsx,ts,tsx,vue,svelte}
+globs: *.js,*.jsx,*.ts,*.tsx,*.vue,*.svelte
 ---
 - **Introduction:**
   - This document outlines best practices for developing applications using Vite, a fast and opinionated build tool that aims to provide a better development experience.

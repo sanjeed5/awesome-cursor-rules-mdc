@@ -1,6 +1,6 @@
 ---
 description: Comprehensive guide for Peewee ORM best practices, covering code organization, performance, security, testing, and common pitfalls. Provides actionable guidance for developers to write maintainable and efficient database-driven applications using Peewee.
-globs: **/*.py
+globs: *.py
 ---
 # Peewee ORM Best Practices and Coding Standards
 

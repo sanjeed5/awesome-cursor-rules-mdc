@@ -1,6 +1,6 @@
 ---
 description: This rule file provides comprehensive best practices, coding standards, and security guidelines for developing applications using Amazon S3. It aims to ensure secure, performant, and maintainable S3 integrations.
-globs: **/*S3*.{js,ts,jsx,tsx,py,java,go,csharp}
+globs: *S3*.js,*S3*.ts,*S3*.jsx,*S3*.tsx,*S3*.py,*S3*.java,*S3*.go,*S3*.csharp
 ---
 - Always disable public access to S3 buckets unless explicitly needed. Use AWS Identity and Access Management (IAM) policies and bucket policies for access control instead of Access Control Lists (ACLs), which are now generally deprecated.
 - Implement encryption for data at rest using Server-Side Encryption (SSE), preferably with AWS Key Management Service (KMS) for enhanced security.

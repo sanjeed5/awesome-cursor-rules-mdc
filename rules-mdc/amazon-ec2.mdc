@@ -1,6 +1,7 @@
 ---
 description: This rule file provides best practices, coding standards, and security guidelines for developing, deploying, and maintaining applications using the amazon-ec2 library within the AWS ecosystem. It focuses on infrastructure as code (IaC), resource management, performance, and security considerations for robust and scalable EC2-based solutions.
-globs: **/*.{tf,json,yml,yaml,py,js,ts,sh,java,go,rb,m}
+globs: *.tf,*.json,*.yml,*.yaml,*.py,*.js,*.ts,*.sh,*.java,*.go,*.rb,*.m
+alwaysApply: false
 ---
 - ## General Principles
   - **Infrastructure as Code (IaC):** Treat your infrastructure as code. Define and provision AWS resources (EC2 instances, security groups, networks) using code (e.g., AWS CloudFormation, AWS CDK, Terraform). This ensures consistency, repeatability, and version control.
@@ -312,6 +313,6 @@ globs: **/*.{tf,json,yml,yaml,py,js,ts,sh,java,go,rb,m}
 
 - ## References
 
-  - [AWS EC2 Best Practices](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-best-practices.html)
-  - [AWS CDK Best Practices](https://docs.aws.amazon.com/cdk/v2/guide/best-practices.html)
-  - [Terraform AWS Provider Best Practices](https://docs.aws.amazon.com/prescriptive-guidance/latest/terraform-aws-provider-best-practices/structure.html)
+  - [AWS EC2 Best Practices](mdc:https:/docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-best-practices.html)
+  - [AWS CDK Best Practices](mdc:https:/docs.aws.amazon.com/cdk/v2/guide/best-practices.html)
+  - [Terraform AWS Provider Best Practices](mdc:https:/docs.aws.amazon.com/prescriptive-guidance/latest/terraform-aws-provider-best-practices/structure.html)

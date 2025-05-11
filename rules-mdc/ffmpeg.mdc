@@ -1,6 +1,6 @@
 ---
 description: This rule outlines the best practices and coding standards for developing with FFmpeg, covering code organization, performance, security, testing, and common pitfalls.
-globs: **/*.c
+globs: *.c
 ---
 # FFmpeg Best Practices and Coding Standards
 

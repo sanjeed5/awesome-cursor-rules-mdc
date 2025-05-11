@@ -1,6 +1,6 @@
 ---
 description: This rule enforces best practices and coding standards for Bash scripting to improve code quality, maintainability, and security. It covers naming conventions, formatting, error handling, security, and performance considerations.
-globs: **/*.sh
+globs: *.sh
 ---
 # Bash Best Practices and Coding Standards
 

@@ -1,6 +1,6 @@
 ---
 description: This rule file provides comprehensive best practices for developing with tinygrad, covering code organization, performance, testing, and security.  It aims to improve code quality, maintainability, and prevent common pitfalls when working with tinygrad.
-globs: **/*.py
+globs: *.py
 ---
 - **Introduction**
   This document outlines best practices for developing and maintaining code within the tinygrad library and projects that use tinygrad. Adhering to these guidelines will ensure code readability, maintainability, and optimal performance.  It draws from established software engineering principles, AI/ML coding standards, and the specific nuances of the tinygrad library.

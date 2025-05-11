@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for developing secure, maintainable, and performant applications using the Pyramid web framework for Python. It covers code structure, security, testing, and deployment considerations.
-globs: **/*.py
+globs: *.py
 ---
 - **Project Structure and Code Organization:**
   - **Directory Structure:**

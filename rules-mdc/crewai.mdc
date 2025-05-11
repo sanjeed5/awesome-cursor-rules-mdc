@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for developing with the CrewAI library, covering code organization, performance, security, testing, and common pitfalls. It serves as a guide for building robust and scalable AI applications using CrewAI.
-globs: **/*.py
+globs: *.py
 ---
 - **General Best Practices**:
   - Leverage structured responses from LLM calls using Pydantic for output validation.

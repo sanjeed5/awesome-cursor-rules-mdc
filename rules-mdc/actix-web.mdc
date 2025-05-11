@@ -1,6 +1,6 @@
 ---
 description: Comprehensive best practices for developing robust, efficient, and maintainable applications using the actix-web framework in Rust. This rule covers coding standards, project structure, performance, security, testing, and common pitfalls.
-globs: **/*.rs
+globs: *.rs
 ---
 # Actix-web Best Practices: A Comprehensive Guide
 

@@ -1,6 +1,6 @@
 ---
 description: This rule provides a comprehensive guide to nginx configuration best practices, covering code organization, common patterns, performance, security, testing, pitfalls, and tooling.
-globs: **/nginx.conf
+globs: nginx.conf
 ---
 # nginx Configuration Best Practices
 
@@ -68,7 +68,7 @@ resolver_timeout 5s;
 **Usage in site configuration:**
 
 nginx
-server {
+server 
     listen 443 ssl;
     server_name example.com;
 
@@ -79,7 +79,7 @@ server {
 
     location / {
         # ...
-    }
+    
 }
 
 

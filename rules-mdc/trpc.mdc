@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive guidance on tRPC best practices, covering code organization, performance, security, testing, and common pitfalls to ensure robust and maintainable tRPC applications.
-globs: **/*.{ts,tsx}
+globs: *.ts,*.tsx
 ---
 # tRPC Best Practices: A Comprehensive Guide
 

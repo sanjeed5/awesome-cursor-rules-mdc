@@ -1,6 +1,6 @@
 ---
 description: This rule file provides comprehensive guidelines for Deno development, covering best practices for code organization, security, performance, testing, and documentation. Adhering to these standards ensures maintainable, efficient, and secure Deno applications.
-globs: **/*.{ts,tsx,js,jsx,md}
+globs: *.ts,*.tsx,*.js,*.jsx,*.md
 ---
 - **Use TypeScript**: Always prefer TypeScript for its strong typing, which enhances code quality and maintainability. Provide clear type annotations and use interfaces for better structure.
 - **Documentation with JSDoc**: Utilize JSDoc for documenting all exported symbols. Include concise summaries, type information, and examples. Keep documentation up-to-date with code changes.

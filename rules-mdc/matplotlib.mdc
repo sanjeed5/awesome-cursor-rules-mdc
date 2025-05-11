@@ -1,6 +1,6 @@
 ---
 description: This rule provides guidelines and best practices for developing robust, maintainable, and performant data visualizations using Matplotlib in Python. It covers aspects from code organization to testing and security considerations.
-globs: **/*.py
+globs: *.py
 ---
 # Matplotlib Best Practices
 

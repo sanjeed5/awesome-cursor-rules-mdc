@@ -1,6 +1,6 @@
 ---
 description: This rule provides best practices and coding standards for developing applications using AWS DynamoDB. It covers aspects like schema design, performance optimization, security, and testing.
-globs: **/*.{js,ts,jsx,tsx,py}
+globs: *.js,*.ts,*.jsx,*.tsx,*.py
 ---
 - **Minimize the number of tables; prefer single-table design.** Having fewer tables keeps things more scalable, requires less permissions management, and reduces overhead for your DynamoDB application. Consider using a single table with appropriate use of primary and secondary indexes.
 - **Identify query patterns before schema design.** Understand the application's access patterns before designing the DynamoDB schema. Knowing how the data will be queried is crucial for optimizing performance and cost.

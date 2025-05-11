@@ -1,6 +1,7 @@
 ---
 description: This rule file outlines best practices for vim configuration, coding standards, and development workflows to ensure consistency, efficiency, and maintainability across vim-based projects. It includes recommendations for file organization, coding patterns, performance, security, testing, tooling, and common pitfalls.
 globs: **/.vimrc, **/.vim/**, **/ftplugin/**
+alwaysApply: false
 ---
 # vim Best Practices and Coding Standards
 
@@ -224,7 +225,7 @@ This document outlines the best practices and coding standards for vim configura
 -   **Syntax Checker:** Syntastic, ALE.
 -   **Code Completion:** YouCompleteMe, coc.nvim.
 -   **Fuzzy Finder:** CtrlP, fzf.vim.
--   **Color Scheme Designer:** [https://github.com/lifepillar/vim-solarized](https://github.com/lifepillar/vim-solarized).
+-   **Color Scheme Designer:** [https://github.com/lifepillar/vim-solarized](mdc:https:/github.com/lifepillar/vim-solarized).
 
 ### 7.2 Build Configuration Best Practices
 

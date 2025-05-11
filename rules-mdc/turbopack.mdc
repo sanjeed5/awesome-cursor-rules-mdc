@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for developing with Turbopack, covering code organization, performance, security, testing, and tooling to ensure efficient and maintainable applications.
-globs: **/*.{js,jsx,ts,tsx}
+globs: *.js,*.jsx,*.ts,*.tsx
 ---
 # Turbopack Best Practices
 

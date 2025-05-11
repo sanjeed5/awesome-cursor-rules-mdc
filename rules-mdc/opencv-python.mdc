@@ -1,6 +1,6 @@
 ---
 description: This rule outlines best practices for developing with the opencv-python library, focusing on code organization, performance, security, testing, and common pitfalls. It provides comprehensive guidelines for efficient and maintainable opencv-python projects.
-globs: **/*.py
+globs: *.py
 ---
 - Always use UV or Pipenv when installing dependencies for consistent environments.
 - Always specify Python 3.10 or higher, as older versions may lack feature parity and security updates.

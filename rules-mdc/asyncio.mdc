@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive guidelines and best practices for utilizing the asyncio library in Python, covering code organization, performance, security, testing, and common pitfalls.
-globs: **/*.py
+globs: *.py
 ---
 # asyncio Best Practices and Coding Standards
 

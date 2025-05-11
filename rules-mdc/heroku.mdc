@@ -1,6 +1,6 @@
 ---
 description: Comprehensive best practices and coding standards for developing, deploying, and maintaining applications on the Heroku platform. This rule emphasizes the Twelve-Factor App methodology and provides detailed guidance for optimizing application architecture, performance, security, and maintainability on Heroku.
-globs: **/*
+globs: *
 ---
 - Follow the Twelve-Factor App methodology for building software-as-a-service applications.
   - **Codebase:** Maintain a single codebase tracked in version control (e.g., Git) for each application. Multiple deploys should be created from this single codebase.

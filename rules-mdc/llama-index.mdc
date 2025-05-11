@@ -1,6 +1,6 @@
 ---
 description: This rule outlines best practices and coding standards for developing with LlamaIndex, covering code organization, performance, security, testing, and common pitfalls. It aims to ensure maintainable, efficient, and secure LlamaIndex applications.
-globs: **/*.py
+globs: *.py
 ---
 # LlamaIndex Best Practices and Coding Standards
 

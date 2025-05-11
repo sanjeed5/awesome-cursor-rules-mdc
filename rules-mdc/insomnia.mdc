@@ -1,6 +1,6 @@
 ---
 description: This rule file provides best practices for using the Insomnia API Client, including project organization, environment management, testing, and collaboration to improve API development workflows.
-globs: **/*.{json,yaml,yml,graphql,proto}
+globs: *.json,*.yaml,*.yml,*.graphql,*.proto
 ---
 - **Project Organization and Structure:**
   - **Workspace Structure:** Organize requests into workspaces based on projects or functional areas. Within workspaces, use folders to group related requests (e.g., authentication, user management, product catalog).

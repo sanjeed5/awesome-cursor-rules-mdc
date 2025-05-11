@@ -1,6 +1,6 @@
 ---
 description: Comprehensive guidelines for Azure Pipelines, covering code structure, security, performance, testing, and deployment. Provides actionable advice for developers working with Azure Pipelines YAML definitions to enhance code quality and CI/CD processes.
-globs: **/*.{yml,yaml}
+globs: *.yml,*.yaml
 ---
 - # General Guidelines
   - Utilize YAML pipelines for version control and ease of replication.

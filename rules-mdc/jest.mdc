@@ -1,6 +1,6 @@
 ---
 description: This rule provides guidelines for writing clean, maintainable, and effective tests using Jest. It covers code organization, performance, common pitfalls, and best practices for testing JavaScript and TypeScript projects.
-globs: **/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}
+globs: *.js,*.jsx,*.ts,*.tsx,*.mjs,*.cjs,*.mts,*.cts
 ---
 - **Organize tests by feature or module:**
   - Group tests into files or directories that correspond to the features or modules they are testing. This makes it easier to locate and maintain tests.

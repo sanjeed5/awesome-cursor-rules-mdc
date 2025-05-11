@@ -1,6 +1,6 @@
 ---
 description: Enforces Prisma best practices for schema design, data access, and application security. Provides guidelines for writing efficient, secure, and maintainable Prisma applications.
-globs: **/*.prisma
+globs: *.prisma
 ---
 - **General Principles:**
   - **Never expose the raw Prisma client directly in APIs.** Instead, create abstraction layers (e.g., repositories or services) to handle data access logic. This protects you from accidentally exposing sensitive database details and allows you to easily change your data access implementation in the future.

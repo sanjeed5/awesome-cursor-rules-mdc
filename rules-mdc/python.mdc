@@ -1,6 +1,6 @@
 ---
 description: Comprehensive guidelines for Python development, covering code organization, performance, security, testing, and more.  These rules promote maintainable, efficient, and secure Python codebases.
-globs: **/*.py
+globs: *.py
 ---
 # Python Best Practices and Coding Standards
 

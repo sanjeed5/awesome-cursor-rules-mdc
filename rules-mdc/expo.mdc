@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices and coding standards for Expo projects, covering code organization, performance, security, testing, and common pitfalls to ensure maintainable and high-quality applications.
-globs: **/*.{js,jsx,ts,tsx}
+globs: *.js,*.jsx,*.ts,*.tsx
 ---
 - **Code Organization and Structure**
   - **Directory Structure:**

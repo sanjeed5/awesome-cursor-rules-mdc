@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for using Tortoise ORM in Python projects, covering aspects like code organization, performance, security, and testing.
-globs: **/*.py
+globs: *.py
 ---
 - Use Tortoise ORM for asynchronous database interactions in Python.
 - Always use UV when installing dependencies for faster performance, especially when combined with Tortoise ORM's asynchronous capabilities.

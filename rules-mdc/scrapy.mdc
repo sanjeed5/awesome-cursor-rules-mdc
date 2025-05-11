@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for Scrapy development, including code organization, performance, security, testing, and common pitfalls to avoid. It aims to guide developers in building robust, efficient, and maintainable web scraping applications with Scrapy.
-globs: **/*.py
+globs: *.py
 ---
 # Scrapy Best Practices
 

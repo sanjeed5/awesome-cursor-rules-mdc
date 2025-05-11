@@ -1,6 +1,6 @@
 ---
 description: This rule enforces best practices and coding standards for projects using the Ant Design (antd) UI library within React applications. It covers code organization, performance, security, testing, and common pitfalls to ensure maintainable and efficient applications.
-globs: **/*.{js,jsx,ts,tsx}
+globs: *.js,*.jsx,*.ts,*.tsx
 ---
 # Ant Design (antd) Best Practices and Coding Standards
 

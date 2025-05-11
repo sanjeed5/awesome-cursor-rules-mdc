@@ -1,6 +1,6 @@
 ---
 description: This rule provides guidelines for best practices and coding standards when using the scikit-image library for image processing in Python. It covers code organization, performance, security, testing, and common pitfalls.
-globs: **/*.py
+globs: *.py
 ---
 - Always use UV when installing dependencies for faster and more deterministic dependency resolution.
 - Always use Python 3.12 or later to leverage the latest language features and performance improvements.

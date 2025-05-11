@@ -1,6 +1,6 @@
 ---
 description: This rule provides guidelines for using CodeMirror effectively, covering code organization, performance, security, testing, and common pitfalls. It aims to ensure robust and maintainable code editor implementations.
-globs: **/*.{js,ts,html,css,vue,svelte,jsx,tsx}
+globs: *.js,*.ts,*.html,*.css,*.vue,*.svelte,*.jsx,*.tsx
 ---
 # CodeMirror Best Practices and Coding Standards
 
