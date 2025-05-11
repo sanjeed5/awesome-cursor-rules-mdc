@@ -6,6 +6,8 @@
 
 This project generates Cursor MDC (Markdown Cursor) rule files from a structured JSON file containing library information. It uses Exa for semantic search and LLM (Gemini) for content generation.
 
+[![Star History Chart](https://api.star-history.com/svg?repos=sanjeed5/awesome-cursor-rules-mdc&type=Date)](https://www.star-history.com/#sanjeed5/awesome-cursor-rules-mdc&Date)
+
 ## Features
 
 - Generates comprehensive MDC rule files for libraries
