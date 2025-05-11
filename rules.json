@@ -959,6 +959,10 @@
     {
       "name": "zsh",
       "tags": ["shell", "command-line", "unix", "terminal"]
+    },
+    {
+      "name": "databricks",
+      "tags": ["api", "cloud", "data-platform", "databricks"]
     }
   ]
 } 
