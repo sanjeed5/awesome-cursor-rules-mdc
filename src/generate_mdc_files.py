@@ -524,20 +524,56 @@ def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
                       retry_failed_only: bool = False):
     """Process rules.json and generate MDC files."""
     # Check if rules.json exists
-    json_path = Path(json_path)
-    if not json_path.exists():
-        logger.error(f"Rules JSON file not found at {json_path}")
+    # Use absolute paths for clarity and robustness
+    rules_json_path_abs = (SCRIPT_DIR / json_path).resolve() # Ensure path is resolved from SCRIPT_DIR
+
+    if not rules_json_path_abs.exists():
+        logger.error(f"The rules.json file was not found at {rules_json_path_abs}")
         return
-    
-    # Load rules.json
-    with open(json_path, 'r') as f:
-        libraries_data = json.load(f)
-    
-    # Check if the new flat structure is used
-    if "libraries" not in libraries_data:
-        logger.error("The rules.json file does not use the expected flat structure with tags.")
+
+    logger.info(f"Processing rules.json from: {rules_json_path_abs}")
+    try:
+        with open(rules_json_path_abs, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except json.JSONDecodeError:
+        logger.error(f"Error decoding JSON from {rules_json_path_abs}")
         return
+    except Exception as e:
+        logger.error(f"Error reading {rules_json_path_abs}: {str(e)}")
+        return
+
+    # Validate the structure of 'data' before attempting to sort
+    if "libraries" not in data:
+        logger.error(f"The rules.json file ({rules_json_path_abs}) does not contain the required 'libraries' key.")
+        return
+    if not isinstance(data.get("libraries"), list):
+        logger.error(f"The 'libraries' key in {rules_json_path_abs} is not a list.")
+        return
+
+    # Sort the list in place
+    logger.info(f"Sorting libraries in {rules_json_path_abs} alphabetically by name.")
+    data["libraries"].sort(key=lambda lib: lib.get("name", "").lower()) # Handles missing 'name' gracefully
+
+    # Write the modified dictionary back to the file
+    try:
+        with open(rules_json_path_abs, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        logger.info(f"Successfully sorted and saved {rules_json_path_abs}")
+    except Exception as e:
+        logger.error(f"Error writing sorted data back to {rules_json_path_abs}: {str(e)}")
+        return # Critical to stop if write fails
+
+    # 'data' in memory and the file on disk are now sorted.
+    # Subsequent code will use data.get("libraries", []) or data["libraries"].
     
+    # Check if the list is empty and log a warning if so.
+    # This check is on the list itself, obtained from the (potentially) modified 'data'.
+    if not data.get("libraries", []): # Safely get the list, defaults to empty if key somehow vanished (shouldn't happen)
+        logger.warning(f"The 'libraries' list in {rules_json_path_abs} is empty. No libraries to process.")
+        # Script will continue with an empty list of libraries.
+
+    libraries_data = data.get("libraries", [])
+
     # Create progress tracker
     progress_tracker = ProgressTracker()
     
@@ -552,7 +588,7 @@ def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
         output_path.mkdir(parents=True, exist_ok=True)
     
     # Get libraries list
-    libraries = libraries_data["libraries"]
+    libraries = libraries_data
     
     # Extract all library names for progress tracking
     all_library_names = [lib["name"] for lib in libraries]
