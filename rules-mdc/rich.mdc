@@ -1,6 +1,6 @@
 ---
 description: Comprehensive best practices and coding standards for the Rich library, focusing on code quality, performance, and maintainability within Python terminal applications.
-globs: **/*.py
+globs: *.py
 ---
 - **General Guidelines**
   - Adhere to PEP 8 coding style guidelines for Python code, emphasizing readability and consistency.

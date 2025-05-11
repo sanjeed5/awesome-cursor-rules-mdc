@@ -1,6 +1,6 @@
 ---
 description: Comprehensive guide to Emacs Lisp coding standards, best practices, and common pitfalls. Focuses on maintainability, readability, and performance for building robust Emacs extensions.
-globs: **/*.el
+globs: *.el
 ---
 - ## Code Organization and Structure
   - ### Directory Structure

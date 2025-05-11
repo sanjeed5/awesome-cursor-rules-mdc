@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices and coding standards for SvelteKit development, covering code structure, performance, security, testing, and common pitfalls. It aims to improve code quality, maintainability, and overall project health.
-globs: **/*.svelte
+globs: *.svelte
 ---
 # SvelteKit Best Practices
 

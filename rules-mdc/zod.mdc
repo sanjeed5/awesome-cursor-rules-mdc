@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive guidelines for using the Zod library effectively, covering code organization, performance, security, and testing to ensure robust and maintainable type validation.
-globs: **/*.ts?(x)
+globs: *.ts?(x)
 ---
 - **Organize Zod schemas logically for readability and maintainability.** Group related schemas together and structure your Zod code for improved clarity, especially in larger projects.
 - **Compose and reuse related schemas to avoid repetition.** Use Zod's composition features (e.g., `z.intersection`, `z.union`, `z.extend`) to create reusable schema components and reduce redundancy.

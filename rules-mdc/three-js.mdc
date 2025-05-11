@@ -1,6 +1,6 @@
 ---
 description: This rule provides guidelines and best practices for developing efficient, maintainable, and robust 3D web applications using Three.js. It covers aspects like code organization, performance optimization, security, testing, and common pitfalls to ensure a high-quality development experience.
-globs: **/*.{js,ts,jsx,tsx,mjs,html}
+globs: *.js,*.ts,*.jsx,*.tsx,*.mjs,*.html
 ---
 # Three.js Best Practices and Coding Standards
 

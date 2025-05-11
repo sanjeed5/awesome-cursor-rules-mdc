@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices and coding standards for Nuxt.js projects, covering code organization, performance, security, testing, and common pitfalls. It aims to ensure maintainable, scalable, and secure Nuxt.js applications.
-globs: **/*.{vue,js,ts,mjs,mts,jsx,tsx,config.js,config.ts}
+globs: *.vue,*.js,*.ts,*.mjs,*.mts,*.jsx,*.tsx,*.config.js,*.config.ts
 ---
 - **Enable ESLint support:** Use the `@nuxt/eslint` module for project-aware ESLint configuration. This ensures code quality and consistency.
   - `npx nuxi module add eslint` to add the module.

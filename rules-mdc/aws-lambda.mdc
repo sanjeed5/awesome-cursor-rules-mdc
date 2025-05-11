@@ -1,6 +1,6 @@
 ---
 description: Comprehensive guide for AWS Lambda development, covering best practices for code organization, performance, security, testing, and common pitfalls. Focuses on building robust, scalable, and secure serverless applications using AWS Lambda.
-globs: **/*.{js,ts,jsx,tsx,py,java,go,c#,cs,ps1,sh}
+globs: *.js,*.ts,*.jsx,*.tsx,*.py,*.java,*.go,*.c#,*.cs,*.ps1,*.sh
 ---
 - **Use Documented APIs Only:** Rely solely on AWS Lambda's documented APIs to ensure compatibility and avoid unexpected behavior. Do not use undocumented or internal APIs.
 

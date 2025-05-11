@@ -1,6 +1,6 @@
 ---
 description: This rule file provides comprehensive best practices for LightGBM, covering code organization, performance, security, testing, and common pitfalls to avoid. Adhering to these guidelines will improve the efficiency, reliability, and maintainability of your LightGBM projects.
-globs: **/*.{py,ipynb}
+globs: *.py,*.ipynb
 ---
 # LightGBM Best Practices
 

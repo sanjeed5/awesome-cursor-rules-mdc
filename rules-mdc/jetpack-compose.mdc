@@ -1,6 +1,6 @@
 ---
 description: Enforces Jetpack Compose best practices for code organization, performance, and maintainability. This rule provides guidelines for writing efficient and idiomatic Compose code.
-globs: **/*.kt
+globs: *.kt
 ---
 - **Code Organization and Structure**
   - **Directory Structure:**

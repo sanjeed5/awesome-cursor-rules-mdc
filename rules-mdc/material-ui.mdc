@@ -1,6 +1,6 @@
 ---
 description: Comprehensive guide to best practices when developing with Material-UI/MUI, covering code organization, performance, security, testing, and common pitfalls. It focuses on creating maintainable, scalable, and performant React applications using MUI components.
-globs: **/*.{js,jsx,ts,tsx}
+globs: *.js,*.jsx,*.ts,*.tsx
 ---
 # Material-UI/MUI Best Practices and Coding Standards
 

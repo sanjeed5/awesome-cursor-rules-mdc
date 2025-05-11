@@ -192,6 +192,13 @@ class ProgressTracker:
             logger.info(f"Found {len(new_libraries)} new libraries to process: {', '.join(new_libraries)}")
         return new_libraries
 
+class MDCRuleResponse(BaseModel):
+    """Pydantic model for LLM response structure."""
+    name: str = Field(..., description="Short descriptive name for the rule")
+    glob_pattern: str = Field(..., description="Valid glob pattern for target files")
+    description: str = Field(..., description="1-2 sentence description of what the rule does")
+    content: str = Field(..., description="Formatted rule content using markdown")
+
 def validate_environment_variables() -> bool:
     """Validate that all required environment variables are set."""
     required_vars = []
@@ -316,13 +323,13 @@ def generate_mdc_rules_from_exa(library_info: LibraryInfo, exa_results: Dict[str
             elif hasattr(citation, 'text') and citation.text:
                 citation_texts.append(citation.text)
         
-        # Combine all citation texts - Gemini can handle much larger inputs
+        # Combine all citation texts
         all_citation_text = "\n\n".join(citation_texts)
         
-        # Format tags for prompt - but don't emphasize them too much
+        # Format tags for prompt
         tags_str = ", ".join(library_info.tags)
         
-        # Enhanced prompt template for both cases
+        # Enhanced prompt template
         enhanced_prompt_template = """Create a comprehensive Cursor rule file (.mdc) for the {library_name} library following these guidelines:
 
 {mdc_instructions}
@@ -335,79 +342,29 @@ Library Information:
 
 Your task is to create an EXTREMELY DETAILED and COMPREHENSIVE guide that covers:
 
-1. Code Organization and Structure:
-   - Directory structure best practices for {library_name}
-   - File naming conventions specific to {library_name}
-   - Module organization best practices for projects using {library_name}
-   - Component architecture recommendations for {library_name}
-   - Code splitting strategies appropriate for {library_name}
+1. Code Organization and Structure
+2. Common Patterns and Anti-patterns
+3. Performance Considerations
+4. Security Best Practices
+5. Testing Approaches
+6. Common Pitfalls and Gotchas
+7. Tooling and Environment
 
-2. Common Patterns and Anti-patterns:
-   - Design patterns specific to {library_name}
-   - Recommended approaches for common tasks with {library_name}
-   - Anti-patterns and code smells to avoid when using {library_name}
-   - State management best practices for {library_name} applications
-   - Error handling patterns appropriate for {library_name}
+You MUST format your response as a valid JSON object with these exact keys:
+- name: A short descriptive name for the rule (e.g., "{library_name} Best Practices")
+- glob_pattern: The most appropriate glob pattern for this library based on the file types it typically works with
+- description: A clear 1-2 sentence description of what the rule covers
+- content: The formatted rule content with comprehensive best practices in markdown format
 
-3. Performance Considerations:
-   - Optimization techniques specific to {library_name}
-   - Memory management considerations for applications using {library_name}
-   - Rendering optimization for {library_name} (if applicable)
-   - Bundle size optimization strategies for projects using {library_name}
-   - Lazy loading strategies appropriate for {library_name}
-
-4. Security Best Practices:
-   - Common vulnerabilities and how to prevent them with {library_name}
-   - Input validation best practices for {library_name}
-   - Authentication and authorization patterns for {library_name}
-   - Data protection strategies relevant to {library_name}
-   - Secure API communication with {library_name}
-
-5. Testing Approaches:
-   - Unit testing strategies for {library_name} components
-   - Integration testing approaches for {library_name} applications
-   - End-to-end testing recommendations for {library_name} projects
-   - Test organization best practices for {library_name}
-   - Mocking and stubbing techniques specific to {library_name}
-
-6. Common Pitfalls and Gotchas:
-   - Frequent mistakes developers make when using {library_name}
-   - Edge cases to be aware of when using {library_name}
-   - Version-specific issues with {library_name}
-   - Compatibility concerns between {library_name} and other technologies
-   - Debugging strategies for {library_name} applications
-
-7. Tooling and Environment:
-   - Recommended development tools for {library_name}
-   - Build configuration best practices for projects using {library_name}
-   - Linting and formatting recommendations for {library_name} code
-   - Deployment best practices for {library_name} applications
-   - CI/CD integration strategies for {library_name} projects
-
-Format your response as a valid JSON object with exactly these keys:
-  - name: a short descriptive name for the rule (e.g., "{library_name} Best Practices")
-  - glob_pattern: the most appropriate glob pattern for this library based on the file types it typically works with
-  - description: a clear 1-2 sentence description of what the rule covers
-  - content: the formatted rule content with comprehensive best practices in markdown format
-"""
+DO NOT include any text outside of the JSON object. The response must be a single, valid JSON object."""
         
         # Determine if we need to generate content from scratch
         if len(exa_answer.strip()) < 100 and len(all_citation_text.strip()) < 200:
-            # Not enough content from Exa, generate from scratch
             exa_content_section = f"""I need you to research and generate comprehensive best practices for {library_info.name} from your knowledge.
 
 Please be extremely thorough and detailed, covering all aspects of {library_info.name} development.
-Your guidance should be useful for both beginners and experienced developers.
-"""
-            
-            prompt = enhanced_prompt_template.format(
-                library_name=library_info.name,
-                tags=tags_str,
-                exa_content_section=exa_content_section,
-                mdc_instructions=mdc_instructions
-            )
+Your guidance should be useful for both beginners and experienced developers."""
         else:
-            # Use existing Exa content
             chunk_size = CONFIG["processing"]["chunk_size"]
             exa_content_section = f"""Based on the following information about {library_info.name} best practices:
 
@@ -418,54 +375,63 @@ Additional information from citations:
 {all_citation_text[:chunk_size]}
 
 Please synthesize, enhance, and expand upon this information to create the most comprehensive guide possible.
-Add any important best practices that might be missing from the search results.
-"""
-            
-            prompt = enhanced_prompt_template.format(
-                library_name=library_info.name,
-                tags=tags_str,
-                exa_content_section=exa_content_section,
-                mdc_instructions=mdc_instructions
-            )
+Add any important best practices that might be missing from the search results."""
+        
+        prompt = enhanced_prompt_template.format(
+            library_name=library_info.name,
+            tags=tags_str,
+            exa_content_section=exa_content_section,
+            mdc_instructions=mdc_instructions
+        )
         
         logger.info(f"Sending enhanced prompt to LLM for {library_info.name}")
+        
+        # Use LiteLLM's completion with JSON mode
         response = completion(
             model=CONFIG["api"]["llm_model"],
             messages=[{"role": "user", "content": prompt}],
-            response_format={
-                "type": "json_object",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "Short descriptive name for the rule"
-                        },
-                        "glob_pattern": {
-                            "type": "string",
-                            "description": "Valid glob pattern for target files"
-                        },
-                        "description": {
-                            "type": "string",
-                            "description": "1-2 sentence description of what the rule does"
-                        },
-                        "content": {
-                            "type": "string",
-                            "description": "Formatted rule content using markdown"
-                        }
-                    },
-                    "required": ["name", "glob_pattern", "description", "content"]
-                }
-            }
+            response_format={"type": "json_object"},
+            max_tokens=4000,
+            temperature=0.7
         )
         
-        # Parse the JSON response
-        json_response = json.loads(response.choices[0].message.content)
-        logger.info(f"Successfully generated enhanced rule for {library_info.name}")
-        
-        # Create MDCRule instance from the JSON
-        rule = MDCRule(**json_response)
-        return [rule]
+        # Get the response content and parse it
+        try:
+            if hasattr(response.choices[0].message, 'content'):
+                # Standard response format
+                content = response.choices[0].message.content
+            elif hasattr(response.choices[0].message, 'text'):
+                # Gemini format
+                content = response.choices[0].message.text
+            else:
+                raise ValueError("Unexpected response format from LLM")
+
+            # Clean the content to ensure it's valid JSON
+            content = content.strip()
+            if content.startswith('```json'):
+                content = content[7:]
+            if content.endswith('```'):
+                content = content[:-3]
+            content = content.strip()
+            
+            # Parse the JSON response
+            json_response = json.loads(content)
+            
+            # Validate against our schema
+            rule_data = MDCRuleResponse(**json_response)
+            
+            # Create MDCRule instance using model_dump instead of dict
+            rule = MDCRule(**rule_data.model_dump())
+            logger.info(f"Successfully generated enhanced rule for {library_info.name}")
+            
+            return [rule]
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response for {library_info.name}: {str(e)}\nResponse content: {content}")
+            raise
+        except Exception as e:
+            logger.error(f"Error processing response for {library_info.name}: {str(e)}")
+            raise
         
     except Exception as e:
         logger.error(f"Error generating MDC rule for {library_info.name}: {str(e)}")
@@ -596,16 +562,32 @@ def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
     
     # Filter libraries based on target tag or library if specified
     if specific_library:
+        # When specific library is provided, force process it regardless of progress status
         filtered_libraries = [lib for lib in libraries if lib["name"] == specific_library]
+        if not filtered_libraries:
+            logger.error(f"Library '{specific_library}' not found in rules.json")
+            return
+        libraries_to_process = filtered_libraries
     elif specific_tag:
         filtered_libraries = [lib for lib in libraries if specific_tag in lib["tags"]]
+        # For tag filtering, apply normal progress tracking rules
+        libraries_to_process = []
+        for library in filtered_libraries:
+            library_key = library["name"]
+            if not progress_tracker.is_library_processed(library_key) or retry_failed_only and progress_tracker.is_library_failed(library_key):
+                libraries_to_process.append(library)
     else:
-        filtered_libraries = libraries
+        # Normal processing - apply progress tracking rules
+        libraries_to_process = []
+        for library in libraries:
+            library_key = library["name"]
+            if not progress_tracker.is_library_processed(library_key) or retry_failed_only and progress_tracker.is_library_failed(library_key):
+                libraries_to_process.append(library)
     
     # If test mode is enabled, just process one library
     if test_mode:
-        if filtered_libraries:
-            test_library = filtered_libraries[0]
+        if libraries_to_process:
+            test_library = libraries_to_process[0]
             library_key, success = process_single_library(test_library, output_dir, exa_client)
             if success:
                 progress_tracker.mark_library_completed(library_key)
@@ -615,40 +597,11 @@ def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
             logger.error("No libraries found to process in test mode")
         return
     
-    # Prepare list of libraries to process
-    libraries_to_process = []
-    
-    # If retry_failed_only is True, only process libraries that have failed before
-    # and any new libraries that have been added
-    if retry_failed_only:
-        failed_libraries = progress_tracker.get_failed_libraries()
-        new_libraries = progress_tracker.identify_new_libraries(all_library_names)
-        target_libraries = set(failed_libraries).union(set(new_libraries))
-        
-        if failed_libraries:
-            logger.info(f"Retrying {len(failed_libraries)} failed libraries")
-        if new_libraries:
-            logger.info(f"Processing {len(new_libraries)} new libraries")
-        
-        for library in filtered_libraries:
-            library_key = library["name"]
-            if library_key in target_libraries:
-                libraries_to_process.append(library)
-    else:
-        # Normal processing - skip completed libraries
-        for library in filtered_libraries:
-            library_key = library["name"]
-            
-            # Skip if already processed
-            if progress_tracker.is_library_processed(library_key):
-                logger.info(f"Skipping already processed library: {library['name']}")
-                continue
-            
-            # Add to processing list
-            libraries_to_process.append(library)
-    
     if not libraries_to_process:
-        logger.info("No libraries to process. All libraries may have been completed already.")
+        if specific_library:
+            logger.error(f"Library '{specific_library}' was not found or could not be processed")
+        else:
+            logger.info("No libraries to process. All libraries may have been completed already.")
         return
     
     # Process libraries in parallel

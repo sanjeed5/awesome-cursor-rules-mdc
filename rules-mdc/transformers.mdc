@@ -1,6 +1,6 @@
 ---
 description: This rule set enforces best practices for developing with the transformers library, covering code organization, performance, security, and testing to promote maintainable and efficient NLP applications.
-globs: **/*.py
+globs: *.py
 ---
 - **Environment Management:**
   - Use Conda or UV to create isolated environments for consistent dependencies across projects.

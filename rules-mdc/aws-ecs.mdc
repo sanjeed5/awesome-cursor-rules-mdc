@@ -1,6 +1,6 @@
 ---
 description: This rule covers best practices for developing, deploying, and maintaining applications using AWS Elastic Container Service (ECS). It includes guidance on code organization, performance, security, testing, and common pitfalls.
-globs: **/*.{tf,yml,yaml,json,sh,dockerfile}
+globs: *.tf,*.yml,*.yaml,*.json,*.sh,*.dockerfile
 ---
 - **General Principles:**
   - **Infrastructure as Code (IaC):** Treat your ECS infrastructure as code. Use tools like Terraform, AWS CloudFormation, or AWS CDK to define and manage your ECS clusters, task definitions, and services.

@@ -1,6 +1,6 @@
 ---
 description: This rule provides best practices for developing efficient, maintainable, and scalable GUI applications with CustomTkinter. It covers code organization, performance, security, testing, and common pitfalls.
-globs: **/*.py
+globs: *.py
 ---
 - **Always use UV when installing dependencies.**
 - **Always use Python 3.10 or higher.** CustomTkinter requires a modern Python version for compatibility and feature support.

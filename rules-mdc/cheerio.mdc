@@ -1,6 +1,6 @@
 ---
 description: This rule provides best practices for using Cheerio for web scraping and HTML parsing in JavaScript, covering code organization, performance, security, testing, and common pitfalls.
-globs: **/*.js
+globs: *.js
 ---
 # Cheerio Best Practices
 

@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for Webpack configuration, optimization, and usage within projects. It covers code organization, performance, security, testing, and common pitfalls to ensure robust and efficient builds.
-globs: **/webpack.config.js
+globs: webpack.config.js
 ---
 # Webpack Best Practices: A Comprehensive Guide
 
@@ -48,9 +48,9 @@ Organize modules based on functionality or feature. Use clear and descriptive na
 
 javascript
 // src/modules/api.js
-export function fetchData(url) {
+export function fetchData(url) 
   // ...
-}
+
 
 // src/modules/utils.js
 export function formatDate(date) {

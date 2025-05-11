@@ -1,6 +1,6 @@
 ---
 description: Enforces best practices, coding standards, and performance considerations for Electron development. Covers code structure, security, testing, and common pitfalls to ensure robust and maintainable applications.
-globs: **/*.{js,jsx,ts,tsx,html,css,scss,mjs,cjs}
+globs: *.js,*.jsx,*.ts,*.tsx,*.html,*.css,*.scss,*.mjs,*.cjs
 ---
 - **General Practices**
   - Adhere to the official Electron coding style guide. Run `npm run lint` to detect style issues using `cpplint` and `eslint`.

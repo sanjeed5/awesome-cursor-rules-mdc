@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive guidelines for Angular development, covering coding standards, best practices, performance optimization, security considerations, and testing approaches to ensure maintainable, scalable, and high-performing applications.
-globs: **/*.{ts,html,scss,css}
+globs: *.ts,*.html,*.scss,*.css
 ---
 # Angular Best Practices and Coding Standards
 

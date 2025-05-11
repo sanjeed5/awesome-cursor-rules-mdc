@@ -1,6 +1,6 @@
 ---
 description: This rule file outlines comprehensive best practices for developing applications using the Clerk library, focusing on security, performance, code organization, and testing to ensure robust and maintainable authentication implementations.
-globs: **/*.{js,jsx,ts,tsx}
+globs: *.js,*.jsx,*.ts,*.tsx
 ---
 ---
 ## Clerk Library Best Practices

@@ -1,6 +1,6 @@
 ---
 description: This rule provides a comprehensive set of best practices for developing Go applications, covering code organization, performance, security, testing, and common pitfalls.
-globs: **/*.go
+globs: *.go
 ---
 - # Go Best Practices
 

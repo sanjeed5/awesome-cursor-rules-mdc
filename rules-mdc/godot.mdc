@@ -1,6 +1,6 @@
 ---
 description: Comprehensive coding standards and best practices for Godot Engine development, covering code organization, performance, testing, and security to ensure maintainable, efficient, and secure game projects. These rules are primarily for GDScript but also reference relevant C# practices where applicable.
-globs: **/*.gd
+globs: *.gd
 ---
 # Godot Engine Best Practices and Coding Standards
 

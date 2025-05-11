@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for writing effective, maintainable, and performant unit tests using Python's unittest library. It covers code organization, testing strategies, performance, security, and common pitfalls.
-globs: **/*_test.py, **/test_*.py
+globs: *_test.py, **/test_*.py
 ---
 # unittest Best Practices: A Comprehensive Guide
 

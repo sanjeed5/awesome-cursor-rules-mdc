@@ -1,6 +1,6 @@
 ---
 description: Enforces CUDA coding standards, performance optimizations, and best practices to ensure efficient and maintainable GPU-accelerated code. This rule provides guidance on code organization, memory management, error handling, and more.
-globs: **/*.cu
+globs: *.cu
 ---
 - # CUDA Best Practices Guide
   This document outlines best practices for CUDA development, focusing on code organization, performance optimization, and common pitfalls.  It is based on NVIDIA's CUDA C++ Best Practices Guide and expands on it with more detailed recommendations.

@@ -12,7 +12,7 @@ Example rule format:
 
 ---
 description: Library best practices and coding standards
-globs: **/*.ext
+globs: *.ext1,*.ext2
 ---
 - Best practice 1
 - Best practice 2

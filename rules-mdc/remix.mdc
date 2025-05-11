@@ -1,6 +1,6 @@
 ---
 description: This rule file provides comprehensive best practices for Remix development, covering code organization, performance, security, testing, and more. It aims to guide developers in building maintainable, scalable, and secure Remix applications.
-globs: **/*.{js,jsx,ts,tsx}
+globs: *.js,*.jsx,*.ts,*.tsx
 ---
 ## Remix Best Practices and Coding Standards
 

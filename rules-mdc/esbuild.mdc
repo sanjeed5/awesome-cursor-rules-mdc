@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for using esbuild, focusing on performance, code organization, and security in build configurations and development workflows.
-globs: **/*.{js,jsx,ts,tsx,css,json}
+globs: *.js,*.jsx,*.ts,*.tsx,*.css,*.json
 ---
 # esbuild Best Practices
 

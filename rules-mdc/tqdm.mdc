@@ -1,6 +1,6 @@
 ---
 description: This rule file provides best practices and coding standards for using the `tqdm` library in Python. It focuses on performance, customization, and avoiding common pitfalls.
-globs: **/*.py
+globs: *.py
 ---
 # tqdm Best Practices and Coding Standards
 

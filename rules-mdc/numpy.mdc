@@ -1,6 +1,6 @@
 ---
 description: This rule provides best practices for using NumPy in Python, covering coding standards, performance optimization, security, and testing strategies to enhance code quality and maintainability.
-globs: **/*.py
+globs: *.py
 ---
 # NumPy Library Best Practices and Coding Standards
 

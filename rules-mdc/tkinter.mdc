@@ -1,6 +1,6 @@
 ---
 description: This rule file outlines the best practices for developing GUI applications with tkinter in Python, including code organization, performance, security, testing, and tooling.
-globs: **/*.py
+globs: *.py
 ---
 # tkinter Best Practices: Optimizing Performance and Code Structure
 

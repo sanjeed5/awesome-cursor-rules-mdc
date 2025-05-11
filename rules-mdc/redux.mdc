@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive guidance on Redux best practices, covering code structure, performance optimization, testing strategies, and common pitfalls to ensure robust and maintainable Redux applications.
-globs: **/*.{js,jsx,ts,tsx}
+globs: *.js,*.jsx,*.ts,*.tsx
 ---
 - **Introduction:** This document outlines best practices for developing applications with Redux, covering various aspects from code organization to performance optimization.
 

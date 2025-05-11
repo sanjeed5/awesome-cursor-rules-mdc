@@ -1,6 +1,6 @@
 ---
 description: This rule enforces best practices and coding standards for Playwright tests, including stable selectors, test isolation, user-centric testing, and performance considerations.
-globs: **/*.spec.ts
+globs: *.spec.ts
 ---
 - **General Principles**
   - **Test User-Visible Behavior:** Focus tests on how users interact with your application, not on internal implementation details.

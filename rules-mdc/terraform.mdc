@@ -1,6 +1,6 @@
 ---
 description: This rule provides guidelines for Terraform best practices, coding standards, and security considerations to ensure maintainable, efficient, and secure infrastructure-as-code.
-globs: **/*.tf
+globs: *.tf
 ---
 - **Use Remote State**: Store Terraform state files remotely to enable collaboration and prevent conflicts. Consider using Terraform Cloud, HashiCorp Consul, AWS S3 with DynamoDB locking, or Azure Storage Account with Blob Storage Locking.
 	- Properly configure access controls for your remote state backend to prevent unauthorized access.

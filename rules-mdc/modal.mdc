@@ -1,6 +1,6 @@
 ---
 description: This rule outlines best practices for developing and maintaining the Modal library, covering code organization, performance, security, and testing. It aims to ensure high-quality, maintainable, and scalable cloud deployment solutions.
-globs: **/*.py
+globs: *.py
 ---
 # Modal Library Best Practices
 

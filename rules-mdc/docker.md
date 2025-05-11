@@ -1,6 +1,6 @@
 ---
 description: This rule file provides comprehensive guidance on Docker best practices, covering Dockerfile construction, image optimization, and security considerations. It aims to improve the efficiency, maintainability, and security of Docker-based projects.
-globs: **/{Dockerfile,docker-compose.yml,*.dockerfile}
+globs: Dockerfile,docker-compose.yml,*.dockerfile
 ---
 # Docker Best Practices
 

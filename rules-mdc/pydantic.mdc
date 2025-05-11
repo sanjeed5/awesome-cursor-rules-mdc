@@ -1,6 +1,6 @@
 ---
 description: Comprehensive best practices and coding standards for utilizing Pydantic effectively in Python projects, covering code organization, performance, security, and testing.
-globs: **/*.py
+globs: *.py
 ---
 - **Model Definition:**
   - Use `BaseModel` to define data schemas with type annotations for clarity and automatic validation.

@@ -1,6 +1,6 @@
 ---
 description: Comprehensive guidelines for developing robust, scalable, and maintainable FastAPI applications. Covers code structure, performance, security, testing, and common pitfalls.
-globs: **/*.py
+globs: *.py
 ---
 # FastAPI Best Practices: A Comprehensive Guide
 

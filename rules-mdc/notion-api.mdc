@@ -1,6 +1,6 @@
 ---
 description: This rule provides comprehensive best practices for developing applications using the notion-api library, covering code organization, performance, security, testing, and common pitfalls.
-globs: **/*.{js,ts,jsx,tsx}
+globs: *.js,*.ts,*.jsx,*.tsx
 ---
 # Notion API Library Best Practices
 

@@ -1,6 +1,6 @@
 ---
 description: This rule file provides a comprehensive guide to C# best practices, coding standards, and common patterns for writing maintainable, performant, and secure code.
-globs: **/*.cs
+globs: *.cs
 ---
 # C# Best Practices and Coding Standards
 

@@ -1,6 +1,6 @@
 ---
 description: Enforces Riverpod library best practices for Flutter applications.  This rule provides guidance on code organization, performance, testing, and common pitfalls when using Riverpod.
-globs: **/*.dart
+globs: *.dart
 ---
 - **Core Principles:**
   - **Provider Initialization:**  Avoid initializing providers within widgets. Providers should initialize themselves, managing their own state and dependencies independently.  This ensures proper lifecycle management and prevents unexpected behavior during widget rebuilds.  Specifically, do not initialize providers inside `build()` methods or widget constructors.

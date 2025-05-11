@@ -1,6 +1,6 @@
 ---
 description: This rule set provides comprehensive best practices and coding standards for developing robust and maintainable Java backend applications using the Spring Boot framework. It focuses on code structure, performance, security, and testing.
-globs: **/*.java
+globs: *.java
 ---
 - **Code Organization and Structure**
   - **Directory Structure Best Practices**

@@ -1,6 +1,6 @@
 ---
 description: This comprehensive guide outlines best practices for SolidJS development, covering code organization, performance, security, testing, and common pitfalls. It provides actionable guidelines for building maintainable, efficient, and secure SolidJS applications.
-globs: **/*.{js,jsx,ts,tsx}
+globs: *.js,*.jsx,*.ts,*.tsx
 ---
 # SolidJS Best Practices: A Comprehensive Guide
 
