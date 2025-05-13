@@ -42,7 +42,7 @@ This project generates Cursor MDC (Markdown Cursor) rule files from a structured
    Create a `.env` file in the project root with your API keys (see `.env.example`):
    ```
    EXA_API_KEY=your_exa_api_key
-   GOOGLE_API_KEY=your_google_api_key  # For Gemini
+   GEMINI_API_KEY=your_google_gemini_api_key  # For Gemini
    # Or use one of these depending on your LLM choice:
    # OPENAI_API_KEY=your_openai_api_key
    # ANTHROPIC_API_KEY=your_anthropic_api_key
