@@ -239,5 +239,6 @@
   "zsh": "completed",
   "unreal-engine": "completed",
   "vim": "completed",
-  "databricks": "completed"
+  "databricks": "completed",
+  "prefect": "completed"
 }
