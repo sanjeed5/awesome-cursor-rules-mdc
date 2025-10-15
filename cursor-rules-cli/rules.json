@@ -1491,6 +1491,14 @@
       ]
     },
     {
+      "name": "quarkus",
+      "tags": [
+        "backend",
+        "framework",
+        "java"
+      ]
+    },
+    {
       "name": "qwik",
       "tags": [
         "frontend",
