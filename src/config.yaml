@@ -5,7 +5,7 @@ paths:
   exa_results_dir: "exa_results"
 
 api:
-  llm_model: "gemini/gemini-2.0-flash"
+  llm_model: "gemini/gemini-2.5-flash"
   rate_limit_calls: 2000 
   rate_limit_period: 60
   max_retries: 3

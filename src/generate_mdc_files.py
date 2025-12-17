@@ -18,10 +18,6 @@ import yaml
 import sys
 import shutil
 
-# Enable JSON schema validation in LiteLLM
-import litellm
-litellm.enable_json_schema_validation = True
-
 # Get the script directory for absolute path resolution
 SCRIPT_DIR = Path(__file__).parent.absolute()
 
@@ -58,7 +54,7 @@ DEFAULT_CONFIG = {
         "exa_results_dir": "exa_results"  # Directory to store Exa results
     },
     "api": {
-        "llm_model": "gemini/gemini-2.0-flash",
+        "llm_model": "gemini/gemini-2.5-flash",
         "rate_limit_calls": 2000,
         "rate_limit_period": 60,
         "max_retries": 3,
@@ -192,13 +188,6 @@ class ProgressTracker:
             logger.info(f"Found {len(new_libraries)} new libraries to process: {', '.join(new_libraries)}")
         return new_libraries
 
-class MDCRuleResponse(BaseModel):
-    """Pydantic model for LLM response structure."""
-    name: str = Field(..., description="Short descriptive name for the rule")
-    glob_pattern: str = Field(..., description="Valid glob pattern for target files")
-    description: str = Field(..., description="1-2 sentence description of what the rule does")
-    content: str = Field(..., description="Formatted rule content using markdown")
-
 def validate_environment_variables() -> bool:
     """Validate that all required environment variables are set."""
     required_vars = []
@@ -236,25 +225,53 @@ def initialize_exa_client() -> Optional[Exa]:
         logger.error(f"Failed to initialize Exa client: {str(e)}")
         return None
 
+def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] = None, tags: List[str] = None, force_refresh: bool = False) -> Dict[str, Any]:
+    """Use Exa to search for best practices for a library.
+    
+    Checks for cached results first to avoid redundant API calls.
+    Set force_refresh=True to bypass cache and fetch fresh results.
+    """
+    # Create a safe filename for cache lookup
+    safe_name = re.sub('[^a-z0-9-]+', '-', library_name.lower()).strip('-')
+    exa_results_dir = SCRIPT_DIR / CONFIG["paths"]["exa_results_dir"]
+    cache_file = exa_results_dir / f"{safe_name}_exa_result.json"
+    
+    # Check cache first (unless force_refresh is True)
+    if not force_refresh and cache_file.exists():
+        try:
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                cached_result = json.load(f)
+            # Validate cache has expected structure
+            if "answer" in cached_result:
+                logger.info(f"Using cached Exa results for {library_name}")
+                return cached_result
+        except (json.JSONDecodeError, IOError) as e:
+            logger.warning(f"Cache file corrupted for {library_name}, will fetch fresh: {e}")
+    
+    # No cache or force refresh - call Exa API
+    return _fetch_from_exa(library_name, exa_client, tags, cache_file)
+
+
 @retry(stop=stop_after_attempt(CONFIG["exa_api"]["max_retries"]), 
        wait=wait_exponential(multiplier=1, min=CONFIG["exa_api"]["retry_min_wait"], max=CONFIG["exa_api"]["retry_max_wait"]))
 @sleep_and_retry
 @limits(calls=CONFIG["exa_api"]["rate_limit_calls"], period=CONFIG["exa_api"]["rate_limit_period"])
-def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] = None, tags: List[str] = None) -> Dict[str, Any]:
-    """Use Exa to search for best practices for a library."""
+def _fetch_from_exa(library_name: str, exa_client: Optional[Exa], tags: List[str], cache_file: Path) -> Dict[str, Any]:
+    """Internal function to fetch from Exa API with rate limiting and retries."""
     if exa_client is None:
         logger.warning("Exa client not initialized, falling back to LLM generation")
         return {"answer": "", "citations": []}
     
     try:
         # Construct a query for best practices that includes tags for better context
+        current_year = datetime.datetime.now().year
         if tags and len(tags) > 0:
             # Select up to 3 most relevant tags to keep the query focused
             relevant_tags = tags[:3] if len(tags) > 3 else tags
             tags_str = " ".join(relevant_tags)
-            query = f"{library_name} best practices coding standards for {tags_str} development"
+            query = f"{library_name} best practices coding standards {current_year} modern {tags_str} development"
         else:
-            query = f"{library_name} best practices coding standards"
+            query = f"{library_name} best practices coding standards {current_year} modern"
             
         logger.info(f"Searching Exa for: {query}")
         
@@ -267,18 +284,13 @@ def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] 
             "citations": result.citations if hasattr(result, 'citations') else []
         }
         
-        # Save the Exa result to a file
-        exa_results_dir = SCRIPT_DIR / CONFIG["paths"]["exa_results_dir"]
-        exa_results_dir.mkdir(parents=True, exist_ok=True)
+        # Save the Exa result to cache file
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
         
-        # Create a safe filename
-        safe_name = re.sub('[^a-z0-9-]+', '-', library_name.lower()).strip('-')
-        result_file = exa_results_dir / f"{safe_name}_exa_result.json"
-        
-        with open(result_file, 'w', encoding='utf-8') as f:
+        with open(cache_file, 'w', encoding='utf-8') as f:
             json.dump(result_dict, f, indent=2, default=str)
         
-        logger.info(f"Saved Exa result for {library_name} to {result_file}")
+        logger.info(f"Saved Exa result for {library_name} to {cache_file}")
         
         if result_dict["answer"]:
             logger.info(f"Successfully retrieved Exa results for {library_name}")
@@ -292,6 +304,116 @@ def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] 
         logger.error(f"Error fetching from Exa for {library_name}: {str(e)}")
         return {"answer": "", "citations": []}
 
+def _get_relevant_sections(tags: List[str]) -> List[str]:
+    """Return relevant sections based on library tags."""
+    # Base sections that apply to most libraries
+    base_sections = [
+        "Code Organization and Structure",
+        "Common Patterns and Anti-patterns",
+        "Performance Considerations",
+        "Common Pitfalls and Gotchas",
+    ]
+    
+    # Tag-specific sections
+    tag_sections = {
+        "backend": ["Security Best Practices", "Error Handling", "API Design"],
+        "frontend": ["Component Architecture", "State Management", "Accessibility"],
+        "database": ["Security Best Practices", "Query Optimization", "Data Modeling"],
+        "orm": ["Security Best Practices", "Query Optimization", "Migration Patterns"],
+        "authentication": ["Security Best Practices", "Session Management", "Token Handling"],
+        "security": ["Security Best Practices", "Vulnerability Prevention", "Input Validation"],
+        "testing": ["Test Organization", "Mocking Strategies", "Coverage Patterns"],
+        "css": ["Responsive Design", "Browser Compatibility", "Naming Conventions"],
+        "ui": ["Component Architecture", "Accessibility", "Theming"],
+        "state-management": ["State Organization", "Side Effects", "Debugging"],
+        "api": ["Error Handling", "Request/Response Patterns", "Rate Limiting"],
+        "cli": ["Argument Parsing", "Error Messages", "Exit Codes"],
+        "devops": ["Configuration Management", "Environment Variables", "Logging"],
+        "python": ["Type Hints", "Virtual Environments", "Packaging"],
+        "typescript": ["Type Safety", "Module Organization", "Strict Mode"],
+        "react": ["Hooks Best Practices", "Component Lifecycle", "Re-render Optimization"],
+        "vue": ["Composition API", "Reactivity", "Component Communication"],
+        "node": ["Async Patterns", "Error Handling", "Module System"],
+    }
+    
+    # Collect additional sections based on tags
+    additional = []
+    for tag in tags:
+        tag_lower = tag.lower()
+        if tag_lower in tag_sections:
+            for section in tag_sections[tag_lower]:
+                if section not in base_sections and section not in additional:
+                    additional.append(section)
+    
+    # Add testing section if not already covered
+    if "Testing Approaches" not in additional and "testing" not in [t.lower() for t in tags]:
+        additional.append("Testing Approaches")
+    
+    return base_sections + additional[:4]  # Limit to avoid overwhelming the prompt
+
+
+def _get_glob_hint(library_name: str, tags: List[str]) -> str:
+    """Suggest a glob pattern based on library name and tags."""
+    # Direct library mappings for common libraries
+    library_globs = {
+        "react": "**/*.{jsx,tsx}",
+        "vue": "**/*.{vue,js,ts}",
+        "svelte": "**/*.{svelte,js,ts}",
+        "angular": "**/*.{ts,html}",
+        "next.js": "**/*.{js,jsx,ts,tsx}",
+        "nuxt": "**/*.{vue,js,ts}",
+        "prisma": "**/*.prisma",
+        "drizzle": "**/*.{ts,js}",
+        "tailwind": "**/*.{css,html,jsx,tsx,vue}",
+        "sass": "**/*.{scss,sass}",
+        "less": "**/*.less",
+        "express": "**/*.{js,ts}",
+        "fastapi": "**/*.py",
+        "django": "**/*.py",
+        "flask": "**/*.py",
+        "pytest": "**/*.py",
+        "jest": "**/*.{js,ts,jsx,tsx}",
+        "vitest": "**/*.{js,ts,jsx,tsx}",
+        "playwright": "**/*.{js,ts}",
+        "cypress": "**/*.{js,ts,cy.js,cy.ts}",
+        "docker": "**/Dockerfile,**/docker-compose*.{yml,yaml}",
+        "kubernetes": "**/*.{yaml,yml}",
+        "terraform": "**/*.tf",
+        "graphql": "**/*.{graphql,gql}",
+        "sql": "**/*.sql",
+    }
+    
+    # Check for direct match
+    name_lower = library_name.lower()
+    if name_lower in library_globs:
+        return library_globs[name_lower]
+    
+    # Tag-based fallbacks
+    tag_globs = {
+        "python": "**/*.py",
+        "typescript": "**/*.{ts,tsx}",
+        "javascript": "**/*.{js,jsx}",
+        "rust": "**/*.rs",
+        "go": "**/*.go",
+        "java": "**/*.java",
+        "ruby": "**/*.rb",
+        "php": "**/*.php",
+        "css": "**/*.{css,scss,sass,less}",
+        "html": "**/*.{html,htm}",
+        "yaml": "**/*.{yaml,yml}",
+        "json": "**/*.json",
+        "markdown": "**/*.{md,mdx}",
+    }
+    
+    for tag in tags:
+        tag_lower = tag.lower()
+        if tag_lower in tag_globs:
+            return tag_globs[tag_lower]
+    
+    # Default fallback
+    return "**/*"
+
+
 @sleep_and_retry
 @limits(calls=CONFIG["api"]["rate_limit_calls"], period=CONFIG["api"]["rate_limit_period"])
 @retry(stop=stop_after_attempt(CONFIG["api"]["max_retries"]), 
@@ -299,18 +421,6 @@ def get_library_best_practices_exa(library_name: str, exa_client: Optional[Exa] 
 def generate_mdc_rules_from_exa(library_info: LibraryInfo, exa_results: Dict[str, Any]) -> List[MDCRule]:
     """Generate MDC rules for a library using LLM directly from Exa results."""
     try:
-        # Load MDC instructions
-        mdc_instructions_path = SCRIPT_DIR / CONFIG["paths"]["mdc_instructions"]
-        if not mdc_instructions_path.exists():
-            logger.warning(f"MDC instructions file not found at {mdc_instructions_path}")
-            mdc_instructions = "Create rules with clear descriptions and appropriate glob patterns."
-        else:
-            try:
-                mdc_instructions = mdc_instructions_path.read_text()
-            except Exception as e:
-                logger.warning(f"Could not read MDC instructions file: {str(e)}")
-                mdc_instructions = "Create rules with clear descriptions and appropriate glob patterns."
-        
         # Extract Exa answer and citations
         exa_answer = exa_results.get("answer", "")
         citations = exa_results.get("citations", [])
@@ -329,109 +439,190 @@ def generate_mdc_rules_from_exa(library_info: LibraryInfo, exa_results: Dict[str
         # Format tags for prompt
         tags_str = ", ".join(library_info.tags)
         
-        # Enhanced prompt template
-        enhanced_prompt_template = """Create a comprehensive Cursor rule file (.mdc) for the {library_name} library following these guidelines:
+        # Determine relevant sections based on tags
+        sections = _get_relevant_sections(library_info.tags)
+        sections_text = "\n".join(f"- {section}" for section in sections)
+        
+        # Suggest glob pattern based on tags
+        glob_hint = _get_glob_hint(library_info.name, library_info.tags)
+        
+        # Simplified prompt that asks for direct markdown output
+        prompt_template = """Create a comprehensive Cursor IDE rule file for {library_name}.
 
-{mdc_instructions}
+## About Cursor Rules
+Cursor rules provide persistent instructions to the AI coding assistant. Good rules are:
+- **Focused and actionable** - provide clear, specific guidance (not generic advice)
+- **Under 500 lines** - keep content concise and targeted  
+- **Practical** - include concrete, copy-pasteable code examples
+- **Clear** - write like internal documentation that your team would reference
+- **Opinionated** - recommend specific approaches rather than listing all options
+- **Avoid vague guidance** - be specific about *when* and *why* to use patterns
 
-Library Information:
-- Name: {library_name}
-- Tags: {tags}
+## Library Information
+- **Name:** {library_name}
+- **Tags:** {tags}
+- **Target files:** {glob_hint}
 
 {exa_content_section}
 
-Your task is to create an EXTREMELY DETAILED and COMPREHENSIVE guide that covers:
+## Content Strategy
+Focus on these areas relevant to {library_name}:
+{sections}
 
-1. Code Organization and Structure
-2. Common Patterns and Anti-patterns
-3. Performance Considerations
-4. Security Best Practices
-5. Testing Approaches
-6. Common Pitfalls and Gotchas
-7. Tooling and Environment
+## Writing Style Requirements:
+1. **Be opinionated and decisive** - Say "Use X for Y" not "You could use X or Y or Z"
+2. **Emphasize common mistakes** - "❌ BAD" vs "✅ GOOD" examples are highly valuable
+3. **Real-world scenarios** - Focus on practical situations developers encounter daily
+4. **Code-heavy** - Show, don't just tell. Every guideline should have a code example
+5. **Context matters** - Explain *when* to apply patterns, not just *what* they are
+6. **Modern best practices** - Focus on current, recommended approaches (e.g., hooks over classes in React)
 
-You MUST format your response as a valid JSON object with these exact keys:
-- name: A short descriptive name for the rule (e.g., "{library_name} Best Practices")
-- glob_pattern: The most appropriate glob pattern for this library based on the file types it typically works with
-- description: A clear 1-2 sentence description of what the rule covers
-- content: The formatted rule content with comprehensive best practices in markdown format
+## Output Format
+Output a complete .mdc file with YAML frontmatter followed by markdown content.
 
-DO NOT include any text outside of the JSON object. The response must be a single, valid JSON object."""
+Use this EXACT format:
+
+---
+description: [A clear 1-2 sentence description focusing on WHAT this helps developers do]
+globs: {glob_hint}
+---
+
+# {library_name} Best Practices
+
+[Your comprehensive guide content here in markdown format]
+
+## Critical Guidelines:
+- Start with frontmatter (the --- YAML section)
+- Use proper markdown formatting (headers, lists, code blocks)
+- Include concrete, copy-pasteable code examples for EVERY recommendation
+- Be specific and opinionated - recommend one good way over listing all options
+- Emphasize common pitfalls with ❌ BAD vs ✅ GOOD comparisons
+- Focus on real-world use cases developers face daily
+- Keep under 500 lines total
+- Write like clear internal documentation, not generic tutorials
+- Be specific to {library_name} - avoid generic software advice
+
+---
+**IMPORTANT: Use modern best practices as of {current_date}. Focus on current, recommended approaches and avoid deprecated patterns.**"""
         
-        # Determine if we need to generate content from scratch
+        # Determine content section based on available information
         if len(exa_answer.strip()) < 100 and len(all_citation_text.strip()) < 200:
-            exa_content_section = f"""I need you to research and generate comprehensive best practices for {library_info.name} from your knowledge.
-
-Please be extremely thorough and detailed, covering all aspects of {library_info.name} development.
-Your guidance should be useful for both beginners and experienced developers."""
+            exa_content_section = f"""## Your Task
+Generate comprehensive best practices for {library_info.name} from your expert knowledge.
+Be thorough and detailed, covering patterns, anti-patterns, performance, security, and testing.
+Make it useful for both beginners and experienced developers."""
         else:
             chunk_size = CONFIG["processing"]["chunk_size"]
-            exa_content_section = f"""Based on the following information about {library_info.name} best practices:
+            exa_content_section = f"""## Reference Information
+Use this information about {library_info.name} best practices as a foundation:
 
-Exa search results:
+### Research Summary:
 {exa_answer}
 
-Additional information from citations:
+### Additional Context:
 {all_citation_text[:chunk_size]}
 
-Please synthesize, enhance, and expand upon this information to create the most comprehensive guide possible.
-Add any important best practices that might be missing from the search results."""
+## Your Task
+Synthesize, enhance, and expand upon this information to create a comprehensive guide.
+Add important best practices that may be missing. Focus on practical, actionable advice."""
         
-        prompt = enhanced_prompt_template.format(
+        # Get current date for context (at the end for prompt caching)
+        current_date = datetime.datetime.now().strftime("%B %Y")
+        
+        prompt = prompt_template.format(
             library_name=library_info.name,
             tags=tags_str,
             exa_content_section=exa_content_section,
-            mdc_instructions=mdc_instructions
+            sections=sections_text,
+            glob_hint=glob_hint,
+            current_date=current_date
         )
         
-        logger.info(f"Sending enhanced prompt to LLM for {library_info.name}")
+        logger.info(f"Sending prompt to LLM for {library_info.name}")
         
-        # Use LiteLLM's completion with JSON mode
+        # System prompt for consistent behavior
+        system_prompt = """You are a senior software engineer writing internal documentation for your team.
+Your team uses Cursor IDE and relies on these rules as their definitive guide.
+
+Your writing style:
+- **Opinionated** - Recommend THE best approach, not all possible options
+- **Practical** - Every statement should be immediately actionable
+- **Example-driven** - Show code for every guideline (❌ BAD vs ✅ GOOD format)
+- **Real-world focused** - Address actual problems developers face daily
+- **Concise but complete** - Dense with useful information, zero fluff
+- **Modern** - Always use current best practices, avoid deprecated patterns
+
+Output complete .mdc files with YAML frontmatter and markdown content.
+Write like you're teaching a teammate who will reference this daily."""
+        
+        # Use LiteLLM's completion - no JSON mode needed
         response = completion(
             model=CONFIG["api"]["llm_model"],
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            max_tokens=4000,
-            temperature=0.7
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=8000,
+            temperature=0.4
         )
         
-        # Get the response content and parse it
-        try:
-            if hasattr(response.choices[0].message, 'content'):
-                # Standard response format
-                content = response.choices[0].message.content
-            elif hasattr(response.choices[0].message, 'text'):
-                # Gemini format
-                content = response.choices[0].message.text
-            else:
-                raise ValueError("Unexpected response format from LLM")
+        # Get the response content
+        if hasattr(response.choices[0].message, 'content'):
+            content = response.choices[0].message.content
+        elif hasattr(response.choices[0].message, 'text'):
+            content = response.choices[0].message.text
+        else:
+            raise ValueError("Unexpected response format from LLM")
 
-            # Clean the content to ensure it's valid JSON
-            content = content.strip()
-            if content.startswith('```json'):
-                content = content[7:]
+        # Clean up the response
+        content = content.strip()
+        
+        # Remove markdown code fences if present
+        if content.startswith('```'):
+            # Find the end of the opening fence
+            first_newline = content.find('\n')
+            if first_newline != -1:
+                content = content[first_newline + 1:]
+            # Remove closing fence
             if content.endswith('```'):
-                content = content[:-3]
-            content = content.strip()
-            
-            # Parse the JSON response
-            json_response = json.loads(content)
-            
-            # Validate against our schema
-            rule_data = MDCRuleResponse(**json_response)
-            
-            # Create MDCRule instance using model_dump instead of dict
-            rule = MDCRule(**rule_data.model_dump())
-            logger.info(f"Successfully generated enhanced rule for {library_info.name}")
-            
-            return [rule]
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON response for {library_info.name}: {str(e)}\nResponse content: {content}")
-            raise
-        except Exception as e:
-            logger.error(f"Error processing response for {library_info.name}: {str(e)}")
-            raise
+                content = content[:-3].strip()
+        
+        # Parse the frontmatter and content
+        if not content.startswith('---'):
+            raise ValueError(f"Response does not start with YAML frontmatter for {library_info.name}")
+        
+        # Find the end of frontmatter
+        second_marker = content.find('---', 3)
+        if second_marker == -1:
+            raise ValueError(f"Invalid frontmatter format for {library_info.name}")
+        
+        frontmatter = content[3:second_marker].strip()
+        markdown_content = content[second_marker + 3:].strip()
+        
+        # Parse frontmatter (simple YAML parsing)
+        description = ""
+        glob_pattern = glob_hint
+        
+        for line in frontmatter.split('\n'):
+            if ':' in line:
+                key, value = line.split(':', 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key == 'description':
+                    description = value
+                elif key in ['globs', 'glob']:
+                    glob_pattern = value
+        
+        # Create MDCRule instance
+        rule = MDCRule(
+            name=f"{library_info.name} Best Practices",
+            glob_pattern=glob_pattern,
+            description=description if description else f"Best practices and coding standards for {library_info.name}",
+            content=markdown_content
+        )
+        
+        logger.info(f"Successfully generated rule for {library_info.name}")
+        return [rule]
         
     except Exception as e:
         logger.error(f"Error generating MDC rule for {library_info.name}: {str(e)}")
@@ -439,21 +630,10 @@ Add any important best practices that might be missing from the search results."
 
 def create_mdc_file(rule: MDCRule, output_path: Path) -> None:
     """Create a single .mdc file from a rule."""
-    # Clean up the content by removing yaml markers and extra formatting
+    # Content should already be clean markdown from the generation function
     content = rule.content.strip()
-    content = content.replace('```yaml', '')
-    content = content.replace('```', '')
-    content = content.strip()
     
-    # Remove any nested frontmatter
-    if content.startswith('---'):
-        try:
-            second_marker = content.find('---', 3)
-            if second_marker != -1:
-                content = content[second_marker + 3:].strip()
-        except Exception as e:
-            logger.warning(f"Error removing nested frontmatter: {str(e)}")
-    
+    # Create the complete .mdc file with frontmatter
     mdc_content = f"""---
 description: {rule.description}
 globs: {rule.glob_pattern}
@@ -467,7 +647,7 @@ globs: {rule.glob_pattern}
         f.write(mdc_content)
     logger.info(f"Created {output_path}")
 
-def process_single_library(library_info: Dict[str, Any], output_dir: str, exa_client: Optional[Exa] = None) -> Tuple[str, bool]:
+def process_single_library(library_info: Dict[str, Any], output_dir: str, exa_client: Optional[Exa] = None, force_refresh_exa: bool = False) -> Tuple[str, bool]:
     """Process a single library and generate MDC file. Returns (library_key, success)."""
     library_name = library_info["name"]
     library_tags = library_info["tags"]
@@ -489,9 +669,9 @@ def process_single_library(library_info: Dict[str, Any], output_dir: str, exa_cl
             tags=library_tags
         )
         
-        # Get best practices using Exa
+        # Get best practices using Exa (uses cache unless force_refresh_exa is True)
         logger.info(f"Getting best practices for {library_name} using Exa")
-        exa_results = get_library_best_practices_exa(library_name, exa_client, library_tags)
+        exa_results = get_library_best_practices_exa(library_name, exa_client, library_tags, force_refresh=force_refresh_exa)
         
         # Store citations in library info
         library_obj.citations = exa_results.get("citations", [])
@@ -521,7 +701,7 @@ def process_single_library(library_info: Dict[str, Any], output_dir: str, exa_cl
 
 def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
                       specific_library: Optional[str] = None, specific_tag: Optional[str] = None,
-                      retry_failed_only: bool = False):
+                      retry_failed_only: bool = False, force_refresh_exa: bool = False):
     """Process rules.json and generate MDC files."""
     # Check if rules.json exists
     # Use absolute paths for clarity and robustness
@@ -624,7 +804,7 @@ def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
     if test_mode:
         if libraries_to_process:
             test_library = libraries_to_process[0]
-            library_key, success = process_single_library(test_library, output_dir, exa_client)
+            library_key, success = process_single_library(test_library, output_dir, exa_client, force_refresh_exa)
             if success:
                 progress_tracker.mark_library_completed(library_key)
             else:
@@ -646,7 +826,7 @@ def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Create a partial function with fixed arguments
-        process_func = partial(process_single_library, output_dir=output_dir, exa_client=exa_client)
+        process_func = partial(process_single_library, output_dir=output_dir, exa_client=exa_client, force_refresh_exa=force_refresh_exa)
         
         # Submit all tasks
         future_to_library = {
@@ -681,6 +861,7 @@ def main():
     parser.add_argument("--log-dir", type=str, default="logs", help="Directory to save log files")
     parser.add_argument("--exa-results-dir", type=str, default=None, help="Directory to save Exa results")
     parser.add_argument("--regenerate-all", action="store_true", help="Regenerate all libraries, including previously completed ones")
+    parser.add_argument("--refresh-exa", action="store_true", help="Bypass Exa cache and fetch fresh results")
     parser.add_argument("--debug", action="store_true", help="Enable extra debug output")
     args = parser.parse_args()
     
@@ -727,7 +908,8 @@ def main():
             test_mode=args.test,
             specific_library=args.library,
             specific_tag=args.tag,
-            retry_failed_only=not args.regenerate_all  # Invert regenerate-all flag
+            retry_failed_only=not args.regenerate_all,  # Invert regenerate-all flag
+            force_refresh_exa=args.refresh_exa
         )
         logger.info("MDC generation completed successfully!")
         
