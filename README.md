@@ -2,8 +2,6 @@
 
 > **Disclaimer:** This project is not officially associated with or endorsed by Cursor. It is a community-driven initiative to enhance the Cursor experience.
 
-<a href="https://www.producthunt.com/posts/cursor-rules-cli?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-cursor&#0045;rules&#0045;cli" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=936513&theme=light&t=1741030422709" alt="Cursor&#0032;Rules&#0032;CLI - Auto&#0045;install&#0032;relevant&#0032;Cursor&#0032;rules&#0032;with&#0032;one&#0032;simple&#0032;command | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
-
 This project generates Cursor MDC (Markdown Cursor) rule files from a structured JSON file containing library information. It uses Exa for semantic search and LLM (Gemini) for content generation.
 
 [![Star History Chart](https://api.star-history.com/svg?repos=sanjeed5/awesome-cursor-rules-mdc&type=Date)](https://www.star-history.com/#sanjeed5/awesome-cursor-rules-mdc&Date)
@@ -122,10 +120,6 @@ The script uses a `config.yaml` file for configuration. You can modify this file
 
 ```
 .
-├── cursor-rules-cli/     # CLI tool for finding and installing rules (deprecated)
-│   ├── src/              # CLI source code
-│   ├── docs/             # CLI documentation
-│   └── README.md         # CLI usage instructions
 ├── src/                  # Main source code directory
 │   ├── generate_mdc_files.py  # Main generator script
 │   ├── config.yaml       # Configuration file
