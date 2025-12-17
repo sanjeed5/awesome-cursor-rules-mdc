@@ -1,170 +1,339 @@
 ---
-description: This rule file provides comprehensive guidelines for writing high-quality Sphinx documentation, covering code style, structure, performance, and best practices. It aims to ensure consistency, readability, and maintainability of Sphinx-based projects.
-globs: *.rst
+description: This rule file provides opinionated, practical guidelines for setting up, writing, and maintaining Python project documentation using Sphinx, emphasizing modern best practices, clear structure, and automated validation.
+globs: **/*.py
 ---
-- **Use reStructuredText (reST) or MyST markdown:** These are the primary markup languages for Sphinx. reST is the default and provides powerful semantic markup capabilities. MyST is a markdown flavor compatible with Sphinx. Choose one and stick to it for consistency.
+# Sphinx Best Practices
 
-- **Follow PEP 8 and PEP 257:** Adhere to PEP 8 for Python code style within your documentation, emphasizing readability and consistency (e.g., 4 spaces for indentation, line length limits). Follow PEP 257 for docstring conventions for Python code.
+Sphinx is the definitive tool for Python project documentation. This guide outlines the essential workflow and best practices for creating intelligent, beautiful, and maintainable docs. Always prioritize consistency within your project over strict adherence to external guides, but default to these modern standards.
 
-- **Structure Your Documentation Hierarchically:** Organize documentation into a clear, hierarchical structure with logical sections.  Use proper headings (H1, H2, etc.) to delineate content.
+## 1. Project Setup and Structure
 
-- **Use Semantic Markup:** Leverage reST's semantic markup for functions, classes, modules, and other code elements to enable cross-referencing and automatic linking. Example: `:func:`my_function``.
+Establish a clean, predictable documentation structure from the start.
 
-- **Cross-Referencing:** Utilize Sphinx's cross-referencing capabilities extensively to link related documentation sections, functions, classes, and other elements. This improves navigation and understanding.  Use `:ref:`, `:func:`, `:class:`, `:mod:` roles.
+### 1.1. Use a Virtual Environment
 
-- **Document Code:** Use Sphinx's `autodoc` extension to automatically generate documentation from Python docstrings. Ensure your docstrings are comprehensive, following PEP 257 conventions. Include parameters, return types, and exceptions.
+Always isolate your documentation build dependencies. This prevents conflicts and ensures reproducible builds.
 
-- **Use Code Blocks:** Clearly define code blocks using the `.. code-block:: language` directive to enable syntax highlighting and improve readability.
+```bash
+# ❌ BAD: Installing Sphinx globally
+pip install sphinx
 
-- **Whitespace and Formatting:** Maintain consistent whitespace for clarity.  Use blank lines to separate sections and ensure code blocks are clearly defined.
+# ✅ GOOD: Create and activate a virtual environment
+python -m venv .venv/docs
+source .venv/docs/bin/activate  # On Windows: .venv\docs\Scripts\activate
+pip install sphinx sphinx-autobuild myst-parser sphinx-rtd-theme sphinx.ext.napoleon
+```
 
-- **Maintain Line Length:** Limit line lengths to 79 characters for code and 72 characters for docstrings/comments to improve readability and compatibility with various tools and editors.
+### 1.2. Standard Directory Layout
 
-- **Version Control:** Use version control (e.g., Git) to manage your Sphinx documentation project. This allows for tracking changes, collaboration, and easy rollback to previous versions.
+Place all documentation source files in a dedicated `docs/` directory at your project root.
 
-- **Use a Sphinx Theme:** Choose a Sphinx theme that suits your project's style and audience.  Many built-in themes (alabaster, classic, sphinxdoc) and third-party themes (sphinx_rtd_theme, pydata_sphinx_theme) are available.
+```
+my_project/
+├── .venv/
+├── my_package/
+│   └── __init__.py
+│   └── module.py
+├── docs/
+│   ├── conf.py
+│   ├── index.md        # Or index.rst
+│   ├── tutorial/       # For manual narrative content
+│   │   └── getting_started.md
+│   ├── api/            # For auto-generated API docs (managed by apidoc)
+│   │   └── my_package.rst
+│   ├── _static/        # Custom static files (images, CSS)
+│   ├── _templates/     # Custom Jinja2 templates
+│   └── Makefile        # Or make.bat for Windows
+├── README.md
+├── CHANGELOG.md
+├── LICENSE
+└── pyproject.toml
+```
 
-- **Configure Sphinx Properly:** Carefully configure Sphinx using the `conf.py` file to customize the output format, extensions, theme, and other settings. Use meaningful project metadata (name, version, author).
+### 1.3. Initialize with `sphinx-quickstart`
 
-- **Test Your Documentation:** Use Sphinx's `doctest` extension to automatically test code snippets within your documentation.  This ensures the code examples are correct and up-to-date.
+Use the quickstart tool once to scaffold your `docs/` directory. Accept the defaults, then customize.
 
-- **Use Extensions:** Explore and utilize Sphinx extensions to enhance your documentation with features like mathematical equations, diagrams, and other specialized content.
+```bash
+# From your project root:
+cd docs
+sphinx-quickstart
+```
 
-- **Internationalization:** Consider internationalizing your documentation using Sphinx's internationalization features if your project targets a global audience.
+### 1.4. Prefer MyST Markdown for New Content
 
-- **Linkcheck Builder:** Use the linkcheck builder to automatically check for broken links in your documentation. This ensures the documentation remains up-to-date and accurate.
+For narrative documentation, MyST Markdown (`.md`) is more approachable than reStructuredText (`.rst`) while retaining Sphinx's powerful features. Use it for all new manual content.
 
-- **Contribute Extensions**: Create your own sphinx extensions to manage repeated formatting or add complex rendering.
+**`docs/conf.py`:**
 
-- **Naming Conventions**
-  - Use descriptive and consistent names for files, directories, and variables.
-  - Follow Python's naming conventions for modules, classes, functions, and variables.
-  - Use all lowercase for modules. Use underscores if it improves readability. Example: `my_module.py`
-  - Use CapWords for class names. Example: `MyClass`
-  - Use lowercase with underscores for functions and variables. Example: `my_function`, `my_variable`
-  - Use UPPERCASE with underscores for constants. Example: `MAX_VALUE`
-
-- **Common Patterns and Anti-Patterns**
-  - **Pattern:** Use the Model-View-Controller (MVC) pattern for complex documentation structures, where the Model represents the data, the View renders the data, and the Controller handles user interactions.
-  - **Anti-Pattern:** Avoid deeply nested directory structures, which can make it difficult to navigate and maintain the documentation.
-  - **Anti-Pattern:** Avoid inconsistent formatting and style throughout the documentation, which can make it look unprofessional and difficult to read.
-
-- **Performance Considerations**
-  - Optimize images by compressing them without sacrificing quality.
-  - Use lazy loading for large images or other resources that are not immediately visible on the page.
-  - Use caching to reduce the number of times that resources need to be loaded.
-  - Minify CSS and JavaScript files to reduce their size.
-
-- **Security Best Practices**
-  - Sanitize user inputs to prevent cross-site scripting (XSS) attacks.
-  - Use HTTPS to encrypt communication between the user's browser and the server.
-  - Keep Sphinx and its extensions up-to-date to patch security vulnerabilities.
-
-- **Testing Approaches**
-  - Write unit tests for custom Sphinx extensions.
-  - Use integration tests to verify that the different parts of the documentation work together correctly.
-  - Use end-to-end tests to simulate user interactions with the documentation and verify that the documentation behaves as expected.
-
-- **Common Pitfalls and Gotchas**
-  - Be aware of the different versions of Sphinx and their compatibility with different Python versions and extensions.
-  - Use the appropriate encoding for your documentation files (UTF-8 is recommended).
-  - Be careful when using the `raw` directive, as it can introduce security vulnerabilities if not used properly.
-
-- **Tooling and Environment**
-  - Use a code editor or IDE with syntax highlighting and linting for reStructuredText or Markdown.
-  - Use a build automation tool (e.g., Make, tox) to automate the documentation build process.
-  - Use a CI/CD system (e.g., Jenkins, Travis CI, GitHub Actions) to automatically build and deploy the documentation whenever the code changes.
-
-- **Deployment Best Practices**
-  - Use a dedicated server or hosting platform for your documentation.
-  - Use a content delivery network (CDN) to distribute your documentation to users around the world.
-  - Use HTTPS to secure your documentation.
-  - Use a robots.txt file to prevent search engines from indexing sensitive parts of your documentation.
-
-- **Documenting Objects**
-  - Use `autodoc` to automatically generate documentation for Python objects.
-  - Use directives like `.. automodule::`, `.. autoclass::`, and `.. autofunction::` to document modules, classes, and functions, respectively.
-  - Use the `:members:`, `:undoc-members:`, and `:show-inheritance:` options to control which members are documented.
-  - Write clear and concise docstrings for all objects, following PEP 257 conventions.
-
-- **Intersphinx**
-  - Use the `intersphinx` extension to link to documentation of other Sphinx projects.
-  - Configure `intersphinx_mapping` in `conf.py` to specify the locations of other Sphinx documentation.
-  - Use the `:py:mod:`, `:py:class:`, and `:py:func:` roles to link to modules, classes, and functions in other projects.
-
-- **reStructuredText Specific Tips**
-  - Use titles and sections to structure your documentation.
-  - Use bullet lists and numbered lists to present information in a clear and concise way.
-  - Use tables to organize data.
-  - Use images to illustrate concepts.
-  - Use footnotes and citations to provide additional information and give credit to sources.
-
-- **Example `conf.py` settings:**
-  python
-  # Configuration file for the Sphinx documentation builder.
-  # For the full list of built-in configuration values, see the documentation:
-  # https://www.sphinx-doc.org/en/master/usage/configuration.html
-
-  # -- Project information -----------------------------------------------------
-
-  project = 'My Project'
-  copyright = '2023, My Company'
-  author = 'John Doe'
-  release = '1.0.0'
-
-  # -- General configuration ---------------------------------------------------
-
-  extensions = [
-      'sphinx.ext.autodoc',
-      'sphinx.ext.napoleon',
-      'sphinx.ext.intersphinx',
-      'sphinx.ext.todo',
-      'sphinx.ext.viewcode',
-      'sphinx.ext.mathjax',
-      'sphinx.ext.ifconfig',
-      'sphinx.ext.githubpages',
-      'sphinx.ext.graphviz'
-  ]
-
-  templates_path = ['_templates']
-  exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-
-  language = 'en'
-
-  # -- Options for HTML output -------------------------------------------------
-
-  html_theme = 'sphinx_rtd_theme'
-  html_static_path = ['_static']
-
-  # -- Extension configuration -------------------------------------------------
-
-  # napoleon configuration (for Google-style docstrings)
-  napoleon_google_docstring = True
-  napoleon_include_init_with_doc = True
-  napoleon_include_private_with_doc = False
-  napoleon_include_special_with_doc = True
-  napoleon_use_rtype = True
-  napoleon_use_param = True
-
-  # intersphinx configuration
-  intersphinx_mapping = {
-      'python': ('https://docs.python.org/3', None),
-      'numpy': ('https://numpy.org/doc/stable/', None),
-  }
-
-  # todo configuration
-  todo_include_todos = True
-
-  # graphviz configuration
-  graphviz_output_format = 'svg'
-
-
-  # -- Options for Markdown files --------------------------------------------
-
-  from recommonmark.parser import CommonMarkParser
-
-source_parsers = {
-    '.md': CommonMarkParser,
+```python
+# ✅ GOOD: Enable MyST Parser
+extensions = [
+    'myst_parser',
+    # ... other extensions
+]
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
 }
+```
 
-  source_suffix = ['.rst', '.md']
+## 2. Docstring Conventions and API Generation
+
+Generate API documentation directly from your Python code's docstrings.
+
+### 2.1. Adopt Google-Style Docstrings with Type Hints
+
+Write docstrings in Google style for clarity and consistency. Always include type hints in your function/method signatures. The `sphinx.ext.napoleon` extension will parse these automatically.
+
+**`docs/conf.py`:**
+
+```python
+# ✅ GOOD: Enable Napoleon for Google/NumPy style docstrings
+extensions = [
+    # ... other extensions
+    'sphinx.ext.napoleon',
+]
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False # Stick to one style
+napoleon_use_param = True
+napoleon_use_rtype = True
+```
+
+**`my_package/module.py`:**
+
+```python
+# ❌ BAD: Inconsistent, missing types, hard to parse
+def calculate_sum(a, b):
+    """Adds two numbers."""
+    return a + b
+
+# ✅ GOOD: Google-style, type-hinted docstring
+def calculate_sum(a: int, b: int) -> int:
+    """Calculate the sum of two integers.
+
+    Args:
+        a: The first integer.
+        b: The second integer.
+
+    Returns:
+        The sum of `a` and `b`.
+    """
+    return a + b
+```
+
+### 2.2. Automate API Documentation with `autodoc` and `autosummary`
+
+Use `sphinx.ext.autodoc` to pull docstrings and `sphinx.ext.autosummary` to generate clean API tables.
+
+**`docs/conf.py`:**
+
+```python
+# ✅ GOOD: Enable core API extensions
+extensions = [
+    # ... other extensions
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+]
+autodoc_member_order = 'bysource' # Keep members in source order
+autodoc_typehints = 'signature'   # Show type hints in signatures
+autosummary_generate = True       # Automatically generate stub files
+```
+
+**`docs/api/index.rst` (or `.md` with MyST directives):**
+
+```rst
+.. automodule:: my_package.module
+   :members:
+
+.. autosummary::
+   :toctree: _autosummary
+   :template: module.rst
+
+   my_package.module.calculate_sum
+   my_package.module.MyClass
+```
+
+### 2.3. Manage `sphinx-apidoc` Carefully
+
+Run `sphinx-apidoc` once to scaffold API `.rst` files. **Never let it overwrite your manual documentation.**
+
+```bash
+# From docs/ directory:
+# ❌ BAD: Running apidoc without exclusion, risks overwriting manual content
+sphinx-apidoc -o api/ ../my_package
+
+# ✅ GOOD: Run apidoc once, then manually integrate and exclude.
+# First run (from docs/):
+sphinx-apidoc -o api/ ../my_package -f -e -M
+
+# Then, add 'api/' to your master toctree in index.md/rst.
+# Manually edit generated files (e.g., api/modules.rst) to include specific modules.
+# Add 'api/my_package.rst' to `exclude_patterns` in conf.py if you want to prevent
+# apidoc from regenerating *that specific file* on subsequent runs,
+# but generally, it's better to let apidoc manage its own output directory
+# and only exclude specific files if they are manually edited.
+# For manual tutorials, ensure they are in a separate directory (e.g., `tutorial/`)
+# and *not* in the apidoc output directory.
+```
+
+## 3. Content Management and Cross-Referencing
+
+Structure your documentation logically and enable seamless navigation.
+
+### 3.1. Master `toctree` for Structure
+
+Organize your documentation using the `toctree` directive in your main `index.md` (or `index.rst`).
+
+**`docs/index.md`:**
+
+```markdown
+# My Project Documentation
+
+Welcome to the documentation for My Project!
+
+```{toctree}
+:maxdepth: 2
+:caption: Contents:
+
+tutorial/getting_started
+api/index
+```
+
+### 3.2. Link External Projects with `intersphinx`
+
+Easily link to documentation of other Python projects (e.g., Python, NumPy, Django).
+
+**`docs/conf.py`:**
+
+```python
+# ✅ GOOD: Enable intersphinx and define mappings
+extensions = [
+    # ... other extensions
+    'sphinx.ext.intersphinx',
+]
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3/', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
+    'requests': ('https://requests.readthedocs.io/en/latest/', None),
+}
+```
+
+**`docs/tutorial/getting_started.md`:**
+
+```markdown
+# Getting Started
+
+This project uses [Python's built-in `list` type](:py:class:`python:list`).
+For network requests, we rely on the [Requests library](:py:mod:`requests:requests`).
+```
+
+## 4. Building and Testing Documentation
+
+Integrate documentation builds into your development and CI workflow.
+
+### 4.1. Use `sphinx-autobuild` for Live Previews
+
+During development, `sphinx-autobuild` provides live-reloading previews, accelerating your writing process.
+
+```bash
+# From docs/ directory:
+# ✅ GOOD: Live preview with automatic rebuild on file changes
+sphinx-autobuild . _build/html --port 8000
+```
+
+### 4.2. Integrate Docs Build into CI/CD
+
+Ensure your documentation builds successfully and is up-to-date by including a build step in your CI pipeline. Treat documentation errors as build failures.
+
+**`.github/workflows/ci.yml` (Example for GitHub Actions):**
+
+```yaml
+# ✅ GOOD: Build docs in CI
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: |
+        python -m venv .venv/docs
+        source .venv/docs/bin/activate
+        pip install -e .[docs] # Install project and docs dependencies
+    - name: Build Sphinx documentation
+      run: |
+        source .venv/docs/bin/activate
+        cd docs
+        make html # Or sphinx-build -W -b html . _build/html
+```
+
+### 4.3. Enforce Docstring Style and Quality
+
+Use linters like `pydocstyle` to enforce PEP 257 docstring conventions and `flake8` for general PEP 8 compliance.
+
+```bash
+# ✅ GOOD: Linting for code and docstrings
+pip install flake8 pydocstyle
+
+# In your CI or pre-commit hook:
+flake8 my_package/
+pydocstyle my_package/
+```
+
+### 4.4. Test Docstring Examples with `doctest`
+
+Embed simple, runnable examples in your docstrings and use `sphinx.ext.doctest` to verify them.
+
+**`docs/conf.py`:**
+
+```python
+# ✅ GOOD: Enable doctest
+extensions = [
+    # ... other extensions
+    'sphinx.ext.doctest',
+]
+```
+
+**`my_package/module.py`:**
+
+```python
+def multiply(a: int, b: int) -> int:
+    """Multiply two integers.
+
+    >>> multiply(2, 3)
+    6
+    >>> multiply(0, 5)
+    0
+    """
+    return a * b
+```
+
+## 5. Packaging and Distribution
+
+Ensure your documentation is easily accessible and distributable.
+
+### 5.1. Host on Read the Docs
+
+Read the Docs provides free, automated hosting for Sphinx documentation, integrating directly with your version control system. Configure it to build on every commit.
+
+### 5.2. Include Docs in Source Distribution
+
+If your documentation is essential for offline use or specific deployment scenarios, ensure it's included in your project's source distribution.
+
+**`pyproject.toml` (or `MANIFEST.in` for older projects):**
+
+```toml
+# ✅ GOOD: Include docs in source distribution
+[tool.setuptools.package-data]
+"my_package" = ["py.typed"] # Example for type hints
+"my_project" = ["docs/*"] # Include entire docs directory
+```

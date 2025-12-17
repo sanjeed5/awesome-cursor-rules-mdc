@@ -112,15 +112,7 @@
         "frontend",
         "framework",
         "javascript",
-        "ssr"
-      ]
-    },
-    {
-      "name": "astro",
-      "tags": [
-        "frontend",
-        "framework",
-        "javascript",
+        "ssr",
         "static-site"
       ]
     },

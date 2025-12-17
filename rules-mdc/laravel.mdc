@@ -1,216 +1,403 @@
 ---
-description: This rule outlines comprehensive best practices for Laravel development, covering coding standards, security, performance, and testing to ensure maintainable, efficient, and secure applications. It provides guidelines for code organization, common patterns, performance considerations, security best practices, testing approaches, common pitfalls, and tooling.
-globs: *.php
+description: Definitive guide for writing clean, performant, and secure Laravel applications, emphasizing modern best practices and common pitfalls.
+globs: **/*.php
 ---
-- Adhere to PSR coding standards (PSR-1, PSR-2, PSR-12).
-- Use meaningful and descriptive variable, function, and class names.
-- Organize routes effectively, leveraging resource controllers and route groups.
-- Use Eloquent ORM for database interactions; avoid raw SQL queries where possible (unless necessary for performance).
-- Implement caching strategies using Laravel's caching system for frequently accessed data.
-- Maintain a clear and consistent project structure following Laravel's conventions (app, config, database, public, resources, routes, storage).
-- Ensure code simplicity and readability to enhance maintainability.  Follow the single responsibility principle.
-- Keep Laravel and its packages up-to-date to mitigate security vulnerabilities and leverage new features.
+# Laravel Best Practices (2025)
 
-### 1. Code Organization and Structure:
+This guide outlines the definitive best practices for developing robust, scalable, and maintainable Laravel applications. Adhere to these principles to ensure your codebase is clean, performant, and secure, aligning with PSR-12, PHP The Right Way, and Laravel's conventions.
 
-   - **Directory Structure Best Practices:**
-     - Follow Laravel's default directory structure: `app` (core application logic), `config` (configuration files), `database` (migrations and seeds), `public` (static assets), `resources` (views and assets), `routes` (route definitions), `storage` (file storage).
-     - Organize `app` directory using subdirectories like `Models`, `Controllers`, `Services`, `Repositories`, `Exceptions`, `Policies`, `Providers`, and `Http/Middleware`.
-     - Consider using modules for larger applications to encapsulate features.
+## 1. Code Organization & Structure
 
-   - **File Naming Conventions:**
-     - Use PascalCase for class names (e.g., `UserController`).
-     - Use camelCase for variable and function names (e.g., `$userName`, `getUserName()`).
-     - Use snake_case for database table names and column names (e.g., `users`, `user_id`).
-     - Use kebab-case for route names (e.g., `user.profile`).
-     - Use descriptive names that clearly indicate the purpose of the file or class.
+### 1.1 Thin Controllers, Fat Models/Services
 
-   - **Module Organization:**
-     - For larger applications, use packages or modules to organize code into reusable components.
-     - Implement module-specific service providers, routes, and configurations.
-     - Isolate module dependencies to prevent conflicts.
+Controllers orchestrate requests; they do not contain business logic. Delegate complex operations to dedicated Service classes or Model methods.
 
-   - **Component Architecture:**
-     - Use Blade components for reusable UI elements.
-     - Create custom components for complex logic and rendering.
-     - Pass data to components using attributes and slots.
-     - Encapsulate component logic in dedicated classes.
+❌ **BAD: Business logic in Controller**
+```php
+// app/Http/Controllers/OrderController.php
+class OrderController extends Controller
+{
+    public function store(Request $request)
+    {
+        $order = new Order();
+        $order->user_id = Auth::id();
+        $order->total = $request->input('price') * 1.20; // Calculate total with tax
+        $order->status = 'pending';
+        $order->save();
 
-   - **Code Splitting Strategies:**
-     - Use lazy loading for non-critical features.
-     - Split large controllers into smaller, more manageable classes.
-     - Extract complex logic into service classes or repositories.
+        // ... more logic
+    }
+}
+```
 
-### 2. Common Patterns and Anti-patterns:
+✅ **GOOD: Delegate to a Service**
+```php
+// app/Services/OrderService.php
+class OrderService
+{
+    public function createOrder(array $data): Order
+    {
+        $order = new Order();
+        $order->user_id = $data['user_id'];
+        $order->total = $data['price'] * 1.20; // Business logic encapsulated
+        $order->status = 'pending';
+        $order->save();
 
-   - **Design Patterns Specific to Laravel:**
-     - **Repository Pattern:** Abstract data access logic from controllers.
-     - **Service Pattern:** Encapsulate business logic into reusable classes.
-     - **Observer Pattern:** Implement event-driven behavior for model changes.
-     - **Factory Pattern:** Create test data and seed databases.
-     - **Strategy Pattern:**  Define a family of algorithms and make them interchangeable.
+        return $order;
+    }
+}
 
-   - **Recommended Approaches for Common Tasks:**
-     - Use Eloquent ORM for database interactions, including relationships and aggregations.
-     - Use Laravel's validation system for request data validation.
-     - Use middleware for authentication, authorization, and request modification.
-     - Use queues for background processing and asynchronous tasks.
-     - Use events and listeners for decoupling components.
+// app/Http/Controllers/OrderController.php
+use App\Services\OrderService;
 
-   - **Anti-patterns and Code Smells to Avoid:**
-     - **God Classes:** Avoid creating large classes with too many responsibilities.
-     - **Spaghetti Code:** Avoid complex and unstructured code that is difficult to understand and maintain.
-     - **Copy-Paste Programming:** Avoid duplicating code; instead, create reusable components or functions.
-     - **Ignoring Exceptions:** Always handle exceptions properly to prevent unexpected behavior.
-     - **Over-Engineering:** Don't overcomplicate solutions with unnecessary complexity.
-     - **Mass Assignment Vulnerability:** Use guarded or fillable attributes to protect against mass assignment vulnerabilities.
+class OrderController extends Controller
+{
+    public function __construct(private OrderService $orderService) {}
 
-   - **State Management Best Practices:**
-     - Use sessions for storing user-specific data.
-     - Use cookies for storing client-side data.
-     - Use the cache for storing frequently accessed data.
-     - Use databases for persistent data storage.
-     - Consider using Laravel's broadcasting feature for real-time updates.
+    public function store(Request $request)
+    {
+        $order = $this->orderService->createOrder([
+            'user_id' => Auth::id(),
+            'price' => $request->input('price'),
+        ]);
 
-   - **Error Handling Patterns:**
-     - Use try-catch blocks to handle exceptions gracefully.
-     - Use Laravel's exception handler to log and report errors.
-     - Implement custom exception classes for specific error scenarios.
-     - Provide informative error messages to users.
+        return response()->json($order, 201);
+    }
+}
+```
 
-### 3. Performance Considerations:
+### 1.2 Centralized Validation with Form Requests
 
-   - **Optimization Techniques:**
-     - Use caching to reduce database queries and improve response times.
-     - Use eager loading to reduce N+1 query problems.
-     - Use queues for background processing.
-     - Optimize database queries with indexes and query optimization techniques.
-     - Minimize the use of loops and conditional statements in performance-critical code.
+Always use Form Request classes for validation. This keeps controllers clean and validation logic reusable.
 
-   - **Memory Management:**
-     - Avoid storing large amounts of data in memory.
-     - Use garbage collection to free up memory.
-     - Use streams for processing large files.
+❌ **BAD: Validation in Controller**
+```php
+// app/Http/Controllers/PostController.php
+class PostController extends Controller
+{
+    public function store(Request $request)
+    {
+        $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'body' => ['required', 'string'],
+        ]);
+        // ...
+    }
+}
+```
 
-   - **Rendering Optimization:**
-     - Use Blade's caching features to cache rendered views.
-     - Use CSS and JavaScript minification to reduce file sizes.
-     - Use image optimization techniques to reduce image sizes.
+✅ **GOOD: Dedicated Form Request**
+```php
+// app/Http/Requests/StorePostRequest.php
+class StorePostRequest extends FormRequest
+{
+    public function authorize(): bool { return true; } // Or implement authorization logic
 
-   - **Bundle Size Optimization:**
-     - Use Laravel Mix to bundle and minify assets.
-     - Remove unused CSS and JavaScript code.
-     - Use code splitting to load only the necessary code for each page.
+    public function rules(): array
+    {
+        return [
+            'title' => ['required', 'string', 'max:255'],
+            'body' => ['required', 'string'],
+        ];
+    }
+}
 
-   - **Lazy Loading Strategies:**
-     - Use lazy loading for images and other non-critical assets.
-     - Use route model binding with eager loading to reduce database queries.
+// app/Http/Controllers/PostController.php
+use App\Http\Requests\StorePostRequest;
 
-### 4. Security Best Practices:
+class PostController extends Controller
+{
+    public function store(StorePostRequest $request)
+    {
+        // Validated data is automatically available
+        $post = Post::create($request->validated());
+        return response()->json($post, 201);
+    }
+}
+```
 
-   - **Common Vulnerabilities and How to Prevent Them:**
-     - **SQL Injection:** Use Eloquent ORM and prepared statements to prevent SQL injection attacks.
-     - **Cross-Site Scripting (XSS):** Sanitize user input and escape output to prevent XSS attacks.
-     - **Cross-Site Request Forgery (CSRF):** Use CSRF protection tokens to prevent CSRF attacks.
-     - **Mass Assignment:** Use guarded or fillable attributes to protect against mass assignment vulnerabilities.
-     - **Authentication and Authorization:** Use Laravel's built-in authentication and authorization features.
+## 2. Common Patterns & Anti-patterns
 
-   - **Input Validation:**
-     - Use Laravel's validation system to validate all user input.
-     - Sanitize user input to remove potentially harmful characters.
-     - Validate file uploads to prevent malicious files from being uploaded.
+### 2.1 Eloquent Over Raw Queries (and Eager Loading)
 
-   - **Authentication and Authorization Patterns:**
-     - Use Laravel's built-in authentication system for user authentication.
-     - Use policies to define authorization rules.
-     - Use gates to authorize access to specific resources.
-     - Implement two-factor authentication for enhanced security.
+Prefer Eloquent ORM for database interactions. Always eager load relationships to prevent N+1 query problems.
 
-   - **Data Protection Strategies:**
-     - Encrypt sensitive data using Laravel's encryption features.
-     - Store passwords using bcrypt hashing.
-     - Protect API keys and other sensitive configuration data.
+❌ **BAD: Raw queries & N+1 problem**
+```php
+// In a controller or view
+$users = DB::select('SELECT * FROM users');
+foreach ($users as $user) {
+    echo $user->profile->bio; // N+1 query for each profile
+}
+```
 
-   - **Secure API Communication:**
-     - Use HTTPS for all API communication.
-     - Use API tokens for authentication.
-     - Implement rate limiting to prevent abuse.
-     - Validate API requests and responses.
+✅ **GOOD: Eloquent with eager loading**
+```php
+// In a controller
+$users = User::with('profile')->get();
+// In a Blade template (data passed from controller)
+@foreach ($users as $user)
+    {{ $user->profile->bio }}
+@endforeach
+```
 
-### 5. Testing Approaches:
+### 2.2 Collections Over Arrays
 
-   - **Unit Testing Strategies:**
-     - Test individual units of code in isolation.
-     - Use mock objects to isolate dependencies.
-     - Write tests for all critical code paths.
+Leverage Laravel's powerful Collection class for data manipulation.
 
-   - **Integration Testing:**
-     - Test the interaction between different components of the application.
-     - Test database interactions and external API calls.
+❌ **BAD: Manual array manipulation**
+```php
+$users = User::all()->toArray();
+$activeUsers = [];
+foreach ($users as $user) {
+    if ($user['is_active']) {
+        $activeUsers[] = $user;
+    }
+}
+```
 
-   - **End-to-End Testing:**
-     - Test the entire application from end to end.
-     - Use browser automation tools to simulate user interactions.
+✅ **GOOD: Use Laravel Collections**
+```php
+$activeUsers = User::all()->filter(fn ($user) => $user->is_active);
+// Or chain methods:
+$activeUserNames = User::all()
+    ->filter(fn ($user) => $user->is_active)
+    ->map(fn ($user) => $user->name);
+```
 
-   - **Test Organization:**
-     - Organize tests into logical groups.
-     - Use descriptive test names.
-     - Follow the arrange-act-assert pattern.
+### 2.3 Mass Assignment Protection
 
-   - **Mocking and Stubbing:**
-     - Use mock objects to isolate dependencies.
-     - Use stubbing to replace complex dependencies with simpler implementations.
+Always define `$fillable` or `$guarded` properties on your Eloquent models to prevent mass assignment vulnerabilities.
 
-### 6. Common Pitfalls and Gotchas:
+❌ **BAD: No mass assignment protection**
+```php
+// app/Models/User.php - Missing $fillable or $guarded
+class User extends Model {}
 
-   - **Frequent Mistakes Developers Make:**
-     - Not using dependency injection properly.
-     - Writing complex logic in views.
-     - Not using caching effectively.
-     - Ignoring security vulnerabilities.
-     - Not writing tests.
+// In a controller, allows any request field to be saved
+User::create($request->all());
+```
 
-   - **Edge Cases to Be Aware Of:**
-     - Handling large file uploads.
-     - Dealing with concurrent requests.
-     - Handling database connection errors.
-     - Handling time zone conversions.
+✅ **GOOD: Define `$fillable`**
+```php
+// app/Models/User.php
+class User extends Model
+{
+    protected $fillable = ['name', 'email', 'password'];
+}
 
-   - **Version-Specific Issues:**
-     - Be aware of breaking changes between Laravel versions.
-     - Consult the Laravel upgrade guide when upgrading to a new version.
+// In a controller, only specified fields can be mass assigned
+User::create($request->validated()); // Assuming validated() returns fillable fields
+```
 
-   - **Compatibility Concerns:**
-     - Ensure compatibility with different PHP versions and extensions.
-     - Ensure compatibility with different database systems.
+### 2.4 No Database Queries in Blade Templates
 
-   - **Debugging Strategies:**
-     - Use Laravel's debugging tools (e.g., debugbar, telescope).
-     - Use logging to track application behavior.
-     - Use Xdebug for step-by-step debugging.
+Blade templates are for presentation. Pass all necessary data from the controller.
 
-### 7. Tooling and Environment:
+❌ **BAD: Querying in Blade**
+```blade
+<!-- resources/views/product.blade.php -->
+<div>
+    <h1>{{ $product->name }}</h1>
+    @foreach (App\Models\Review::where('product_id', $product->id)->get() as $review)
+        <p>{{ $review->comment }}</p>
+    @endforeach
+</div>
+```
 
-   - **Recommended Development Tools:**
-     - PHPStorm or VS Code with PHP extensions.
-     - Composer for dependency management.
-     - MySQL or PostgreSQL for database management.
-     - Docker for containerization.
+✅ **GOOD: Pass pre-loaded data**
+```php
+// app/Http/Controllers/ProductController.php
+class ProductController extends Controller
+{
+    public function show(Product $product)
+    {
+        $product->load('reviews'); // Eager load reviews
+        return view('product', compact('product'));
+    }
+}
+```
 
-   - **Build Configuration:**
-     - Use Laravel Mix to compile assets.
-     - Use environment variables to configure the application.
-     - Use a build script to automate the build process.
+## 3. Performance Considerations
 
-   - **Linting and Formatting:**
-     - Use PHP CS Fixer to enforce coding standards.
-     - Use ESLint and Prettier for JavaScript and CSS linting and formatting.
+### 3.1 Chunking Large Datasets
 
-   - **Deployment Best Practices:**
-     - Use a deployment tool like Envoyer or Deployer.
-     - Use zero-downtime deployment strategies.
-     - Use a CDN for static assets.
+When processing large numbers of records, use `chunk()` or `chunkById()` to avoid memory exhaustion.
 
-   - **CI/CD Integration:**
-     - Use a CI/CD pipeline to automate testing and deployment.
-     - Use tools like Jenkins, GitLab CI, or GitHub Actions.
+❌ **BAD: Loading all records into memory**
+```php
+User::where('active', true)->get()->each(function (User $user) {
+    // Process each user
+});
+```
+
+✅ **GOOD: Process in chunks**
+```php
+User::where('active', true)->chunk(1000, function (Collection $users) {
+    foreach ($users as $user) {
+        // Process each user in batches
+    }
+});
+```
+
+### 3.2 Caching Expensive Operations
+
+Cache results of expensive queries or computations using Laravel's cache facade.
+
+❌ **BAD: Repeated expensive queries**
+```php
+// Every request hits the database for all posts
+$posts = Post::with('author')->get();
+```
+
+✅ **GOOD: Cache with a TTL**
+```php
+$posts = Cache::remember('all_posts_with_authors', 60 * 60, function () {
+    return Post::with('author')->get();
+});
+```
+
+### 3.3 Queue Background Jobs
+
+Offload long-running tasks (e.g., sending emails, image processing, API calls) to queues.
+
+❌ **BAD: Blocking user requests**
+```php
+// In a controller, sends email during HTTP request
+Mail::to($user->email)->send(new WelcomeEmail($user));
+```
+
+✅ **GOOD: Dispatch to queue**
+```php
+// In a controller, dispatches email to a background queue
+Mail::to($user->email)->send(new WelcomeEmail($user))->onQueue('emails');
+```
+
+## 4. Security Best Practices
+
+### 4.1 Enforce HTTPS + HSTS
+
+Always deploy with HTTPS and enable HSTS (HTTP Strict Transport Security) to prevent downgrade attacks. Configure this at your web server (Nginx/Apache) or load balancer.
+
+### 4.2 Authentication & Authorization
+
+*   **Authentication:** Use **Sanctum** for first-party SPAs and mobile apps. Use **Passport** if you need full OAuth2 support for third-party applications.
+*   **Authorization:** Implement **Policies** for model-specific authorization (e.g., "Can this user update this post?"). Use **Gates** for more general permissions (e.g., "Can this user access the admin dashboard?").
+
+❌ **BAD: Manual authorization checks**
+```php
+// In a controller
+if (Auth::user()->role !== 'admin' || Auth::user()->id !== $post->user_id) {
+    abort(403);
+}
+```
+
+✅ **GOOD: Use Policies**
+```php
+// app/Policies/PostPolicy.php
+class PostPolicy
+{
+    public function update(User $user, Post $post): bool
+    {
+        return $user->id === $post->user_id;
+    }
+}
+
+// app/Http/Controllers/PostController.php
+class PostController extends Controller
+{
+    public function update(Request $request, Post $post)
+    {
+        $this->authorize('update', $post); // Automatically checks policy
+        // ...
+    }
+}
+```
+
+### 4.3 Rate Limiting
+
+Apply rate limiting to API endpoints and sensitive routes to prevent abuse and brute-force attacks.
+
+❌ **BAD: No rate limiting on API**
+```php
+Route::post('/api/register', [AuthController::class, 'register']);
+```
+
+✅ **GOOD: Apply `throttle` middleware**
+```php
+Route::middleware('throttle:60,1')->group(function () {
+    Route::post('/api/register', [AuthController::class, 'register']);
+});
+```
+
+### 4.4 Environment Configuration
+
+Never leave `APP_DEBUG=true` in production. Store sensitive credentials in `.env` and access them via `config()`.
+
+❌ **BAD: Direct `env()` access & debug in prod**
+```php
+// In code
+$apiKey = env('STRIPE_KEY'); // Should be config()
+// .env in production: APP_DEBUG=true
+```
+
+✅ **GOOD: Use `config()` and secure `.env`**
+```php
+// config/services.php
+'stripe' => [
+    'key' => env('STRIPE_KEY'),
+],
+
+// In code
+$apiKey = config('services.stripe.key');
+// .env in production: APP_DEBUG=false
+```
+
+## 5. API Design
+
+### 5.1 URL-Based Versioning
+
+Implement URL-based versioning for your APIs (e.g., `/api/v1/users`). This is explicit, cache-friendly, and easy for developers to understand.
+
+❌ **BAD: No versioning or header-based**
+```php
+Route::get('/api/users', [UserController::class, 'index']); // Breaking changes will affect all clients
+```
+
+✅ **GOOD: URL-based versioning**
+```php
+Route::prefix('v1')->group(function () {
+    Route::apiResource('users', UserController::class);
+    // ...
+});
+```
+
+## 6. Testing Approaches
+
+### 6.1 Prioritize Feature Tests
+
+Write feature tests using PHPUnit or Pest to cover critical user flows and API interactions. This ensures your application behaves as expected from an end-to-end perspective.
+
+```php
+// tests/Feature/UserRegistrationTest.php
+class UserRegistrationTest extends TestCase
+{
+    use RefreshDatabase;
+
+    /** @test */
+    public function a_user_can_register()
+    {
+        $response = $this->postJson('/api/v1/register', [
+            'name' => 'John Doe',
+            'email' => 'john@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertStatus(201)
+                 ->assertJson(['message' => 'Registration successful']);
+
+        $this->assertDatabaseHas('users', ['email' => 'john@example.com']);
+    }
+}
+```

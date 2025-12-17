@@ -1,334 +1,294 @@
 ---
-description: This rule file provides definitive guidelines for using Zustand in React applications, focusing on modularity, performance, and maintainability through opinionated best practices and code examples.
-globs: **/*.{js,jsx,ts,tsx}
+description: Definitive guidelines for using Zustand in React projects, focusing on type safety, modularity, performance, and maintainability with practical code examples.
+globs: **/*.{js,jsx}
 ---
 # zustand Best Practices
 
-Zustand is our go-to for global state management due to its simplicity and performance. This guide outlines our team's definitive best practices for using Zustand, ensuring consistency, maintainability, and optimal performance across all projects.
+Zustand is our go-to for global state management due to its minimal API and built-in performance optimizations. This guide outlines the definitive patterns for using Zustand effectively in our projects, ensuring type safety, modularity, and optimal performance.
 
-## 1. Store Definition & Organization
+## 1. Typed Store Shape (TypeScript First)
 
-### 1.1 Modular Slices for Large Stores
+Always define explicit TypeScript interfaces for your store's state and actions. This provides invaluable type safety and auto-completion across the application, preventing common runtime errors.
 
-Split large stores into logical "slices" to keep files focused and maintainable. Combine these slices into a single `create` call.
-
-❌ **BAD: Monolithic Store**
-```javascript
-// src/store/appStore.js
+❌ BAD: Untyped store, prone to runtime errors
+```typescript
 import { create } from 'zustand';
 
-export const useAppStore = create((set) => ({
-  // Auth state
-  token: null,
-  user: null,
-  login: (token, user) => set({ token, user }),
-  logout: () => set({ token: null, user: null }),
-
-  // UI state
-  isLoading: false,
-  modalOpen: false,
-  setLoading: (loading) => set({ isLoading: loading }),
-  toggleModal: () => set((state) => ({ modalOpen: !state.modalOpen })),
-
-  // Cart state
-  items: [],
-  addItem: (item) => set((state) => ({ items: [...state.items, item] })),
-  removeItem: (id) => set((state) => ({ items: state.items.filter(i => i.id !== id) })),
+const useStore = create((set) => ({
+  count: 0,
+  increment: () => set((state) => ({ count: state.count + 1 })),
 }));
 ```
 
-✅ **GOOD: Sliced Store**
-```javascript
-// src/store/authSlice.js
-export const createAuthSlice = (set) => ({
-  token: null,
-  user: null,
-  login: (token, user) => set({ token, user }),
-  logout: () => set({ token: null, user: null }),
-});
-
-// src/store/uiSlice.js
-export const createUiSlice = (set) => ({
-  isLoading: false,
-  modalOpen: false,
-  setLoading: (loading) => set({ isLoading: loading }),
-  toggleModal: () => set((state) => ({ modalOpen: !state.modalOpen })),
-});
-
-// src/store/index.js
+✅ GOOD: Fully typed store for robust development
+```typescript
 import { create } from 'zustand';
-import { createAuthSlice } from './authSlice';
-import { createUiSlice } from './uiSlice';
 
-export const useAppStore = create((...a) => ({
+interface CounterState {
+  count: number;
+  increment: () => void;
+  decrement: () => void;
+}
+
+const useCounterStore = create<CounterState>((set) => ({
+  count: 0,
+  increment: () => set((state) => ({ count: state.count + 1 })),
+  decrement: () => set((state) => ({ count: state.count - 1 })),
+}));
+```
+
+## 2. Slice-Based Organization
+
+For scalable applications, organize your store into logical "slices" (e.g., `authSlice`, `uiSlice`). This keeps concerns separated, improves readability, and makes testing easier. Compose these slices into a single root store.
+
+`src/store/types.ts`:
+```typescript
+import { StateCreator } from 'zustand';
+
+// Define individual slice interfaces
+export interface AuthSlice {
+  user: { id: string; name: string } | null;
+  token: string | null;
+  login: (user: { id: string; name: string }, token: string) => void;
+  logout: () => void;
+}
+
+export interface UISlice {
+  isLoading: boolean;
+  setLoading: (loading: boolean) => void;
+}
+
+// Combine all slice interfaces into the global AppState
+export type AppState = AuthSlice & UISlice;
+
+// Type for creating slices that will be composed into AppState
+export type AppStateCreator<T> = StateCreator<AppState, [], [], T>;
+```
+
+`src/store/slices/createAuthSlice.ts`:
+```typescript
+import { AppStateCreator, AuthSlice } from '../types';
+
+export const createAuthSlice: AppStateCreator<AuthSlice> = (set) => ({
+  user: null,
+  token: null,
+  login: (user, token) => set({ user, token }),
+  logout: () => set({ user: null, token: null }),
+});
+```
+
+`src/store/slices/createUISlice.ts`:
+```typescript
+import { AppStateCreator, UISlice } from '../types';
+
+export const createUISlice: AppStateCreator<UISlice> = (set) => ({
+  isLoading: false,
+  setLoading: (loading) => set({ isLoading: loading }),
+});
+```
+
+`src/store/useAppStore.ts`:
+```typescript
+import { create } from 'zustand';
+import { AppState } from './types';
+import { createAuthSlice } from './slices/createAuthSlice';
+import { createUISlice } from './slices/createUISlice';
+
+export const useAppStore = create<AppState>()((...a) => ({
   ...createAuthSlice(...a),
-  ...createUiSlice(...a),
+  ...createUISlice(...a),
 }));
 ```
-> **Context:** This pattern scales better, improves type safety, and makes it easier to reason about specific parts of your state.
 
-### 1.2 Naming Conventions & File Layout
+## 3. Naming Conventions
 
-Name store hooks `use[Feature]Store` and place them in `src/store/[feature]Store.js` (or `.ts/.tsx`). Export only the main hook.
+Follow consistent naming for clarity and discoverability.
 
-❌ **BAD: Generic Naming & Poor Location**
-```javascript
-// src/components/MyComponent/store.js
-import { create } from 'zustand';
-export const useStore = create(() => ({ /* ... */ }));
+*   **Store Hook**: `use[Feature]Store` or `useAppStore` for the root.
+*   **Actions**: Verb-oriented (e.g., `increment`, `setUser`, `fetchData`).
+*   **Store Files**: Located under `src/store/` or `src/features/[feature]/store.ts`.
+*   **Exports**: Only export the custom hook, never the raw `create` object.
+
+❌ BAD: Inconsistent naming, exposing raw store
+```typescript
+// store.js
+export const myStore = create(...); // Exposes raw store
+export const useMyStore = myStore; // Bad naming, use `useMyStore` as the primary hook
+
+// component.jsx
+myStore.setState({ ... }); // Direct mutation outside hook, bypasses React lifecycle
 ```
 
-✅ **GOOD: Specific Naming & Centralized Location**
-```javascript
-// src/store/cartStore.js
-import { create } from 'zustand';
+✅ GOOD: Clear, consistent, and encapsulated
+```typescript
+// src/store/useAppStore.ts
+export const useAppStore = create<AppState>(...);
 
-export const useCartStore = create((set) => ({
-  items: [],
-  addItem: (item) => set((state) => ({ items: [...state.items, item] })),
-}));
+// src/features/auth/useAuthStore.ts (if using feature-specific stores)
+export const useAuthStore = create<AuthSlice>(...);
 
-// src/store/userStore.ts (TypeScript example)
-import { create } from 'zustand';
+// component.tsx
+import { useAppStore } from 'src/store/useAppStore';
+const { user, login } = useAppStore();
+```
 
-interface UserState {
-  id: string | null;
-  name: string | null;
-  fetchUser: () => Promise<void>;
-}
+## 4. Functional Updates to Prevent Stale Closures
 
-export const useUserStore = create<UserState>((set) => ({
-  id: null,
-  name: null,
-  fetchUser: async () => {
-    // ... API call
-    set({ id: '123', name: 'John Doe' });
+Always use functional updates (`set(state => ...)`) when an action's new state depends on the current state. This prevents issues with stale closures in asynchronous operations or rapid updates.
+
+❌ BAD: Potential stale closure, especially in async operations
+```typescript
+const useCounterStore = create<CounterState>((set, get) => ({
+  count: 0,
+  // ...
+  incrementAsync: async () => {
+    await someAsyncOperation();
+    const currentCount = get().count; // 'currentCount' might be outdated if another update occurred
+    set({ count: currentCount + 1 });
   },
 }));
 ```
-> **Context:** This makes stores easily discoverable and prevents naming collisions.
 
-## 2. State Access & Performance
-
-### 2.1 Selective Subscriptions with Selectors
-
-Always use selector functions with `useStore` to subscribe only to the specific parts of the state your component needs. This prevents unnecessary re-renders. Use shallow comparison (`shallow`) for objects or arrays if the entire object/array is needed.
-
-❌ **BAD: Subscribing to Entire State**
-```javascript
-// Component re-renders on ANY state change in useCartStore
-const cart = useCartStore();
-console.log(cart.items.length);
+✅ GOOD: Robust functional update, `state` is always the latest
+```typescript
+const useCounterStore = create<CounterState>((set) => ({
+  count: 0,
+  // ...
+  incrementAsync: async () => {
+    await someAsyncOperation();
+    set((state) => ({ count: state.count + 1 }));
+  },
+}));
 ```
 
-✅ **GOOD: Selective Subscription**
-```javascript
-// Component re-renders ONLY when cart.items changes
+## 5. Selectors and Shallow Comparison for Performance
+
+Consume only the necessary parts of the state using selectors. For objects or arrays, use `shallow` (or a custom equality function) to prevent unnecessary re-renders when only nested properties change.
+
+❌ BAD: Re-renders component on any state change in the store
+```typescript
+const MyComponent = () => {
+  const { user, token } = useAppStore(); // Re-renders if any part of AppState changes
+  // ...
+};
+```
+
+✅ GOOD: Optimized re-renders with selectors and `shallow`
+```typescript
 import { shallow } from 'zustand/shallow';
+import { useAppStore } from 'src/store/useAppStore';
 
-// For primitive values:
-const itemCount = useCartStore((state) => state.items.length);
-
-// For objects/arrays: use shallow comparison
-const { items, total } = useCartStore(
-  (state) => ({ items: state.items, total: state.total }),
-  shallow // Important for objects/arrays to prevent re-renders on reference changes
-);
-```
-> **Context:** This is the single most important performance optimization in Zustand. Without it, your components will re-render far more often than necessary.
-
-### 2.2 Immutable Updates
-
-Always update state immutably. Use the functional `set(state => ...)` form to ensure you're working with the latest state.
-
-❌ **BAD: Direct Mutation**
-```javascript
-// This mutates the state directly, which can lead to bugs and difficult debugging.
-// Zustand might not detect the change, or other parts of your app might get stale state.
-const addItem = (item) => set((state) => {
-  state.items.push(item); // ❌ DIRECT MUTATION
-  return state;
-});
-```
-
-✅ **GOOD: Functional, Immutable Updates**
-```javascript
-const addItem = (item) => set((state) => ({
-  items: [...state.items, item], // ✅ Creates a new array
-}));
-
-const updateItemQuantity = (id, quantity) => set((state) => ({
-  items: state.items.map(item =>
-    item.id === id ? { ...item, quantity } : item
-  ),
-}));
-```
-> **Context:** Immutability is a core principle of React and state management. It simplifies change detection and prevents subtle bugs.
-
-## 3. Side Effects & Asynchronous Logic
-
-### 3.1 Centralized Async Actions
-
-Place API calls and other side effects directly within your store actions. This centralizes data fetching logic and keeps components clean.
-
-❌ **BAD: API Calls in Components**
-```javascript
-// src/components/ProductList.jsx
-import React, { useEffect } from 'react';
-import { useProductStore } from '../../store/productStore';
-import api from '../../utils/api';
-
-function ProductList() {
-  const { products, setProducts } = useProductStore();
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      const response = await api.get('/products');
-      setProducts(response.data);
-    };
-    fetchProducts();
-  }, [setProducts]);
-
-  // ... render products
-}
-```
-
-✅ **GOOD: Store-Managed Async Actions**
-```javascript
-// src/store/productStore.js
-import { create } from 'zustand';
-import api from '../../utils/api';
-
-export const useProductStore = create((set) => ({
-  products: [],
-  isLoading: false,
-  error: null,
-
-  fetchProducts: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const response = await api.get('/products');
-      set({ products: response.data, isLoading: false });
-    } catch (error) {
-      set({ error: error.message, isLoading: false });
-    }
-  },
-}));
-
-// src/components/ProductList.jsx
-import React, { useEffect } from 'react';
-import { useProductStore } from '../../store/productStore';
-
-function ProductList() {
-  const { products, isLoading, error, fetchProducts } = useProductStore(
-    (state) => ({
-      products: state.products,
-      isLoading: state.isLoading,
-      error: state.error,
-      fetchProducts: state.fetchProducts,
-    }),
+const UserProfile = () => {
+  // Only re-renders if user.name or user.email changes
+  const { name, email } = useAppStore(
+    (state) => ({ name: state.user?.name, email: state.user?.email }),
     shallow
   );
+  // ...
+};
 
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  if (isLoading) return <div>Loading products...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  // ... render products
-}
-```
-> **Context:** This pattern keeps your components focused on rendering UI and your stores focused on managing data and side effects.
-
-## 4. Middleware Usage
-
-### 4.1 Purposeful & Conditional Middleware
-
-Only apply middleware (`devtools`, `persist`, `immer`) where they are genuinely needed. Conditionally enable `devtools` to avoid performance overhead in production.
-
-❌ **BAD: Unnecessary Middleware in Production**
-```javascript
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-
-export const useAuthStore = create(
-  devtools( // Always enabled
-    persist( // Always enabled, even if auth token is short-lived
-      (set) => ({ /* ... */ }),
-      { name: 'auth-storage' }
-    )
-  )
-);
+const AuthStatus = () => {
+  // Only re-renders if token changes
+  const token = useAppStore((state) => state.token);
+  // ...
+};
 ```
 
-✅ **GOOD: Conditional Devtools & Targeted Persist**
-```javascript
+## 6. Essential Middleware Usage
+
+Leverage Zustand's middleware for common concerns like persistence, devtools integration, and immutable updates.
+
+*   **`persist`**: For local storage or IndexedDB. Always provide a `name` and consider `version` for migrations.
+*   **`devtools`**: Integrate with Redux DevTools. Enable only in development.
+*   **`immer`**: For simplified immutable updates, especially with deeply nested objects.
+
+```typescript
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-
-// Only enable devtools in development
-const devtoolsMiddleware = (f) =>
-  process.env.NODE_ENV === 'development' ? devtools(f) : f;
-
-export const useAuthStore = create(
-  devtoolsMiddleware( // Conditionally enabled
-    persist( // Only persist if truly needed (e.g., user preferences, not sensitive tokens)
-      (set) => ({
-        token: null,
-        user: null,
-        login: (token, user) => set({ token, user }),
-        logout: () => set({ token: null, user: null }),
-      }),
-      {
-        name: 'auth-storage',
-        // Consider `getStorage: () => sessionStorage` for shorter-lived data
-        // Or don't persist sensitive tokens at all, rely on server-side cookies
-      }
-    )
-  )
-);
-
-// Example for a store that doesn't need persist, but benefits from devtools in dev
-export const useUiStore = create(
-  devtoolsMiddleware(
-    (set) => ({
-      modalOpen: false,
-      toggleModal: () => set((state) => ({ modalOpen: !state.modalOpen })),
-    })
-  )
-);
-```
-> **Context:** Middleware adds overhead. Be intentional about where and when you use it. `devtools` is invaluable for debugging but should be stripped from production builds.
-
-### 4.2 Immer Middleware for Complex Immutable Updates
-
-For deeply nested or complex state updates, use the `immer` middleware to simplify immutable logic.
-
-```javascript
-// src/store/settingsStore.js
-import { create } from 'zustand';
+import { persist, devtools, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
-export const useSettingsStore = create(
-  immer((set) => ({
-    userSettings: {
-      theme: 'dark',
-      notifications: {
-        email: true,
-        sms: false,
-      },
-    },
-    updateTheme: (theme) =>
-      set((state) => {
-        state.userSettings.theme = theme; // ✅ Immer allows direct mutation within set
-      }),
-    toggleEmailNotifications: () =>
-      set((state) => {
-        state.userSettings.notifications.email = !state.userSettings.notifications.email;
-      }),
-  }))
+interface SettingsState {
+  theme: 'light' | 'dark';
+  notifications: { enabled: boolean; sound: boolean };
+  setTheme: (theme: 'light' | 'dark') => void;
+  toggleNotifications: () => void;
+  toggleNotificationSound: () => void;
+}
+
+const useSettingsStore = create<SettingsState>()(
+  devtools( // Enable devtools for debugging
+    persist( // Persist state to storage
+      immer((set) => ({ // Use immer for easier immutable updates
+        theme: 'light',
+        notifications: { enabled: true, sound: true },
+        setTheme: (theme) => set({ theme }),
+        toggleNotifications: () =>
+          set((state) => {
+            state.notifications.enabled = !state.notifications.enabled; // Direct mutation with immer
+          }),
+        toggleNotificationSound: () =>
+          set((state) => {
+            state.notifications.sound = !state.notifications.sound; // Direct mutation with immer
+          }),
+      })),
+      {
+        name: 'app-settings', // Unique name for storage key
+        storage: createJSONStorage(() => localStorage), // Choose storage type
+        version: 1, // Crucial for future migrations
+        partialize: (state) => ({ theme: state.theme }), // Only persist 'theme'
+      }
+    ),
+    { name: 'Settings Store', enabled: process.env.NODE_ENV === 'development' } // Devtools options
+  )
 );
 ```
-> **Context:** Immer makes immutable updates feel like mutable ones, reducing boilerplate and potential errors for complex state structures. Only use it if you find the manual immutable updates cumbersome.
+
+## 7. Initializing Stores Outside Components
+
+Declare your `create` calls at the module level (top of the file) to ensure a single, consistent store instance across your application. Never call `create` inside a React component.
+
+❌ BAD: Creates new store instance on every render
+```typescript
+const MyComponent = () => {
+  // This creates a NEW store instance every time MyComponent re-renders!
+  const useLocalStore = create(() => ({ value: 0 }));
+  const value = useLocalStore((state) => state.value);
+  return <div>{value}</div>;
+};
+```
+
+✅ GOOD: Single store instance, declared once
+```typescript
+// At the top of your store file (e.g., src/store/useCounterStore.ts)
+const useCounterStore = create<CounterState>((set) => ({
+  count: 0,
+  increment: () => set((state) => ({ count: state.count + 1 })),
+}));
+
+const MyComponent = () => {
+  const count = useCounterStore((state) => state.count);
+  return <div>{count}</div>;
+};
+```
+
+## 8. Asynchronous Actions
+
+Handle asynchronous operations directly within your store actions. Zustand doesn't require special middleware for async, keeping the API simple and direct.
+
+```typescript
+interface UserState {
+  user: { id: string; name: string } | null;
+  loading: boolean;
+  error: string | null;
+  fetchUser: (userId: string) => Promise<void>;
+}
+
+const useUserStore = create<UserState>((set) => ({
+  user: null,
+  loading: false,
+  error: null,
+  fetchUser: async (userId) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await fetch(`/api/users/${userId}`);
+      if (!response.ok) throw new Error('Failed

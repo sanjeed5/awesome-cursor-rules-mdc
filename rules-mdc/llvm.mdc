@@ -1,131 +1,195 @@
 ---
-description: This rule enforces LLVM's coding standards and promotes best practices for writing efficient, maintainable, and robust code within the LLVM ecosystem. It covers style, language usage, optimization strategies, and more.
-globs: *.h,*.hpp,*.c,*.cc,*.cpp,*.ll,*.mlir
+description: This guide provides definitive, actionable best practices for developing with LLVM, focusing on code quality, performance, and robust testing using modern tools like LIT and TableGen.
+globs: **/*
 ---
-- Adhere to LLVM's coding standards to ensure code consistency, readability, and maintainability.
-- Always follow the [LLVM Coding Standards](https://llvm.org/docs/CodingStandards.html) and [LLVM Developer Policy](https://llvm.org/docs/DeveloperPolicy.html).
+# llvm Best Practices
 
-## Languages, Libraries, and Standards
+Developing for LLVM requires adherence to specific patterns and standards to maintain consistency, performance, and testability across a massive codebase. This guide outlines critical best practices for our team.
 
-- Use modern, standard-conforming, and portable C++ code (C++17 or later, as supported by major toolchains).
-- Prefer LLVM's own libraries (e.g., `llvm::DenseMap`, `llvm::SmallVector`) over the C++ standard library when appropriate for performance or integration benefits.  Consult the LLVM Programmer's Manual for details.
-- Use Python (with the minimum version specified in the Getting Started documentation) for automation, build systems, and utility scripts.
-- Format Python code with `black` and `darker` to adhere to PEP 8 standards.
+## 1. Code Organization and Structure
 
-## Mechanical Source Issues
+### 1.1 Adhere to LLVM Coding Standards
+Consistency is paramount. Follow LLVM's established naming conventions, whitespace rules, and C++17 usage. Deviations require strong justification.
 
-- Write clear diagnostic messages using succinct and correct English.
-- Follow the recommended `#include` style: Main module header first, followed by LLVM project headers (most specific to least specific), then system headers.
-- Limit source code width to 80 columns.
-- Prefer spaces to tabs in source files.
-- Avoid trailing whitespace.
-- Format multi-line lambdas like blocks of code.
-- Use braced initializer lists as if the braces were parentheses in a function call.
+*   **Naming**: `CamelCase` for types, `lower_case` for functions/variables.
+*   **Whitespace**: Use `clang-format` with LLVM style.
+*   **C++ Standard**: Stick to C++17 features supported by major toolchains.
 
-## Language and Compiler Issues
+❌ BAD: Inconsistent naming and formatting
+```cpp
+class my_custom_pass { // Class name should be CamelCase
+  void RunPass() { // Function name should be lower_case
+    int temp_var = 0;
+  }
+};
+```
 
-- Treat compiler warnings as errors.
-- Write portable code, encapsulating non-portable code behind well-defined interfaces.
-- Do not use RTTI or exceptions.
-- Prefer C++-style casts (`static_cast`, `reinterpret_cast`, `const_cast`) over C-style casts, except when casting to `void` to suppress unused variable warnings or between integral types.
-- Do not use static constructors (global variables with constructors or destructors).
-- Use `struct` when all members are public, and `class` otherwise.
-- Avoid using braced initializer lists to call constructors with non-trivial logic.
-- Use `auto` type deduction to make code more readable, but be mindful of unnecessary copies.
-- Beware of non-determinism due to the ordering of pointers in unordered containers.
-- Beware of non-deterministic sorting order of equal elements; use `llvm::sort` instead of `std::sort`.
+✅ GOOD: Consistent LLVM style
+```cpp
+class MyCustomPass {
+  void runOnFunction(llvm::Function &F) { // LLVM passes typically run on a Function
+    int tempVar = 0; // Local variables can be camelCase or snake_case, consistency is key.
+  }
+};
+```
 
-## Style Issues
+### 1.2 Prefer LLVM ADT and Utilities
+Leverage LLVM's specialized data structures and utilities over standard library equivalents for performance and consistency.
 
-- Layer libraries correctly to avoid circular dependencies. Use Unix linker principles to enforce this.
-- `#include` as little as possible, especially in header files. Use forward declarations when possible.
-- Use namespace qualifiers to implement previously declared functions in source files; avoid opening namespace blocks.
-- Use early exits and `continue` statements to simplify code and reduce indentation.
-- Don't use `else` or `else if` after control flow interrupting statements like `return`, `break`, `continue`, or `goto`.
-- Turn predicate loops into predicate functions.
+*   **Containers**: Use `llvm::SmallVector`, `llvm::DenseMap`, `llvm::StringRef` etc.
+*   **I/O**: Use `llvm::raw_ostream` for all output.
 
-## The Low-Level Issues
+❌ BAD: Using standard library containers and I/O
+```cpp
+#include <vector>
+#include <map>
+#include <iostream>
 
-- Name types, functions, variables, and enumerators properly, using descriptive and consistent names.
-- Assert liberally to check preconditions and assumptions.  Include informative error messages in assertions. Use `llvm_unreachable` to mark code that should never be reached. Avoid `assert(false)`. When assertions produce “unused value” warnings, move the call into the assert or cast the value to void.
-- Do not use `using namespace std`. Explicitly qualify identifiers from the standard namespace.
-- Don't use default labels in fully covered switches over enumerations to catch new enumeration values. Use `llvm_unreachable` after the switch to suppress GCC warnings about reaching the end of a non-void function.
-- Use range-based for loops wherever possible.
-- Don’t evaluate `end()` every time through a loop; evaluate it once before the loop starts.
-- `#include <iostream>` is forbidden. Use `raw_ostream` instead.
-- Avoid `std::endl`; use `\n` instead.
-- Don’t use `inline` when defining a function in a class definition; it's implicit.
+std::vector<int> myVec;
+std::map<std::string, int> myMap;
+std::cout << "Debug info: " << val << std::endl;
+```
 
-## Microscopic Details
+✅ GOOD: Using LLVM ADT and `raw_ostream`
+```cpp
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/Support/raw_ostream.h"
 
-- Put a space before an open parenthesis only in control flow statements, but not in normal function call expressions and function-like macros.
-- Prefer preincrement (`++X`) over postincrement (`X++`).
-- Don't indent namespaces; add comments indicating which namespace is being closed when helpful.
+llvm::SmallVector<int, 8> myVec; // SmallVector avoids heap allocation for small sizes
+llvm::DenseMap<llvm::StringRef, int> myMap; // DenseMap is faster for many use cases
+llvm::outs() << "Debug info: " << val << "\n"; // Use llvm::outs() for stdout
+```
 
-## Code Organization and Structure
+### 1.3 Utilize TableGen for Declarative Definitions
+For instruction definitions, target descriptions, or pass registration, use TableGen. It reduces boilerplate and ensures consistency.
 
-- **Directory Structure:** Follow the existing LLVM directory structure conventions.  New components should typically reside in a subdirectory within an existing high-level category (e.g., `lib/Transforms`, `include/llvm/Analysis`).  Consider the intended audience (end-user tool vs. internal library) when choosing a location.
-- **File Naming:** Use descriptive names for files, matching the class or functionality they contain.  Header files should have a `.h` or `.hpp` extension, and implementation files should have a `.cpp`, `.cc`, or `.c` extension (depending on whether they are C or C++). MLIR files should have `.mlir` extension.
-- **Module Organization:** Break down large components into smaller, more manageable modules. Each module should have a well-defined purpose and interface. Minimize dependencies between modules.
-- **Component Architecture:** Design components with clear separation of concerns.  Use interfaces and abstract classes to promote loose coupling and enable polymorphism.  Follow the principle of least privilege.
-- **Code Splitting:** Decompose large functions into smaller, well-named helper functions. Use namespaces to group related functions and classes.
+```td
+// In a .td file
+def MyInst : Instruction<"my_inst", ...>;
+```
 
-## Common Patterns and Anti-patterns
+## 2. Common Patterns and Anti-patterns
 
-- **Visitor Pattern:** LLVM frequently uses the Visitor pattern for traversing and manipulating data structures (e.g., the LLVM IR).  Implement visitor classes for custom analysis or transformations.
-- **Pass Infrastructure:** Leverage LLVM's pass infrastructure for implementing optimization and analysis passes.  Create new pass types (e.g., analysis pass, transformation pass) as needed.
-- **Factory Pattern:** Use the Factory pattern to create instances of classes based on runtime parameters or configuration settings.
-- **Singleton Pattern (Avoid):** Minimize the use of the Singleton pattern, as it can lead to tight coupling and make testing difficult.  Consider dependency injection instead.
-- **Global Variables (Avoid):** Avoid global variables whenever possible, as they can introduce unexpected side effects and make code harder to reason about. Use configuration objects or dependency injection instead.
+### 2.1 Use LLVM_DEBUG for Debugging
+Never use `printf` or `std::cout` for debug output. Use `LLVM_DEBUG` macros, which are compiled out in release builds.
 
-## Performance Considerations
+❌ BAD: Debugging with `printf` or `std::cerr`
+```cpp
+#include <iostream>
+void MyPass::runOnFunction(llvm::Function &F) {
+  std::cerr << "Processing function: " << F.getName().str() << "\n";
+  // ...
+}
+```
 
-- **Inline Hints:** Use `inline` judiciously to guide the compiler to inline frequently called functions.  Avoid inlining large or complex functions.
-- **Profile-Guided Optimization (PGO):** Use PGO to optimize code based on runtime profiles.  This can significantly improve performance for frequently executed code paths.
-- **LTO (Link-Time Optimization):** Enable LTO to allow the compiler to optimize code across module boundaries.
-- **Memory Management:** Use LLVM's memory management facilities (e.g., `BumpPtrAllocator`, `ScopedHashTable`) for efficient memory allocation.  Avoid excessive memory allocation and deallocation.
-- **Avoid Unnecessary Copies:** Pass objects by reference or pointer to avoid unnecessary copying.
-- **Use `SmallVector`:** Use `llvm::SmallVector` for small, fixed-size vectors to avoid dynamic memory allocation.
-- **Cache Locality:** Consider cache locality when designing data structures and algorithms.
+✅ GOOD: Debugging with `LLVM_DEBUG`
+```cpp
+#include "llvm/Support/Debug.h"
+#define DEBUG_TYPE "my-pass" // Define a debug type for your pass
 
-## Security Best Practices
+void MyPass::runOnFunction(llvm::Function &F) {
+  LLVM_DEBUG(llvm::dbgs() << "Processing function: " << F.getName() << "\n");
+  // ...
+}
+```
 
-- **Input Validation:** Validate all external inputs to prevent vulnerabilities such as buffer overflows and code injection. Use LLVM's API for parsing various file formats.
-- **Sanitizers:** Use AddressSanitizer (ASan), MemorySanitizer (MSan), and UndefinedBehaviorSanitizer (UBSan) during development and testing to detect memory errors and undefined behavior.
-- **Avoid Code Injection:** Do not construct code by concatenating strings or using other techniques that could lead to code injection vulnerabilities.
-- **Data Validation:** Make sure to validate any data being retrieved from memory or other storage locations. Use `llvm::isSafeToLoadUnconditionally` to check if data is safe to load.
+### 2.2 Assertions are Your Friend
+Use `assert` liberally to catch invariants and impossible states early. Always build with assertions enabled during development (`-DLLVM_ENABLE_ASSERTIONS=On`).
 
-## Testing Approaches
+❌ BAD: Relying on runtime crashes for logic errors
+```cpp
+if (!Val->hasOneUse()) {
+  // This should never happen, but no assertion.
+}
+```
 
-- **Unit Tests:** Write unit tests for individual components and functions. Use the LLVM testing framework (e.g., `lit`) to automate test execution.
-- **Integration Tests:** Write integration tests to verify the interaction between different components. Create realistic test cases that exercise common use scenarios.
-- **Regression Tests:** Add regression tests for any bug fixes to prevent regressions in future versions.
-- **Fuzzing:** Use fuzzing techniques to identify corner cases and potential vulnerabilities.  Integrate fuzzing into the CI/CD pipeline.
-- **Code Coverage:** Measure code coverage to ensure that tests exercise all important code paths. Use `llvm-cov` to generate code coverage reports.
+✅ GOOD: Asserting expected conditions
+```cpp
+assert(Val->hasOneUse() && "Expected value to have a single use!");
+```
 
-## Common Pitfalls and Gotchas
+## 3. Performance Considerations
 
-- **Incorrect Use of APIs:** Carefully read the documentation for LLVM APIs and ensure they are used correctly.  Pay attention to preconditions and postconditions.
-- **Memory Leaks:** Ensure that all allocated memory is properly deallocated. Use memory leak detection tools to identify memory leaks.
-- **Dangling Pointers:** Avoid dangling pointers by ensuring that objects are not deleted while they are still being referenced.
-- **Undefined Behavior:** Avoid undefined behavior, as it can lead to unpredictable results. Use sanitizers to detect undefined behavior.
-- **Version Compatibility:** Be aware of version compatibility issues when using LLVM with other libraries or tools.  Test your code with different versions of LLVM.
+### 3.1 Optimize Data Structure Choices
+`llvm::SmallVector` and `llvm::DenseMap` are specifically designed for compiler performance. Understand their tradeoffs and use them appropriately.
 
-## Tooling and Environment
+*   `SmallVector`: Avoids heap allocations for small collections.
+*   `DenseMap`/`DenseSet`: Faster than `std::map`/`std::set` for many common cases due to hash-based implementation.
 
-- **Clang:** Use Clang as the primary compiler for LLVM projects. Clang provides excellent support for C++ standards and LLVM extensions.
-- **CMake:** Use CMake to manage the build process for LLVM projects.  CMake is a cross-platform build system generator that is well-supported by LLVM.
-- **LLVM Tools:** Utilize the LLVM tools (e.g., `llvm-as`, `llvm-dis`, `opt`, `lli`) for various tasks such as assembling and disassembling LLVM IR, optimizing code, and executing LLVM bitcode.
-- **Git:** Use Git for version control.  Follow the LLVM Git commit message conventions.
-- **CI/CD:** Integrate CI/CD pipelines into LLVM development. Use test suites as part of your development cycle.
+### 3.2 Incremental Builds
+Use CMake effectively for incremental builds. Avoid full rebuilds.
 
-## Additional Notes
+```bash
+# Configure for debug with assertions
+cmake -G Ninja -DLLVM_ENABLE_ASSERTIONS=On -DCMAKE_BUILD_TYPE=Debug ../llvm-project/llvm
+# Build only the necessary targets
+ninja MyPassName
+```
 
-- When extending or modifying existing code, adhere to the style already in use.
-- Document your code clearly and concisely.  Provide comments explaining the purpose of functions, classes, and variables.
-- Keep pull requests small and focused.  This makes it easier for reviewers to understand and approve your changes.
-- Be responsive to feedback from reviewers and address any issues promptly.
-- Engage with the LLVM community to ask questions, share knowledge, and contribute to the project.
-- Refer to existing documentation and examples in the LLVM codebase for guidance on how to implement new features and functionality.
+## 4. Common Pitfalls and Gotchas
 
-By following these guidelines, you can write high-quality LLVM code that is efficient, maintainable, and robust. This ensures consistent code quality and facilitates collaboration within the LLVM community.
+### 4.1 Forgetting Pre-Commit Tests
+Always add a baseline test *before* your change, then a second commit with the actual change and test diffs. This is crucial for review and regression safety.
+
+### 4.2 Manual `CHECK` Line Editing
+Never manually edit `CHECK` lines in LIT tests. Use `llvm/utils/update_test_checks.py`.
+
+❌ BAD: Manually updating `CHECK` lines
+```llvm
+; CHECK: define i32 @foo() {
+; CHECK-NEXT: ret i32 42
+; Manually updated this
+```
+
+✅ GOOD: Using the script
+```bash
+llvm/utils/update_test_checks.py --opt-binary build/bin/opt llvm/test/Transforms/InstCombine/my_test.ll
+```
+
+## 5. Testing Approaches
+
+### 5.1 Embrace the Test-First Workflow
+For new optimizations or bug fixes, always write the test first.
+
+1.  **Commit 1**: Add a new LIT test case that demonstrates the *original* behavior (e.g., the bug or the pre-optimization IR). Use `update_test_checks.py` to generate baseline `CHECK` lines.
+2.  **Commit 2**: Implement your change. Run `update_test_checks.py` again to update the `CHECK` lines to reflect the *new, desired* behavior.
+
+### 5.2 Comprehensive LIT Testing
+LLVM's LIT framework is the definitive testing tool. Ensure your tests are:
+
+*   **Minimal**: Test only the specific pattern being transformed.
+*   **Meaningful Names**: Use descriptive test names (e.g., `@@add_of_selects_multi_use`).
+*   **Negative Tests**: Include cases where your transform *should not* apply.
+*   **Multi-Use Tests**: Verify your transform doesn't increase instruction count if results are used multiple times.
+*   **Commuted Tests**: For commutative operations, test swapped operands (unless one is a constant, which is canonicalized).
+*   **Vector Tests**: Include splat, splat-with-poison, and non-splat vector cases.
+*   **Flag Tests**: Test interactions with flags like `nuw`, `nsw`, and specific fast-math-flags (`nnan`, `nsz`, `reassoc`).
+
+Example of a multi-use test:
+```llvm
+; RUN: opt -S -instcombine < %s | FileCheck %s
+
+; CHECK-LABEL: @add_mul_const_multi_use
+; CHECK: %[[ADD:.*]] = add i8 %x, 1
+; CHECK: call void @use(i8 %[[ADD]])
+; CHECK: %[[MUL:.*]] = mul i8 %[[ADD]], 3
+; CHECK: ret i8 %[[MUL]]
+define i8 @add_mul_const_multi_use(i8 %x) {
+  %add = add i8 %x, 1
+  call void @use(i8 %add) ; Extra use
+  %mul = mul i8 %add, 3
+  ret i8 %mul
+}
+declare void @use(i8)
+```
+
+### 5.3 Provide Alive2 Proofs
+For complex transformations, especially in InstCombine, include Alive2 proofs in your pull request description to demonstrate correctness. This significantly speeds up review.
+```
+// Example Alive2 proof snippet in PR description
+// %0 = add i32 %a, 1
+// %1 = mul i32 %0, 2
+// =>
+// %1 = add i32 (mul i32 %a, 2), 2
+```

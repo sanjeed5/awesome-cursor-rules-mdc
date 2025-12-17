@@ -1,282 +1,302 @@
 ---
-description: This rule provides comprehensive best practices for the MLX library, covering code organization, performance, security, testing, and common pitfalls. It aims to promote consistent, efficient, and maintainable code when working with MLX on Apple platforms.
-globs: *.swift
+description: This guide provides opinionated, actionable best practices for developing high-performance machine learning applications with MLX on Apple Silicon, focusing on Python and Swift.
+globs: **/*
 ---
-# MLX Library Best Practices
+# mlx Best Practices
 
-This document outlines the recommended best practices and coding standards for developing applications using the MLX library on Apple platforms, primarily using Swift. Following these guidelines will help ensure code quality, maintainability, performance, and security.
+MLX is Apple's high-performance array framework for numerical computing and AI on Apple Silicon. Adhering to these guidelines ensures your MLX code is efficient, maintainable, and integrates seamlessly with Apple's ML ecosystem.
 
 ## 1. Code Organization and Structure
 
-A well-structured project is crucial for scalability and maintainability. Here's how to organize your MLX projects effectively:
+Organize your MLX projects into logical, reusable modules. Mirror the structure of official Apple examples (e.g., `corenet` MLX examples) for clarity and maintainability.
 
-### 1.1. Directory Structure
+### 1.1 Modularize Components
+Separate concerns into dedicated files: data loading, model definition, training loops, and utility functions.
 
-Adopt a modular directory structure that separates concerns and promotes reusability. A typical project structure might look like this:
+❌ **BAD: Monolithic Script**
+```python
+# train.py
+import mlx.core as mx
+import mlx.nn as nn
+# ... data loading, model definition, training loop all in one file ...
+```
 
+✅ **GOOD: Modular Structure**
+```
+my_project/
+├── data/
+│   └── mnist_loader.py
+├── models/
+│   └── simple_cnn.py
+├── config/
+│   └── train_config.yaml
+├── utils/
+│   └── metrics.py
+└── train.py
+```
+```python
+# models/simple_cnn.py
+import mlx.core as mx
+import mlx.nn as nn
 
-MyMLXProject/
-├── Data/
-│   ├── Datasets.swift         # Classes/structs for handling datasets
-│   ├── Preprocessing.swift    # Data preprocessing utilities
-├── Models/
-│   ├── ModelDefinitions.swift # MLX Model Definitions (structs/classes)
-│   ├── Layers.swift           # Custom layers for your models
-│   ├── LossFunctions.swift    # Loss functions for training
-├── Training/
-│   ├── Trainer.swift          # Training loop and optimization logic
-│   ├── Metrics.swift          # Evaluation metrics
-├── Inference/
-│   ├── InferenceEngine.swift  # Model inference and prediction code
-├── Utilities/
-│   ├── Helpers.swift          # Helper functions and extensions
-│   ├── Configuration.swift   # Project configuration settings
-├── UI/
-│   ├── ViewControllers.swift  # UI-related code (if applicable)
-│   ├── Views.swift           # Custom UI views
-├── Tests/
-│   ├── UnitTests.swift        # Unit tests for individual components
-│   ├── IntegrationTests.swift # Integration tests for the application
-├── MyMLXProject.xcodeproj   # Xcode project file
-├── Podfile                   # CocoaPods dependencies (if using)
-├── Package.swift             # Swift Package Manager manifest (if using)
+class SimpleCNN(nn.Module):
+    def __init__(self, num_classes: int):
+        super().__init__()
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
+        self.relu1 = nn.ReLU()
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.linear = nn.Linear(32 * 14 * 14, num_classes)
 
+    def __call__(self, x: mx.array) -> mx.array:
+        x = self.conv1(x)
+        x = self.relu1(x)
+        x = self.pool1(x)
+        x = x.reshape(x.shape[0], -1) # Flatten
+        return self.linear(x)
 
-### 1.2. File Naming Conventions
+# train.py
+from data.mnist_loader import load_mnist_data
+from models.simple_cnn import SimpleCNN
+# ... training logic ...
+```
 
-- Use descriptive and consistent names for your files.
-- Follow the `PascalCase` convention for Swift files (e.g., `ModelDefinitions.swift`).
-- Name files according to the primary type or functionality they contain.
-- Use suffixes like `View`, `Controller`, `Model`, `Helper`, `Manager` to clearly indicate the role of the file.
+### 1.2 Externalize Configuration
+Store training parameters, model hyperparameters, and dataset paths in version-controlled YAML or JSON files.
 
-### 1.3. Module Organization
+❌ **BAD: Hardcoded Parameters**
+```python
+# train.py
+learning_rate = 0.001
+batch_size = 32
+num_epochs = 10
+model = SimpleCNN(num_classes=10)
+```
 
-- Organize your code into logical modules or Swift packages using Swift Package Manager (SPM).
-- Each module should encapsulate a specific set of functionalities, such as data processing, model definitions, or training logic.
-- Modules should have well-defined interfaces and minimize dependencies between them to promote reusability and testability.
+✅ **GOOD: Config-Driven**
+```yaml
+# config/train_config.yaml
+training:
+  learning_rate: 0.001
+  batch_size: 32
+  num_epochs: 10
+model:
+  name: SimpleCNN
+  num_classes: 10
+data:
+  path: "./data/mnist"
+```
+```python
+# train.py
+import yaml
+from models.simple_cnn import SimpleCNN
 
-### 1.4. Component Architecture
+with open("config/train_config.yaml", "r") as f:
+    config = yaml.safe_load(f)
 
-Consider using established architectural patterns like MVVM (Model-View-ViewModel) or VIPER (View-Interactor-Presenter-Entity-Router), especially for applications with a UI. However, even in non-UI projects:
-
-- **Data Layer**: Responsible for data loading, preprocessing, and storage.  This could interface with Core Data, files, or network resources.
-- **Model Layer**:  Holds the MLX model definitions, custom layers, and any associated logic.  Focus on making these types lightweight and easily serializable (if needed).
-- **Service Layer**:  Manages model training, inference, and evaluation. This layer orchestrates the interaction between the data and model layers.
-- **Utility Layer**: Contains helper functions, extensions, and common utilities used throughout the project.
-
-### 1.5. Code Splitting Strategies
-
-- Break down large files into smaller, more manageable units based on functionality or responsibility.
-- Use extensions to logically group related methods within a class or struct (e.g., `// MARK: - Data Loading`).
-- Employ protocols to define clear interfaces between components and enable loose coupling.
+model = SimpleCNN(num_classes=config["model"]["num_classes"])
+# ... use config["training"]["learning_rate"] etc.
+```
 
 ## 2. Common Patterns and Anti-patterns
 
-### 2.1. Design Patterns
+Leverage MLX's core features like lazy evaluation and unified memory for optimal performance.
 
-- **Factory Pattern**: Use factory methods or classes to create instances of MLX models, layers, or optimizers, especially when dealing with complex configurations or dependencies.
-- **Strategy Pattern**: Implement different optimization algorithms or loss functions as strategies that can be swapped in and out during training.
-- **Observer Pattern**: Employ the observer pattern to notify components about training progress or model updates.
+### 2.1 Embrace Lazy Evaluation
+MLX computations are lazy; they build a computation graph but execute only when results are explicitly needed. Use `mlx.eval()` or `mlx.compile()` to force execution.
 
-### 2.2. Recommended Approaches for Common Tasks
+❌ **BAD: Relying on Implicit Evaluation for Performance Critical Sections**
+```python
+# This loop might build a huge graph or trigger many small evaluations
+# if intermediate results are printed or accessed.
+for i in range(num_steps):
+    loss, grads = value_and_grad(model, loss_fn)(model, X_batch, y_batch)
+    # ... optimizer update ...
+    # No explicit eval, performance can be unpredictable.
+```
 
-- **Data Loading**: Use `MLXData` or custom data loaders to efficiently load and preprocess your training data. Consider using memory mapping for large datasets.
-- **Model Definition**: Define your models using `MLX` layers and sequential models. Leverage functional programming techniques for building complex model architectures.
-- **Training Loop**: Implement a well-structured training loop that iterates over the data, performs forward and backward passes, updates model parameters, and evaluates performance.
-- **Inference**: Use `MLXModel.predict` or custom inference engines to make predictions on new data.
-- **Evaluation**:  Implement robust evaluation metrics and visualizations to monitor model performance and identify potential issues.
+✅ **GOOD: Explicit Evaluation for Control**
+Use `mlx.eval()` on the final outputs of a computation step to trigger execution efficiently. For static graphs, `mlx.compile()` offers further optimization.
 
-### 2.3. Anti-Patterns and Code Smells
+```python
+import mlx.core as mx
+import mlx.nn as nn
+from mlx.optimizers import Adam
+from mlx.utils import value_and_grad
 
-- **Massive View Controllers**: Avoid placing all MLX-related logic directly within view controllers. Delegate tasks to service layers or dedicated MLX components.
-- **Global State**: Minimize the use of global variables or singletons to manage MLX model instances or training data.  Instead, pass these objects as dependencies.
-- **Hardcoded Values**: Avoid hardcoding model hyperparameters or data paths. Use configuration files or dependency injection to manage these values.
-- **Ignoring Errors**:  Handle potential errors during data loading, model training, or inference gracefully, rather than ignoring or suppressing them.
-- **Synchronous Operations on the Main Thread**: Offload time-consuming operations like model training or inference to background threads to prevent blocking the main thread and freezing the UI.
+# Define model and loss_fn (as in 1.1)
 
-### 2.4. State Management
+def train_step(model, X, y, optimizer):
+    loss, grads = value_and_grad(model, loss_fn)(model, X, y)
+    optimizer.update(model, grads)
+    return loss
 
-- For simple applications, pass state directly between components or use a simple state container object.
-- For more complex applications, consider using state management frameworks like Combine or SwiftUI's `@StateObject` and `@EnvironmentObject`. Or a dedicated state management framework for ML models.
-- Store model parameters and training progress in a dedicated state object and update it during the training loop.
-- Make sure MLX-related state is properly handled and persisted across application lifecycle events (e.g., app termination, backgrounding).
+# Compile the training step for static graphs
+compiled_train_step = mx.compile(train_step)
 
-### 2.5. Error Handling
+# In your training loop:
+optimizer = Adam(learning_rate=0.001)
+for i in range(num_steps):
+    X_batch, y_batch = get_batch()
+    # Use the compiled step
+    loss = compiled_train_step(model, X_batch, y_batch, optimizer)
+    # Explicitly evaluate the loss to trigger computation and get its value
+    mx.eval(model, optimizer, loss) # Evaluate model state, optimizer state, and loss
+    print(f"Step {i}, Loss: {loss.item()}")
+```
 
-- Use Swift's `Error` protocol and `do-catch` blocks to handle potential errors during data loading, model training, or inference.
-- Create custom error types to represent specific MLX-related errors.
-- Log error messages with sufficient context to aid debugging.
-- Provide user-friendly error messages or feedback to the user when appropriate.
+### 2.2 Leverage Unified Memory
+MLX arrays live in shared memory, eliminating explicit data transfers between CPU and GPU. Specify the device for operations when necessary, but default behavior is often sufficient.
+
+❌ **BAD: Unnecessary Device Management (like other frameworks)**
+```python
+# No need to explicitly move data to 'gpu' or 'cpu'
+data = mx.array([1, 2, 3]).to("gpu") # This is not how MLX works
+```
+
+✅ **GOOD: Device-Agnostic Operations (or explicit per-op)**
+```python
+import mlx.core as mx
+
+a = mx.array([1, 2, 3])
+b = mx.array([4, 5, 6])
+
+# Operations run on the default device (usually GPU if available)
+c = a + b
+mx.eval(c)
+
+# You can explicitly specify device per operation if needed for specific tasks
+d = mx.add(a, b, stream=mx.cpu) # Force CPU execution for this specific op
+mx.eval(d)
+```
+
+### 2.3 Use Type Hints and Pure Functions
+Follow Python best practices: annotate functions and variables with type hints for clarity. Design functions to be pure where possible for easier testing and composability.
 
 ## 3. Performance Considerations
 
-ML workloads are inherently performance-sensitive. Optimize your MLX code for speed and efficiency:
+Optimize for Apple Silicon by understanding MLX's execution model.
 
-### 3.1. Optimization Techniques
+### 3.1 Batching and Data Loading
+Efficient data loading and proper batching are critical for GPU utilization.
 
-- **Vectorization**: Leverage `MLX`'s vectorized operations to perform computations on entire arrays or matrices rather than iterating over individual elements.
-- **Data Type Optimization**: Use the appropriate data types for your model parameters and training data (e.g., `Float16` or `Float32` instead of `Float64`).
-- **Memory Optimization**: Minimize memory allocations and deallocations during the training loop. Re-use buffers and avoid unnecessary data copies.
-- **Graph Compilation**:  If MLX supports it, compile your model graph to optimize its execution. This can significantly improve inference speed.
-- **GPU Acceleration**: Ensure your MLX code is running on the GPU for faster computations (if available).  Verify GPU usage using system monitoring tools.
+❌ **BAD: Iterating over single samples or inefficient data loading**
+```python
+# Inefficient for GPU
+for sample_x, sample_y in dataset:
+    # ... process single sample ...
+```
 
-### 3.2. Memory Management
+✅ **GOOD: Batch Data and Preload**
+```python
+# Use a DataLoader or similar utility to yield batches of MLX arrays
+def data_loader(data, batch_size):
+    for i in range(0, len(data), batch_size):
+        yield mx.array(data[i:i+batch_size])
 
-- Be mindful of memory usage, especially when dealing with large datasets or complex models.
-- Use memory profiling tools to identify memory leaks or excessive memory allocations.
-- Release unused memory explicitly when possible.
-- Consider using techniques like data streaming or batch processing to reduce memory footprint.
+# In training loop:
+for X_batch, y_batch in data_loader(train_data, batch_size):
+    # ... process batch ...
+```
 
-### 3.3. Rendering Optimization (If Applicable)
+### 3.2 Quantization for Deployment
+For deploying models on-device, consider quantizing weights (e.g., 4-bit) to reduce memory footprint and improve inference speed.
 
--  MLX is focused on numerical computation, but if you are visualizing outputs, use techniques like Metal shaders to optimize rendering if you are drawing visualizations of ML data.
+```python
+import mlx.core as mx
+import mlx.nn as nn
 
-### 3.4. Bundle Size Optimization
+# Assuming 'model' is a trained MLX model
+# Quantize the model to 4-bit
+quantized_model = model.quantize(group_size=32, bits=4)
 
-- If using dependencies, consider the impact of external dependencies on the application bundle size.
-- Use code stripping and dead code elimination to remove unused code and resources.
-- Compress images, models, and other assets to reduce their size.
+# Save the quantized model
+mx.save("quantized_model.safetensors", quantized_model.parameters())
+```
 
-### 3.5. Lazy Loading
+## 4. Common Pitfalls and Gotchas
 
-- Lazy load large models or datasets only when they are needed to reduce startup time and memory footprint.
-- Use placeholder data or loading indicators while lazy-loading data in the background.
+Avoid common mistakes that can lead to unexpected behavior or poor performance.
 
-## 4. Security Best Practices
+### 4.1 Forgetting `mlx.eval()`
+The most common pitfall. If you don't explicitly evaluate, your graph might not execute, or only partially.
 
-Even though MLX focuses on numerical computation, security is still important:
+❌ **BAD: No `eval()` on results**
+```python
+# This will print the MLX array object, not its computed value
+result = mx.add(mx.array([1]), mx.array([2]))
+print(result) # Output: array(value=..., shape=(1,), dtype=int32)
+```
 
-### 4.1. Common Vulnerabilities and Prevention
+✅ **GOOD: Always `eval()` when you need the value**
+```python
+result = mx.add(mx.array([1]), mx.array([2]))
+mx.eval(result)
+print(result) # Output: array(3, shape=(1,), dtype=int32)
+print(result.item()) # Output: 3
+```
 
-- **Model Poisoning**: Prevent malicious actors from injecting adversarial data into your training set to degrade model performance or inject biases.
-  - **Mitigation**: Implement data validation and sanitization techniques. Monitor data sources and investigate anomalies.
-- **Model Extraction**: Protect your trained models from being stolen or reverse-engineered by unauthorized parties.
-  - **Mitigation**: Use model encryption or obfuscation techniques. Implement access controls and authentication mechanisms.
-- **Adversarial Attacks**: Defend against adversarial attacks that can trick your models into making incorrect predictions.
-  - **Mitigation**: Implement adversarial training techniques or input validation mechanisms.
+### 4.2 Over-evaluating or Under-evaluating
+Finding the right balance for `mlx.eval()` is key. Too many small `eval` calls can break graph optimization. Too few can lead to memory issues or delayed execution.
 
-### 4.2. Input Validation
-
-- Validate all external inputs, including user data, API responses, and configuration files, to prevent malicious data from compromising your application or models.
-- Sanitize input data to remove or escape potentially harmful characters or code.
-- Use type checking and data validation libraries to ensure data conforms to expected formats and ranges.
-
-### 4.3. Authentication and Authorization
-
-- Implement robust authentication and authorization mechanisms to protect access to your models, training data, and API endpoints.
-- Use secure password storage techniques like hashing and salting.
-- Implement role-based access control (RBAC) to restrict access to sensitive resources based on user roles.
-
-### 4.4. Data Protection
-
-- Encrypt sensitive data at rest and in transit to prevent unauthorized access.
-- Use secure storage options like the iOS Keychain to store sensitive information like API keys or passwords.
-- Implement data masking or anonymization techniques to protect user privacy.
-
-### 4.5. Secure API Communication
-
-- Use HTTPS to encrypt communication between your application and external APIs or services.
-- Implement certificate pinning to prevent man-in-the-middle attacks.
-- Validate API responses to ensure data integrity and prevent data injection attacks.
+**Guideline:** Evaluate at logical synchronization points, typically at the end of a training step or inference call. Use `mx.eval(model, optimizer, loss)` to evaluate all relevant states.
 
 ## 5. Testing Approaches
 
-Thorough testing is essential for ensuring the reliability and correctness of your MLX code:
+Ensure the reliability and correctness of your MLX models.
 
-### 5.1. Unit Testing
+### 5.1 Unit Tests for Model Components
+Test individual layers, custom modules, and utility functions.
 
-- Write unit tests to verify the functionality of individual components, such as model layers, loss functions, or data preprocessing utilities.
-- Use mocking and stubbing techniques to isolate components and simulate dependencies.
-- Test edge cases and boundary conditions to ensure robust behavior.
+```python
+# tests/test_simple_cnn.py
+import mlx.core as mx
+import mlx.nn as nn
+from models.simple_cnn import SimpleCNN
 
-### 5.2. Integration Testing
+def test_simple_cnn_output_shape():
+    model = SimpleCNN(num_classes=10)
+    # Initialize model parameters by running a dummy input
+    _ = model(mx.zeros((1, 1, 28, 28)))
+    mx.eval(model) # Ensure parameters are initialized
 
-- Write integration tests to verify the interaction between different components or modules.
-- Test the data flow through the application pipeline, from data loading to model inference.
-- Verify that the application integrates correctly with external APIs or services.
+    input_tensor = mx.random.normal((2, 1, 28, 28))
+    output = model(input_tensor)
+    assert output.shape == (2, 10)
+    print("SimpleCNN output shape test passed.")
 
-### 5.3. End-to-End Testing
+if __name__ == "__main__":
+    test_simple_cnn_output_shape()
+```
 
-- Write end-to-end tests to simulate user interactions and verify the overall application functionality.
-- Test the user interface (if applicable) to ensure it behaves as expected.
-- Verify that the application meets the specified performance and security requirements.
+### 5.2 Integration Tests for Inference
+Verify that your trained models perform as expected on new data, especially when integrating with Core ML or other on-device frameworks.
 
-### 5.4. Test Organization
+### 5.3 Data Validation and Reproducibility
+Implement sanity checks for all input data. Version control your data, models, and training configurations to ensure reproducible results.
 
-- Organize your tests into separate test suites or folders based on the component or functionality being tested.
-- Use descriptive names for your test methods to clearly indicate their purpose.
-- Follow a consistent naming convention for your test files (e.g., `MyComponentTests.swift`).
+```python
+# utils/data_validation.py
+import mlx.core as mx
 
-### 5.5. Mocking and Stubbing
+def validate_image_data(images: mx.array, expected_shape: tuple, expected_dtype: mx.Dtype):
+    assert images.ndim == len(expected_shape), f"Expected {len(expected_shape)} dims, got {images.ndim}"
+    assert images.shape == expected_shape, f"Expected shape {expected_shape}, got {images.shape}"
+    assert images.dtype == expected_dtype, f"Expected dtype {expected_dtype}, got {images.dtype}"
+    assert images.min() >= 0 and images.max() <= 1, "Image pixel values out of range [0, 1]"
+    print("Image data validation passed.")
 
-- Use mocking frameworks to create mock objects that simulate the behavior of dependencies during unit testing.
-- Use stubbing techniques to provide pre-defined responses or values for dependencies during testing.
-- Avoid over-mocking or stubbing, as it can make tests brittle and less reliable.
+# In your data loader or training script:
+# ... load raw data ...
+# raw_images = mx.array(...)
+# validate_image_data(raw_images, (100, 1, 28, 28), mx.float32)
+```
 
-## 6. Common Pitfalls and Gotchas
+## 6. Swift-Specific Guidelines
 
-### 6.1. Frequent Mistakes
+When working with MLX Swift, adhere to Apple's official Swift style guides and API design guidelines.
 
-- **Incorrect Data Shapes**: Ensure that your input data and model parameters have the correct shapes and dimensions. Incorrect shapes can lead to errors or unexpected behavior.
-- **Gradient Vanishing/Exploding**: Be aware of gradient vanishing or exploding problems during training. Use techniques like gradient clipping or batch normalization to mitigate these issues.
-- **Overfitting**: Monitor your model's performance on a validation set to prevent overfitting. Use regularization techniques or dropout to reduce overfitting.
-- **Not Freezing the graph before production**: After training and validation, ensure that MLX is not attempting to recalculate the graph each time inference is called.  Freeze the graph before deploying to production.
+### 6.1 Follow Swift API Style
+Use idiomatic Swift patterns, consistent naming, and proper error handling. Refer to the `mlx-swift` examples (e.g., MNISTTrainer) as templates.
 
-### 6.2. Edge Cases
-
-- **Handling Missing Data**: Implement strategies for handling missing data in your datasets. Consider using imputation techniques or creating custom data loaders.
-- **Dealing with Imbalanced Datasets**: Address imbalanced datasets by using techniques like oversampling, undersampling, or weighted loss functions.
-- **Handling Out-of-Memory Errors**: Be prepared to handle out-of-memory errors when dealing with large models or datasets. Reduce batch sizes, use memory mapping, or distribute training across multiple GPUs.
-
-### 6.3. Version-Specific Issues
-
-- Be aware of potential compatibility issues between different versions of MLX and other dependencies.
-- Consult the MLX documentation and release notes for information on known issues or breaking changes.
-- Use dependency management tools like CocoaPods or SPM to manage dependencies and ensure compatibility.
-
-### 6.4. Compatibility Concerns
-
-- Consider compatibility between MLX and other technologies used in your project, such as Core ML or Metal.
-- Use feature detection or conditional compilation to handle different platform versions or hardware capabilities.
-
-### 6.5. Debugging Strategies
-
-- Use Xcode's debugger to step through your code and inspect variables.
-- Use logging statements to track the execution flow and data values.
-- Use visualization tools to inspect model architectures, data distributions, and training progress.
-- Leverage MLX's error messages and stack traces to identify and resolve issues.
-
-## 7. Tooling and Environment
-
-### 7.1. Recommended Development Tools
-
-- **Xcode**: Use Xcode as your primary IDE for developing MLX applications on Apple platforms.
-- **Metal Performance Shaders**: Use Metal Performance Shaders (MPS) to optimize performance on Apple GPUs.
-- **Instruments**: Use Instruments to profile your application's performance and identify bottlenecks.
-- **TensorBoard**: Use TensorBoard to visualize model architectures, training progress, and evaluation metrics.
-
-### 7.2. Build Configuration
-
-- Configure your Xcode project to optimize build settings for performance (e.g., enable optimization levels, disable debugging symbols).
-- Use build configurations (e.g., Debug, Release) to manage different build settings for development and production environments.
-- Use environment variables to configure application behavior based on the environment.
-
-### 7.3. Linting and Formatting
-
-- Use SwiftLint to enforce coding style guidelines and identify potential code quality issues.
-- Use SwiftFormat to automatically format your code according to a consistent style.
-- Configure Xcode to automatically run SwiftLint and SwiftFormat during the build process.
-
-### 7.4. Deployment
-
-- Prepare your MLX models and data for deployment. Convert models to efficient formats (e.g., Core ML) if necessary.
-- Use code signing and provisioning profiles to ensure secure application distribution.
-- Deploy your application to the App Store or distribute it using enterprise deployment mechanisms.
-
-### 7.5. CI/CD Integration
-
-- Integrate your MLX project with a continuous integration and continuous delivery (CI/CD) system like Jenkins, Travis CI, or GitHub Actions.
-- Configure CI/CD pipelines to automatically build, test, and deploy your application on every code change.
-- Use automated testing frameworks to verify the correctness of your MLX code and models.
-
-By following these best practices, you can develop robust, efficient, and secure MLX applications that leverage the power of machine learning on Apple platforms.
+### 6.2 Manage Object Lifetime
+Be mindful of object lifetimes, especially when bridging C++ MLX objects to Swift, as aggressive inlining and optimizations can affect behavior. The `mlx-swift` package includes recommendations for this.

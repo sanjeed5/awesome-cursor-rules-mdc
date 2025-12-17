@@ -1,297 +1,314 @@
 ---
-description: This rule file provides comprehensive best practices for LightGBM, covering code organization, performance, security, testing, and common pitfalls to avoid. Adhering to these guidelines will improve the efficiency, reliability, and maintainability of your LightGBM projects.
-globs: *.py,*.ipynb
+description: This guide provides opinionated, actionable best practices for using LightGBM in production-grade Python ML pipelines, focusing on performance, reproducibility, and maintainability.
+globs: **/*.py
 ---
-# LightGBM Best Practices
-
-This document outlines best practices for developing and maintaining LightGBM-based machine learning projects. It covers various aspects, from code organization to performance optimization and security considerations.
-
-## Library Information:
-
-- Name: LightGBM
-- Tags: ai, ml, machine-learning, python, gradient-boosting
-
-## 1. Code Organization and Structure
-
-### 1.1 Directory Structure
-
-
-project_root/
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── external/
-├── notebooks/
-│   ├── exploratory_data_analysis.ipynb
-│   └── model_evaluation.ipynb
-├── src/
-│   ├── __init__.py
-│   ├── data/
-│   │   ├── __init__.py
-│   │   ├── dataset.py  # Data loading and preprocessing logic
-│   │   └── features.py # Feature engineering functions
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── train.py    # Model training script
-│   │   ├── predict.py  # Prediction script
-│   │   └── model.py    # Model definition (if applicable)
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   ├── logger.py   # Logging utilities
-│   │   └── helper.py   # General helper functions
-│   └── visualization/
-│       ├── __init__.py
-│       └── plots.py  # Custom plotting functions
-├── tests/
-│   ├── __init__.py
-│   ├── data/
-│   ├── models/
-│   └── utils/
-├── configs/
-│   └── config.yaml
-├── reports/
-│   └── figures/
-├── .gitignore
-├── README.md
-├── pyproject.toml
-└── requirements.txt
-
-
-*   **data/**: Contains raw, processed, and external data.
-*   **notebooks/**: Jupyter notebooks for exploration and experimentation.
-*   **src/**: Source code for data loading, feature engineering, model training, and prediction.
-*   **tests/**: Unit and integration tests.
-*   **configs/**: Configuration files (e.g., YAML).
-*   **reports/**: Generated reports and figures.
-
-### 1.2 File Naming Conventions
+# lightgbm Best Practices
 
-*   Python files: `lowercase_with_underscores.py`
-*   Jupyter notebooks: `descriptive_name.ipynb`
-*   Configuration files: `config.yaml` or `config.json`
-*   Data files: `data_description.csv` or `data_description.parquet`
+LightGBM is our go-to for high-performance tabular modeling. These rules ensure our LightGBM implementations are fast, reliable, and maintainable.
 
-### 1.3 Module Organization
+## 1. Code Structure & Reproducibility
+
+Always encapsulate model creation and ensure runs are repeatable.
 
-*   Group related functions and classes into modules.
-*   Use clear and descriptive module names.
-*   Minimize dependencies between modules.
+### 1.1. Use Scikit-learn API & Model Builder Functions
+
+Always use `LGBMClassifier` or `LGBMRegressor` for `sklearn` compatibility. Wrap model instantiation in a function for clean, version-controlled hyperparameter management.
+
+❌ **BAD: Inline model creation with hardcoded parameters**
+```python
+# my_script.py
+import lightgbm as lgb
+model = lgb.LGBMClassifier(n_estimators=100, learning_rate=0.1, max_depth=7)
+model.fit(X_train, y_train)
+```
 
-### 1.4 Component Architecture
+✅ **GOOD: Function-based model creation with type hints and external config**
+```python
+# models/lgbm_model.py
+import lightgbm as lgb
+from typing import Dict, Any
+import yaml # Or use a dataclass for params
 
-*   **Data Layer:** Handles data loading, preprocessing, and feature engineering.
-*   **Model Layer:** Encapsulates model training, evaluation, and prediction.
-*   **Service Layer:** Exposes model functionality through an API or interface.
-*   **Configuration Layer:** Manages configuration parameters and settings.
+def build_lgbm_classifier(params: Dict[str, Any]) -> lgb.LGBMClassifier:
+    """Builds a LightGBM Classifier with specified hyperparameters."""
+    return lgb.LGBMClassifier(**params)
 
-### 1.5 Code Splitting
-
-*   Break down complex tasks into smaller, more manageable functions.
-*   Use classes to encapsulate related data and behavior.
-*   Avoid long functions and deeply nested code blocks.
-
-## 2. Common Patterns and Anti-patterns
-
-### 2.1 Design Patterns
-
-*   **Factory Pattern:** To create different LightGBM models based on configuration.
-*   **Strategy Pattern:** To implement different feature engineering techniques.
-*   **Observer Pattern:** To monitor training progress and log metrics.
-
-### 2.2 Recommended Approaches
-
-*   **Data Preparation:** Utilize LightGBM's native support for missing values and categorical features. Convert categorical features to the `categorical` data type in pandas before splitting the data.
-*   **Hyperparameter Tuning:** Use techniques like grid search, random search, or Bayesian optimization (e.g., Optuna) to optimize hyperparameters. Implement early stopping to prevent overfitting.
-*   **Model Monitoring:** Track training and validation performance metrics to detect overfitting and adjust model complexity.
-*   **Feature Selection:** Use feature importance to identify and select relevant features.
-*   **Cross-Validation:** Use k-fold cross-validation for robust model evaluation.  The `cv` function provides mean metrics and standard deviations across folds.
-
-### 2.3 Anti-patterns and Code Smells
-
-*   **Hardcoding hyperparameters:**  Avoid hardcoding; use configuration files.
-*   **Ignoring missing values:** LightGBM handles missing values, so explicitly using them is fine, but ensure you understand their impact.
-*   **Overfitting:**  Monitor training vs. validation performance and use regularization.
-*   **Large, monolithic functions:**  Break down into smaller, testable units.
-*   **Ignoring feature importances:** Use feature importance to help drive feature selection and understand your model.
-
-### 2.4 State Management
-
-*   Use configuration files to manage model parameters and training settings.
-*   Store model artifacts (e.g., trained models, scalers) in a designated directory.
-*   Use version control to track changes to code and data.
-
-### 2.5 Error Handling
-
-*   Use `try-except` blocks to handle potential exceptions.
-*   Log errors and warnings using a logging library (e.g., `logging`).
-*   Provide informative error messages to the user.
-*   Implement retry mechanisms for transient errors.
-
-## 3. Performance Considerations
-
-### 3.1 Optimization Techniques
-
-*   **Hyperparameter Tuning:** Optimize hyperparameters such as learning rate, number of leaves, and tree depth.
-*   **Early Stopping:** Implement early stopping to prevent overfitting and reduce training time.
-*   **Parallel Training:** Enable parallel training for faster computations (data/feature/voting parallel).
-*   **GPU Acceleration:**  Enable GPU usage for accelerated training when possible.
-*   **Feature Selection:** Remove irrelevant or redundant features to improve performance.
-*   **Reduce data size:** Consider downcasting numerical types (e.g., float64 to float32) if precision loss is acceptable.
-*   **Histogram-based algorithms:**  LightGBM uses histogram-based algorithms for faster training on large datasets. 
-
-### 3.2 Memory Management
-
-*   **`max_bin` Parameter:** Reduce `max_bin` to decrease memory usage (may impact accuracy).
-*   **`save_binary` Parameter:** Use `save_binary` to save data in a binary format for faster loading and reduced memory usage.
-*   **Data Types:** Use appropriate data types to minimize memory footprint (e.g., `int32` instead of `int64`).
-*   **Garbage Collection:**  Explicitly call `gc.collect()` to free up unused memory.
-
-### 3.3 Bundle Size Optimization (If applicable for deployment)
-
-*   Remove unnecessary dependencies.
-*   Use code minification and compression techniques.
-*   Optimize image assets.
-
-### 3.4 Lazy Loading
-
-*   Load data and models only when needed.
-*   Use generators to process large datasets in chunks.
-
-## 4. Security Best Practices
-
-### 4.1 Common Vulnerabilities
-
-*   **Untrusted Input:** Vulnerable to injection attacks if model is used directly on user-provided data without sanitization.
-*   **Model Poisoning:** If training data is sourced from untrusted sources, the model can be poisoned.
-*   **Denial of Service (DoS):**  Malicious input crafted to consume excessive resources.
-
-### 4.2 Input Validation
-
-*   Validate input data to ensure it conforms to expected types and ranges.
-*   Sanitize input data to prevent injection attacks.
-*   Use a schema validation library (e.g., `cerberus`, `jsonschema`).
-
-### 4.3 Authentication and Authorization
-
-*   Implement authentication to verify the identity of users.
-*   Use authorization to control access to resources and functionality.
-*   Use secure protocols (e.g., HTTPS) for API communication.
-
-### 4.4 Data Protection
-
-*   Encrypt sensitive data at rest and in transit.
-*   Use data masking to protect sensitive information.
-*   Implement access controls to restrict access to data.
-
-### 4.5 Secure API Communication
-
-*   Use HTTPS for all API communication.
-*   Implement input validation and sanitization.
-*   Use rate limiting to prevent abuse.
-*   Monitor API traffic for suspicious activity.
-
-## 5. Testing Approaches
-
-### 5.1 Unit Testing
-
-*   Test individual functions and classes in isolation.
-*   Use mocking and stubbing to isolate dependencies.
-*   Write tests for different input scenarios and edge cases.
-*   Verify expected outputs and side effects.
-
-### 5.2 Integration Testing
-
-*   Test interactions between different components.
-*   Verify data flow and consistency.
-*   Test API endpoints and data pipelines.
-
-### 5.3 End-to-End Testing
-
-*   Test the entire application flow from start to finish.
-*   Simulate real-world user scenarios.
-*   Verify that the application meets all requirements.
-
-### 5.4 Test Organization
-
-*   Organize tests into separate directories based on component.
-*   Use clear and descriptive test names.
-*   Follow a consistent testing style.
-
-### 5.5 Mocking and Stubbing
-
-*   Use mocking to replace external dependencies with controlled substitutes.
-*   Use stubbing to provide predefined responses for function calls.
-*   Use a mocking library (e.g., `unittest.mock`, `pytest-mock`).
-
-## 6. Common Pitfalls and Gotchas
-
-### 6.1 Frequent Mistakes
-
-*   **Data Leakage:** Accidentally using future information during training.
-*   **Incorrect Feature Scaling:** Using inappropriate scaling methods.
-*   **Ignoring Categorical Features:**  Not treating categorical features correctly.
-*   **Not tuning for imbalanced classes:** Ignoring the need to adjust for imbalanced datasets.
-*   **Improper Cross-Validation:** Setting up cross-validation incorrectly.
-
-### 6.2 Edge Cases
-
-*   **Rare Categories:** Handling infrequent categorical values.
-*   **Missing Data Patterns:** Understanding the nature and impact of missing data.
-*   **Outliers:** Detecting and handling extreme values in your dataset.
-
-### 6.3 Version-Specific Issues
-
-*   Refer to the LightGBM release notes for known issues and bug fixes.
-*   Stay up-to-date with the latest version of LightGBM.
-
-### 6.4 Compatibility Concerns
-
-*   Ensure compatibility between LightGBM and other libraries (e.g., scikit-learn, pandas).
-*   Address potential conflicts between different versions of dependencies.
-
-### 6.5 Debugging Strategies
-
-*   Use a debugger (e.g., `pdb`) to step through code and inspect variables.
-*   Log intermediate values and execution paths.
-*   Use assertions to verify expected behavior.
-*   Simplify the problem by isolating components.
-*   Consult the LightGBM documentation and community forums.
-
-## 7. Tooling and Environment
-
-### 7.1 Recommended Tools
-
-*   **Python:** The primary language for LightGBM development.
-*   **pandas:** For data manipulation and analysis.
-*   **NumPy:** For numerical computations.
-*   **scikit-learn:** For machine learning algorithms and tools.
-*   **Jupyter Notebook:** For interactive development and experimentation.
-*   **IDE:** VSCode, PyCharm, or similar.
-*   **Optuna/Hyperopt:** For hyperparameter optimization.
-
-### 7.2 Build Configuration
-
-*   Use a build system (e.g., `setuptools`, `poetry`) to manage dependencies and build packages.
-*   Create a `requirements.txt` file to list project dependencies.
-*   Use a virtual environment to isolate project dependencies.
-
-### 7.3 Linting and Formatting
-
-*   Use a linter (e.g., `flake8`, `pylint`) to enforce code style and identify potential errors.
-*   Use a formatter (e.g., `black`, `autopep8`) to automatically format code.
-*   Configure the IDE to automatically run linters and formatters.
-
-### 7.4 Deployment Best Practices
-
-*   Containerize the application using Docker.
-*   Deploy the application to a cloud platform (e.g., AWS, Azure, GCP).
-*   Use a deployment tool (e.g., Kubernetes, Docker Compose).
-*   Monitor the application for performance and errors.
-
-### 7.5 CI/CD Integration
-
-*   Use a CI/CD pipeline (e.g., Jenkins, GitLab CI, GitHub Actions) to automate testing and deployment.
-*   Run unit and integration tests in the CI/CD pipeline.
-*   Deploy code to staging and production environments.
-
-By adhering to these best practices, you can develop robust, efficient, and maintainable LightGBM-based machine learning projects.
+# config/lgbm_params.yaml
+# classifier_v1:
+#   objective: binary
+#   n_estimators: 500
+#   learning_rate: 0.05
+#   num_leaves: 31
+#   max_depth: 6
+#   random_state: 42
+#   n_jobs: -1
+#   colsample_bytree: 0.8
+#   subsample: 0.8
+#   reg_alpha: 0.1
+#   reg_lambda: 0.1
+
+# my_script.py
+import yaml
+from models.lgbm_model import build_lgbm_classifier
+
+with open("config/lgbm_params.yaml", "r") as f:
+    params = yaml.safe_load(f)['classifier_v1']
+
+model = build_lgbm_classifier(params)
+model.fit(X_train, y_train)
+```
+
+### 1.2. Set Reproducibility Flags
+
+Ensure `random_state` (or `seed`) and `deterministic=True` are always set for consistent results.
+
+❌ **BAD: Non-deterministic training**
+```python
+model = lgb.LGBMClassifier(n_estimators=100) # Results vary on each run
+```
+
+✅ **GOOD: Fully reproducible training**
+```python
+model = lgb.LGBMClassifier(n_estimators=100, random_state=42, deterministic=True)
+```
+
+## 2. Data Handling
+
+Leverage LightGBM's native capabilities for efficiency.
+
+### 2.1. Native Categorical Feature Handling
+
+Feed raw categorical columns directly. LightGBM handles them efficiently, saving memory and speeding up training.
+
+❌ **BAD: Manual one-hot or label encoding**
+```python
+from sklearn.preprocessing import OneHotEncoder
+encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
+X_train_encoded = encoder.fit_transform(X_train[categorical_cols])
+# Then concatenate with numerical features
+model.fit(X_train_encoded, y_train)
+```
+
+✅ **GOOD: Use `categorical_feature` parameter**
+```python
+categorical_feature_names = ['feature_A', 'feature_B']
+categorical_feature_indices = [X_train.columns.get_loc(col) for col in categorical_feature_names]
+
+model = lgb.LGBMClassifier(categorical_feature=categorical_feature_indices, **params)
+model.fit(X_train, y_train)
+```
+
+### 2.2. Missing Values
+
+LightGBM handles missing values natively. While it can split on them, consider imputing sensible defaults (e.g., mean, target encoding) for improved stability in some cases.
+
+✅ **GOOD: Let LightGBM handle, or impute strategically**
+```python
+# Option 1: Let LightGBM handle (default behavior)
+model = lgb.LGBMClassifier(**params)
+model.fit(X_train_with_nans, y_train)
+
+# Option 2: Impute for potential stability/performance gains
+from sklearn.impute import SimpleImputer
+imputer = SimpleImputer(strategy='mean')
+X_train_imputed = imputer.fit_transform(X_train_with_nans)
+model.fit(X_train_imputed, y_train)
+```
+
+## 3. Hyperparameter Tuning & Training
+
+Systematic tuning and robust training practices are non-negotiable.
+
+### 3.1. Automated Hyperparameter Tuning
+
+Always use automated tools like Optuna or FLAML for systematic tuning. Prioritize `learning_rate`, `num_leaves`, `max_depth`, and `min_data_in_leaf`.
+
+✅ **GOOD: Optuna for efficient hyperparameter search**
+```python
+import optuna
+import lightgbm as lgb
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score
+
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+def objective(trial):
+    params = {
+        'objective': 'binary',
+        'metric': 'auc',
+        'n_estimators': trial.suggest_int('n_estimators', 100, 1000),
+        'learning_rate': trial.suggest_loguniform('learning_rate', 0.01, 0.1),
+        'num_leaves': trial.suggest_int('num_leaves', 2, 256),
+        'max_depth': trial.suggest_int('max_depth', 3, 12),
+        'min_child_samples': trial.suggest_int('min_child_samples', 20, 100),
+        'subsample': trial.suggest_uniform('subsample', 0.6, 1.0),
+        'colsample_bytree': trial.suggest_uniform('colsample_bytree', 0.6, 1.0),
+        'random_state': 42,
+        'n_jobs': -1,
+    }
+    model = lgb.LGBMClassifier(**params)
+    model.fit(X_train, y_train,
+              eval_set=[(X_val, y_val)],
+              eval_metric='auc',
+              callbacks=[lgb.early_stopping(50, verbose=False)])
+    y_pred = model.predict_proba(X_val)[:, 1]
+    return roc_auc_score(y_val, y_pred)
+
+study = optuna.create_study(direction='maximize')
+study.optimize(objective, n_trials=50)
+print(f"Best trial: {study.best_trial.value}")
+print(f"Best parameters: {study.best_params}")
+```
+
+### 3.2. `num_leaves` vs `max_depth`
+
+Always ensure `num_leaves < 2^max_depth` to prevent the leaf-wise tree from over-growing and overfitting.
+
+❌ **BAD: `num_leaves` too large for `max_depth`**
+```python
+model = lgb.LGBMClassifier(num_leaves=127, max_depth=6) # 2^6 = 64. 127 is too large.
+```
+
+✅ **GOOD: Balanced `num_leaves` and `max_depth`**
+```python
+model = lgb.LGBMClassifier(num_leaves=31, max_depth=6) # 2^6 = 64. 31 is a good balance.
+```
+
+### 3.3. Early Stopping
+
+Always use a validation set with early stopping to prevent overfitting and optimize training time.
+
+❌ **BAD: Training for a fixed, potentially excessive number of estimators**
+```python
+model = lgb.LGBMClassifier(n_estimators=1000)
+model.fit(X_train, y_train) # Might overfit or train longer than necessary
+```
+
+✅ **GOOD: Early stopping with a validation set**
+```python
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+model = lgb.LGBMClassifier(n_estimators=1000, learning_rate=0.05, random_state=42)
+model.fit(X_train, y_train,
+          eval_set=[(X_val, y_val)],
+          eval_metric='auc',
+          callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=True)])
+```
+
+### 3.4. Callbacks for Monitoring
+
+Use `log_evaluation` and custom callbacks for transparent and debuggable training.
+
+✅ **GOOD: Log evaluation during training**
+```python
+model.fit(X_train, y_train,
+          eval_set=[(X_val, y_val)],
+          eval_metric='auc',
+          callbacks=[lgb.early_stopping(50), lgb.log_evaluation(period=10)])
+```
+
+### 3.5. Advanced Sampling
+
+Enable GOSS (`boosting_type='goss'`) and Exclusive Feature Bundling (EFB) for large datasets to reduce data size and speed up training without significant accuracy loss.
+
+✅ **GOOD: Leverage GOSS for efficiency**
+```python
+model = lgb.LGBMClassifier(boosting_type='goss', **params)
+model.fit(X_train, y_train)
+# EFB is handled automatically by LightGBM if features are detected as exclusive.
+```
+
+## 4. Performance & Scalability
+
+Optimize for speed and memory.
+
+### 4.1. `num_threads` & GPU
+
+Set `n_jobs=-1` (or `num_threads`) to utilize all available CPU cores. For very large datasets, use a GPU-enabled LightGBM build.
+
+✅ **GOOD: Maximize CPU utilization**
+```python
+model = lgb.LGBMClassifier(n_jobs=-1, **params) # Uses all available CPU cores
+# For GPU: ensure LightGBM is built with GPU support and set device='gpu'
+# model = lgb.LGBMClassifier(device='gpu', **params)
+```
+
+### 4.2. Distributed Training
+
+For scaling beyond a single node, select the appropriate parallel algorithm (`tree_learner`) based on data vs. feature size.
+
+✅ **GOOD: Configure for distributed training (e.g., Dask)**
+```python
+# For Dask integration, use lightgbm.dask estimators
+import lightgbm.dask as lgb_dask
+from distributed import Client, LocalCluster
+
+cluster = LocalCluster(n_workers=4, threads_per_worker=2) # At least 2 threads per worker
+client = Client(cluster)
+
+dask_model = lgb_dask.DaskLGBMClassifier(n_estimators=100, client=client, **params)
+dask_model.fit(dask_X_train, dask_y_train,
+               eval_set=[(dask_X_val, dask_y_val)],
+               eval_metric='auc',
+               callbacks=[lgb.early_stopping(50)])
+client.close()
+cluster.close()
+```
+For Spark, use SynapseML's `LightGBMClassifier`.
+
+## 5. Common Pitfalls (❌ BAD vs ✅ GOOD)
+
+Avoid these common mistakes.
+
+### 5.1. Imbalanced Datasets
+
+Always address class imbalance in classification tasks.
+
+❌ **BAD: Ignoring imbalanced classes**
+```python
+model = lgb.LGBMClassifier(objective='binary', random_state=42)
+model.fit(X_train_imbalanced, y_train_imbalanced) # Minority class performance will suffer
+```
+
+✅ **GOOD: Use `is_unbalance=True` or `class_weight='balanced'`**
+```python
+# Option 1: Let LightGBM adjust weights
+model = lgb.LGBMClassifier(objective='binary', is_unbalance=True, random_state=42)
+model.fit(X_train_imbalanced, y_train_imbalanced)
+
+# Option 2: Scikit-learn style balanced weights
+model = lgb.LGBMClassifier(objective='binary', class_weight='balanced', random_state=42)
+model.fit(X_train_imbalanced, y_train_imbalanced)
+```
+
+## 6. Testing & Deployment Readiness
+
+Ensure models are robust and ready for production.
+
+### 6.1. Cross-Validation
+
+Always use cross-validation for robust model evaluation and hyperparameter tuning.
+
+✅ **GOOD: Scikit-learn `cross_val_score` or `GridSearchCV`**
+```python
+from sklearn.model_selection import cross_val_score
+from sklearn.datasets import make_classification
+
+X, y = make_classification(n_samples=1000, n_features=10, random_state=42)
+model = lgb.LGBMClassifier(random_state=42)
+scores = cross_val_score(model, X, y, cv=5, scoring='roc_auc', n_jobs=-1)
+print(f"CV AUC scores: {scores.mean():.4f} +/- {scores.std():.4f}")
+```
+
+### 6.2. Virtual Environments & Packaging
+
+Always use virtual environments (e.g., `venv`, `conda`) and manage dependencies with `pip-tools` or `poetry`. Package your application for deployment using standard Python tools.
+
+✅ **GOOD: Isolated environment and explicit dependencies**
+```bash
+# In your project root
+python -m venv .venv
+source .venv/bin/activate
+pip install pip-tools # Or poetry
+pip-compile requirements.in
+pip install -r requirements.txt
+```

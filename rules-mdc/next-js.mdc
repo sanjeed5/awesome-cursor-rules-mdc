@@ -1,288 +1,449 @@
 ---
-description: This rule provides comprehensive guidance for Next.js development, covering code organization, performance, security, testing, and common pitfalls. It helps developers build robust, scalable, and maintainable Next.js applications by adhering to community-accepted best practices and coding standards.
-globs: *.js,*.jsx,*.ts,*.tsx
+description: This guide defines definitive best practices for Next.js applications, focusing on the `app` directory, Server Components, performance, and maintainability. Follow these rules to build robust, scalable, and performant Next.js projects.
+globs: **/*.{js,jsx,ts,tsx}
 ---
-# Next.js Best Practices
+# next-js Best Practices
 
-This document outlines best practices for developing Next.js applications, focusing on code organization, performance optimization, security, testing strategies, and common pitfalls to avoid. Adhering to these guidelines will help you build robust, scalable, and maintainable applications.
+This document outlines the definitive best practices for developing Next.js applications. Adhering to these guidelines ensures consistent, performant, and maintainable code, leveraging Next.js's strengths for modern web development.
 
 ## 1. Code Organization and Structure
 
-### Directory Structure
-
-*   **`app/`**: (Recommended - Next.js 13+) Contains route handlers, server components, and client components.
-    *   `page.tsx`: Represents the UI for a route.
-    *   `layout.tsx`: Defines the layout for a route and its children.
-    *   `loading.tsx`: Displays a loading UI while a route segment is loading.
-    *   `error.tsx`: Handles errors within a route segment.
-    *   `head.tsx`: Manages the `<head>` metadata for a route.
-    *   `route.ts`: Defines server-side route handlers (API routes).
-    *   `[dynamic-segment]`: Dynamic route segments, using brackets.
-    *   `@folder-name`:  Route Groups to organize routes without affecting URL structure.
-*   **`pages/`**: (Legacy - Before Next.js 13) Contains page components.
-    *   `api/`: Serverless functions (API routes).
-    *   `_app.js/tsx`: Custom App component (wraps all pages).
-    *   `_document.js/tsx`: Custom Document component (control the entire HTML document).
-*   **`components/`**: Reusable UI components.
-*   **`lib/`**: Utility functions, helper functions, and third-party integrations.
-*   **`hooks/`**: Custom React hooks.
-*   **`styles/`**: Global styles and CSS modules.
-*   **`public/`**: Static assets (images, fonts, etc.).
-*   **`types/`**: TypeScript type definitions and interfaces.
-*   **`utils/`**: Contains utilities and helper functions, along with any API-related logic.
-
-**Recommendation:**  Prefer the `app/` directory structure for new projects as it aligns with the latest Next.js features and best practices.  When using `pages/`, keep it simple and migrate to `app/` when feasible.
-
-### File Naming Conventions
-
-*   **Components:** `ComponentName.jsx` or `ComponentName.tsx`
-*   **Pages:** `page.js`, `page.jsx`, `page.ts`, `page.tsx` (within the `app` or `pages` directory)
-*   **Layouts:** `layout.js`, `layout.jsx`, `layout.ts`, `layout.tsx` (within the `app` directory)
-*   **API Routes:** `route.js`, `route.ts` (within the `app/api` directory or `pages/api` directory)
-*   **Hooks:** `useHookName.js` or `useHookName.ts`
-*   **Styles:** `ComponentName.module.css` or `ComponentName.module.scss`
-*   **Types:** `types.ts` or `interfaces.ts`
+Always use the `app/` directory for new projects. Organize code by feature, not by type, to improve discoverability and cohesion.
 
-### Module Organization
+### ✅ GOOD: Feature-Driven `app/` Directory
 
-*   **Co-location:** Keep related components, styles, and tests in the same directory.
-*   **Feature-based modules:** Group files by feature rather than type (e.g., `components/user-profile/`, not `components/button`, `components/form`).
-*   **Avoid deeply nested directories:** Keep the directory structure relatively flat to improve navigation.
+Group all related files for a feature (components, pages, layouts, hooks, types) within a single directory.
 
-### Component Architecture
+```tsx
+// app/dashboard/page.tsx
+export default function DashboardPage() { /* ... */ }
 
-*   **Presentational vs. Container Components:** Separate components that handle data fetching and state management (container components) from those that only render UI (presentational components).
-*   **Atomic Design:** Organize components into atoms, molecules, organisms, templates, and pages for better reusability and maintainability.
-*   **Composition over inheritance:** Favor composition to create flexible and reusable components.
-*   **Server Components (app directory):**  Use server components by default for improved performance.  Only use client components when interactivity (event handlers, useState, useEffect) is required.
+// app/dashboard/layout.tsx
+export default function DashboardLayout({ children }) { /* ... */ }
 
-### Code Splitting
+// app/dashboard/components/DashboardOverview.tsx
+export function DashboardOverview() { /* ... */ }
 
-*   **Dynamic imports:** Use `next/dynamic` to load components only when they are needed, improving initial load time.  Example: `dynamic(() => import('../components/MyComponent'))`.
-*   **Route-level code splitting:** Next.js automatically splits code based on routes, so each page only loads the necessary JavaScript.
-*   **Granular code splitting:** Break down large components into smaller chunks that can be loaded independently.
+// app/dashboard/hooks/useDashboardData.ts
+export function useDashboardData() { /* ... */ }
+```
 
-## 2. Common Patterns and Anti-patterns
+### ❌ BAD: Type-Driven `app/` Directory
 
-### Design Patterns
+Avoid scattering files of the same feature across different top-level type directories.
 
-*   **Higher-Order Components (HOCs):** Reusable component logic.
-*   **Render Props:** Sharing code between React components using a prop whose value is a function.
-*   **Hooks:** Extracting stateful logic into reusable functions.
-*   **Context API:** Managing global state.
-*   **Compound Components:** Combining multiple components that work together implicitly.
+```tsx
+// app/dashboard/page.tsx
+// components/dashboard/DashboardOverview.tsx // Separated
+// hooks/useDashboardData.ts // Separated
+```
 
-### Recommended Approaches
+### Core Directories
 
-*   **Data fetching:** Use `getServerSideProps` or `getStaticProps` or server components for fetching data on the server-side. Use `SWR` or `React Query` for client-side data fetching and caching.
-*   **Styling:** Use CSS Modules, Styled Components, or Tailwind CSS for component-level styling.  Prefer Tailwind CSS for rapid development.
-*   **State Management:** Use React Context, Zustand, Jotai, or Recoil for managing global state.  Redux is an option, but often overkill for smaller Next.js projects.
-*   **Form Handling:** Use `react-hook-form` for managing forms and validation.
-*   **API Routes:** Use Next.js API routes for serverless functions.
+*   **`app/`**: All route-related files (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `route.ts`).
+*   **`components/`**: Reusable UI components that are *not* directly tied to a specific route.
+*   **`lib/`**: Backend-agnostic utility functions, data access layers, and third-party integrations.
+*   **`hooks/`**: Custom React hooks for reusable logic.
+*   **`types/`**: Global TypeScript type definitions and interfaces.
+*   **`public/`**: Static assets (images, fonts) that are served directly.
 
-### Anti-patterns and Code Smells
+## 2. Component Architecture: Server Components First
 
-*   **Over-fetching data:** Only fetch the data that is needed by the component.
-*   **Blocking the main thread:** Avoid long-running synchronous operations in the main thread.
-*   **Mutating state directly:** Always use `setState` or hooks to update state.
-*   **Not memoizing components:** Use `React.memo` to prevent unnecessary re-renders.
-*   **Using `useEffect` without a dependency array:** Ensure the dependency array is complete to prevent unexpected behavior.
-*   **Writing server side code in client components:** Can expose secrets or cause unexpected behavior.
+Prioritize Server Components for all UI rendering. Use Client Components only when interactivity (state, effects, event handlers) is strictly required.
 
-### State Management
+### ✅ GOOD: Server Component by Default
 
-*   **Local State:** Use `useState` for component-specific state.
-*   **Context API:** Use `useContext` for application-wide state that doesn't change often.
-*   **Third-party libraries:** Use `Zustand`, `Jotai`, or `Recoil` for more complex state management needs. These are simpler and more performant alternatives to Redux for many Next.js use cases.
+Server Components reduce client-side JavaScript bundles, improve initial page load, and enhance security by keeping sensitive logic on the server.
 
-### Error Handling
+```tsx
+// app/products/[id]/page.tsx (Server Component by default)
+import { getProductDetails } from '@/lib/api';
 
-*   **`try...catch`:** Use `try...catch` blocks for handling errors in asynchronous operations.
-*   **Error Boundary Components:** Create reusable error boundary components to catch errors in child components. Implement `getDerivedStateFromError` or `componentDidCatch` lifecycle methods.
-*   **Centralized error logging:** Log errors to a central service like Sentry or Bugsnag.
-*   **Custom Error Pages:** Use `_error.js` or `_error.tsx` to create custom error pages.
-*   **Route-level error handling (app directory):** Use `error.tsx` within route segments to handle errors specific to that route.
+export default async function ProductPage({ params }) {
+  const product = await getProductDetails(params.id);
+  return (
+    <div>
+      <h1>{product.name}</h1>
+      {/* ... more server-rendered UI */}
+      <AddToCartButton productId={product.id} /> {/* Client Component */}
+    </div>
+  );
+}
+```
 
-## 3. Performance Considerations
+### ✅ GOOD: "use client" Boundary as Low as Possible
 
-### Optimization Techniques
+Place the `"use client"` directive at the lowest possible point in your component tree. This ensures that only the interactive parts are client-rendered, keeping parent components as Server Components.
 
-*   **Image optimization:** Use `next/image` component for automatic image optimization, including lazy loading and responsive images.
-*   **Font optimization:**  Use `next/font` to optimize font loading and prevent layout shift.
-*   **Code splitting:** Use dynamic imports and route-level code splitting to reduce initial load time.
-*   **Caching:** Use caching strategies (e.g., `Cache-Control` headers, `SWR`, `React Query`) to reduce data fetching overhead.
-*   **Memoization:** Use `React.memo` to prevent unnecessary re-renders of components.
-*   **Prefetching:** Use the `<Link prefetch>` tag to prefetch pages that are likely to be visited.
-*   **SSR/SSG:** Use Static Site Generation (SSG) for content that doesn't change often and Server-Side Rendering (SSR) for dynamic content.
-*   **Incremental Static Regeneration (ISR):** Use ISR to update statically generated pages on a regular interval.
+```tsx
+// components/AddToCartButton.tsx
+'use client'; // Only this component and its children are client-side
 
-### Memory Management
+import { useState } from 'react';
 
-*   **Avoid memory leaks:** Clean up event listeners and timers in `useEffect` hooks.
-*   **Minimize re-renders:** Only update state when necessary to reduce the number of re-renders.
-*   **Use immutable data structures:** Avoid mutating data directly to prevent unexpected side effects.
+export function AddToCartButton({ productId }) {
+  const [quantity, setQuantity] = useState(1);
+  // ... interactive logic
+  return <button onClick={() => alert(`Added ${quantity} of ${productId}`)}>Add to Cart</button>;
+}
+```
 
-### Rendering Optimization
+### ❌ BAD: Overuse of "use client"
 
-*   **Server Components (app directory):**  Render as much as possible on the server to reduce client-side JavaScript.
-*   **Client Components (app directory):** Only use client components when interactivity is required. Defer rendering of non-critical client components using `React.lazy`.
+Don't mark entire feature folders or layouts as client components if only a small part needs interactivity. This unnecessarily increases client bundle size.
 
-### Bundle Size Optimization
+```tsx
+// app/products/[id]/page.tsx (BAD: entire page marked client)
+'use client'; // This makes the whole page a client component
+import { useState, useEffect } from 'react'; // Even if only a small part needs it
 
-*   **Analyze bundle size:** Use tools like `webpack-bundle-analyzer` to identify large dependencies.
-*   **Remove unused code:** Use tree shaking to remove unused code from your bundles.
-*   **Use smaller dependencies:** Replace large dependencies with smaller, more lightweight alternatives.
-*   **Compression:** Enable Gzip or Brotli compression on your server to reduce the size of the transferred files.
+export default function ProductPage({ params }) {
+  // ...
+  return <button>Add to Cart</button>;
+}
+```
 
-### Lazy Loading
+## 3. Data Fetching
 
-*   **Images:** Use `next/image` for automatic lazy loading of images.
-*   **Components:** Use `next/dynamic` for lazy loading of components.
-*   **Intersection Observer:** Use the Intersection Observer API for manual lazy loading of content.
+Fetch data directly in Server Components using `fetch` or a dedicated data access layer. Use Route Handlers for client-side mutations or when exposing a specific API endpoint.
 
-## 4. Security Best Practices
+### ✅ GOOD: Server Component Data Fetching
 
-### Common Vulnerabilities
+Directly fetch data in Server Components. `fetch` requests are automatically memoized and cached by Next.js.
+
+```tsx
+// app/dashboard/page.tsx
+import { getUserProfile, getRecentOrders } from '@/lib/api';
+
+export default async function DashboardPage() {
+  // Data fetches in parallel
+  const [user, orders] = await Promise.all([
+    getUserProfile(),
+    getRecentOrders(),
+  ]);
+
+  return (
+    <div>
+      <h2>Welcome, {user.name}</h2>
+      <OrderList orders={orders} />
+    </div>
+  );
+}
+```
+
+### ✅ GOOD: Route Handlers for Client-Side Mutations
+
+Use `route.ts` for API endpoints that handle client-side data mutations (e.g., form submissions, API calls from client components).
+
+```tsx
+// app/api/cart/route.ts
+import { NextResponse } from 'next/server';
+import { addToCart } from '@/lib/cart';
+
+export async function POST(request: Request) {
+  const { productId, quantity } = await request.json();
+  await addToCart(productId, quantity);
+  return NextResponse.json({ success: true });
+}
+```
+
+### ✅ GOOD: Streaming with `loading.tsx` and `Suspense`
+
+Improve perceived performance by showing instant loading states for slow data fetches.
+
+```tsx
+// app/dashboard/loading.tsx
+export default function Loading() {
+  return <div>Loading dashboard...</div>;
+}
 
-*   **Cross-Site Scripting (XSS):** Sanitize user input to prevent XSS attacks.  Be especially careful when rendering HTML directly from user input.
-*   **Cross-Site Request Forgery (CSRF):** Use CSRF tokens to protect against CSRF attacks.
-*   **SQL Injection:** Use parameterized queries or an ORM to prevent SQL injection attacks.
-*   **Authentication and Authorization vulnerabilities:** Implement secure authentication and authorization mechanisms.  Avoid storing secrets in client-side code.
-*   **Exposing sensitive data:** Protect API keys and other sensitive data by storing them in environment variables and accessing them on the server-side.
+// app/dashboard/page.tsx (assuming some slow component)
+import { Suspense } from 'react';
+import { SlowComponent } from './components/SlowComponent';
 
-### Input Validation
+export default async function DashboardPage() {
+  return (
+    <main>
+      <h1>Dashboard</h1>
+      <Suspense fallback={<div>Loading slow data...</div>}>
+        <SlowComponent />
+      </Suspense>
+    </main>
+  );
+}
+```
 
-*   **Server-side validation:** Always validate user input on the server-side.
-*   **Client-side validation:** Use client-side validation for immediate feedback, but don't rely on it for security.
-*   **Sanitize input:** Sanitize user input to remove potentially malicious code.
-*   **Use a validation library:** Use a library like `zod` or `yup` for validating user input.
+## 4. Performance Considerations
 
-### Authentication and Authorization
+Leverage Next.js's built-in optimizations for images, fonts, and code splitting.
 
-*   **Use a secure authentication provider:** Use a service like Auth0, NextAuth.js, or Firebase Authentication for secure authentication.
-*   **Store tokens securely:** Store tokens in HTTP-only cookies or local storage.
-*   **Implement role-based access control:** Use role-based access control to restrict access to sensitive resources.
-*   **Protect API endpoints:** Use authentication middleware to protect API endpoints.
+### ✅ GOOD: `next/image` for Images
+
+Always use `next/image` for local and remote images. It provides automatic optimization, lazy loading, and responsive sizing.
 
-### Data Protection
+```tsx
+import Image from 'next/image';
+import profilePic from '@/public/profile.jpg';
+
+export function UserAvatar() {
+  return (
+    <Image
+      src={profilePic}
+      alt="User Profile"
+      width={100}
+      height={100}
+      placeholder="blur"
+    />
+  );
+}
+```
 
-*   **Encrypt sensitive data:** Encrypt sensitive data at rest and in transit.
-*   **Use HTTPS:** Use HTTPS to encrypt communication between the client and the server.
-*   **Regularly update dependencies:** Keep your dependencies up to date to patch security vulnerabilities.
-*   **Secure environment variables:**  Never commit environment variables to your repository.  Use a secrets management tool if necessary.
+### ❌ BAD: Native `<img>` Tag
 
-### Secure API Communication
+Avoid the native `<img>` tag as it bypasses Next.js's image optimizations.
 
-*   **Use HTTPS:** Use HTTPS for all API communication.
-*   **Authenticate API requests:** Use API keys or tokens to authenticate API requests.
-*   **Rate limiting:** Implement rate limiting to prevent abuse of your API.
-*   **Input validation:** Validate all API request parameters.
-*   **Output encoding:** Properly encode API responses to prevent injection attacks.
+```tsx
+// ❌ BAD
+export function UserAvatar() {
+  return <img src="/profile.jpg" alt="User Profile" width="100" height="100" />;
+}
+```
 
-## 5. Testing Approaches
+### ✅ GOOD: `next/font` for Fonts
 
-### Unit Testing
+Use `next/font` to optimize font loading, eliminate external network requests, and prevent layout shift.
 
-*   **Test individual components:** Write unit tests for individual components to ensure they are working correctly.
-*   **Use a testing framework:** Use a testing framework like Jest or Mocha.
-*   **Mock dependencies:** Mock external dependencies to isolate components during testing.
-*   **Test edge cases:** Test edge cases and error conditions to ensure the component is robust.
-*   **Use React Testing Library:** Prefer React Testing Library for component testing as it encourages testing from a user perspective, promoting better accessibility and more robust tests.
+```tsx
+import { Inter } from 'next/font/google';
 
-### Integration Testing
+const inter = Inter({ subsets: ['latin'] });
 
-*   **Test interactions between components:** Write integration tests to ensure that components are working together correctly.
-*   **Test API calls:** Test API calls to ensure that data is being fetched and saved correctly.
-*   **Use a testing framework:** Use a testing framework like Jest or Mocha with libraries like `msw` (Mock Service Worker) to intercept and mock API calls.
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" className={inter.className}>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
 
-### End-to-End Testing
+### ✅ GOOD: Dynamic Imports for Heavy Components
 
-*   **Test the entire application:** Write end-to-end tests to ensure that the entire application is working correctly.
-*   **Use a testing framework:** Use a testing framework like Cypress or Playwright.
-*   **Test user flows:** Test common user flows to ensure that the application is providing a good user experience.
-*   **Focus on critical paths:**  Prioritize end-to-end tests for critical user flows to ensure application stability.
+Lazily load heavy client-side components or third-party libraries using `next/dynamic`.
+
+```tsx
+import dynamic from 'next/dynamic';
+
+const HeavyChart = dynamic(() => import('./components/HeavyChart'), {
+  loading: () => <p>Loading chart...</p>,
+  ssr: false, // Only load on client if not needed for initial render
+});
 
-### Test Organization
+export function DashboardCharts() {
+  return (
+    <div>
+      <HeavyChart />
+    </div>
+  );
+}
+```
+
+## 5. State Management
+
+Keep state local where possible. For global state, use React Context for simple cases or lightweight libraries like Zustand/Jotai for more complex needs.
+
+### ✅ GOOD: Local State with `useState`
+
+For component-specific, ephemeral state.
 
-*   **Co-locate tests with components:** Keep tests in the same directory as the components they are testing.
-*   **Use a consistent naming convention:** Use a consistent naming convention for test files (e.g., `ComponentName.test.js`).
-*   **Organize tests by feature:** Organize tests by feature to improve maintainability.
+```tsx
+'use client';
+import { useState } from 'react';
 
-### Mocking and Stubbing
+export function Counter() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount(count + 1)}>Count: {count}</button>;
+}
+```
+
+### ✅ GOOD: Global State with Context or Zustand/Jotai
+
+For application-wide state that needs to be shared across many components. Prefer Zustand or Jotai over Redux for most Next.js projects due to their simplicity and performance.
+
+```tsx
+// lib/store.ts (using Zustand)
+import { create } from 'zustand';
+
+interface BearState {
+  bears: number;
+  increasePopulation: () => void;
+}
+
+export const useBearStore = create<BearState>((set) => ({
+  bears: 0,
+  increasePopulation: () => set((state) => ({ bears: state.bears + 1 })),
+}));
+```
+
+## 6. Error Handling
+
+Implement robust error handling using Next.js's dedicated error files.
+
+### ✅ GOOD: Route-Level `error.tsx`
+
+Catch errors within a specific route segment, providing localized fallback UI.
+
+```tsx
+// app/dashboard/error.tsx
+'use client'; // Error boundaries must be client components
+
+import { useEffect } from 'react';
+
+export default function Error({ error, reset }) {
+  useEffect(() => {
+    console.error(error); // Log the error to an error reporting service
+  }, [error]);
+
+  return (
+    <div>
+      <h2>Something went wrong in the dashboard!</h2>
+      <button onClick={() => reset()}>Try again</button>
+    </div>
+  );
+}
+```
 
-*   **Mock external dependencies:** Mock external dependencies to isolate components during testing.
-*   **Stub API calls:** Stub API calls to prevent network requests during testing.
-*   **Use a mocking library:** Use a mocking library like Jest's built-in mocking capabilities or `msw`.
+### ✅ GOOD: Global `global-error.tsx`
 
-## 6. Common Pitfalls and Gotchas
+Catch uncaught errors across your entire application, providing a consistent fallback.
 
-### Frequent Mistakes
+```tsx
+// app/global-error.tsx
+'use client';
 
-*   **Not understanding server-side rendering:**  Failing to utilize SSR effectively can impact SEO and initial load performance.
-*   **Over-complicating state management:** Using Redux for simple state management needs can add unnecessary complexity.
-*   **Not optimizing images:** Not using `next/image` can result in large image sizes and slow loading times.
-*   **Ignoring security best practices:** Neglecting security can lead to vulnerabilities.
-*   **Not testing the application thoroughly:** Insufficient testing can result in bugs and regressions.
-*   **Accidentally exposing API keys or secrets in client-side code.**
+export default function GlobalError({ error, reset }) {
+  return (
+    <html>
+      <body>
+        <h2>Something went wrong globally!</h2>
+        <button onClick={() => reset()}>Try again</button>
+      </body>
+    </html>
+  );
+}
+```
 
-### Edge Cases
+### ✅ GOOD: `not-found.tsx` for 404s
 
-*   **Handling errors gracefully:** Implement proper error handling to prevent the application from crashing.
-*   **Dealing with different screen sizes:** Ensure the application is responsive and works well on different screen sizes.
-*   **Supporting different browsers:** Test the application in different browsers to ensure compatibility.
-*   **Managing complex data structures:** Use appropriate data structures and algorithms to efficiently manage complex data.
+Create a custom 404 page for unmatched routes.
 
-### Version-Specific Issues
-
-*   **Breaking changes:** Be aware of breaking changes when upgrading Next.js versions.
-*   **Deprecated features:** Avoid using deprecated features.
-*   **Compatibility with third-party libraries:** Ensure that third-party libraries are compatible with the Next.js version being used.
-
-### Compatibility Concerns
-
-*   **Browser compatibility:** Ensure that the application is compatible with the target browsers.
-*   **Third-party library compatibility:** Ensure that third-party libraries are compatible with Next.js.
-
-### Debugging Strategies
-
-*   **Use the browser developer tools:** Use the browser developer tools to inspect the DOM, debug JavaScript, and analyze network requests.
-*   **Use console.log statements:** Use `console.log` statements to debug code.
-*   **Use a debugger:** Use a debugger to step through code and inspect variables.
-*   **Use error logging:** Log errors to a central service to track and analyze issues.
-
-## 7. Tooling and Environment
-
-### Recommended Development Tools
-
-*   **VS Code:** Code editor with excellent support for JavaScript, TypeScript, and React.
-*   **ESLint:** Linter for identifying and fixing code style issues.
-*   **Prettier:** Code formatter for automatically formatting code.
-*   **Chrome Developer Tools:** Browser developer tools for debugging and profiling.
-*   **React Developer Tools:** Browser extension for inspecting React components.
-*   **Webpack Bundle Analyzer:** Tool for analyzing the size of the Webpack bundle.
-
-### Build Configuration
-
-*   **Use environment variables:** Store configuration values in environment variables.
-*   **Use a build script:** Use a build script to automate the build process.
-*   **Optimize build settings:** Optimize build settings for production (e.g., enable minification, tree shaking).
-
-### Linting and Formatting
-
-*   **Use ESLint with recommended rules:** Configure ESLint with a set of recommended rules for JavaScript and React.
-*   **Use Prettier for automatic formatting:** Configure Prettier to automatically format code on save.
-*   **Integrate linting and formatting into the build process:** Integrate linting and formatting into the build process to ensure that code is always consistent.
-*   **Use a shared configuration:** Ensure that all developers are using the same linting and formatting configuration.
-
-### Deployment
-
-*   **Use Vercel for easy deployment:** Vercel is the recommended platform for deploying Next.js applications.
-*   **Use a CDN for static assets:** Use a CDN to serve static assets from a location that is geographically close to the user.
-*   **Configure caching:** Configure caching to improve performance and reduce server load.
-*   **Monitor application health:** Monitor application health to detect and resolve issues quickly.
-
-### CI/CD Integration
-
-*   **Use a CI/CD pipeline:** Use a CI/CD pipeline to automate the build, test, and deployment process.
-*   **Run tests in the CI/CD pipeline:** Run tests in the CI/CD pipeline to ensure that code is working correctly before it is deployed.
-*   **Automate deployments:** Automate deployments to reduce the risk of human error.
+```tsx
+// app/not-found.tsx
+export default function NotFound() {
+  return (
+    <div>
+      <h1>404 - Page Not Found</h1>
+      <p>The page you are looking for does not exist.</p>
+    </div>
+  );
+}
+```
+
+## 7. ESLint and Type Checking
+
+Enforce code quality and catch common issues early with ESLint and TypeScript.
+
+### ✅ GOOD: Use `eslint-config-next/core-web-vitals`
+
+This configuration elevates performance-related warnings to errors, ensuring your application meets Core Web Vitals standards. Always combine with `eslint-config-next/typescript` for TypeScript projects.
+
+```javascript
+// eslint.config.mjs
+import { defineConfig, globalIgnores } from 'eslint/config';
+import nextVitals from 'eslint-config-next/core-web-vitals';
+import nextTs from 'eslint-config-next/typescript'; // For TypeScript projects
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs, // Include for TypeScript
+  {
+    rules: {
+      // Custom overrides or additional rules here
+      '@next/next/no-img-element': 'error', // Enforce next/image
+      // ...
+    },
+  },
+  globalIgnores([
+    '.next/**',
+    'out/**',
+    'build/**',
+    'next-env.d.ts',
+  ]),
+]);
+
+export default eslintConfig;
+```
+
+## 8. Common Pitfalls and Anti-patterns
+
+Avoid these common mistakes to maintain a high-quality Next.js application.
+
+### ❌ BAD: Using `<a>` for Internal Navigation
+
+This bypasses Next.js's automatic prefetching and client-side navigation.
+
+```tsx
+// ❌ BAD
+<a href="/dashboard">Go to Dashboard</a>
+```
+
+### ✅ GOOD: Use `<Link>` for Internal Navigation
+
+Enables client-side navigation and prefetching for a smoother user experience.
+
+```tsx
+import Link from 'next/link';
+
+// ✅ GOOD
+<Link href="/dashboard">Go to Dashboard</Link>
+```
+
+### ❌ BAD: Async Client Components
+
+Client Components cannot be `async`. If you need to fetch data on the client, use `useEffect` or a client-side data fetching library.
+
+```tsx
+// components/MyClientComponent.tsx
+'use client';
+
+// ❌ BAD: Client Components cannot be async
+export default async function MyClientComponent() {
+  // const data = await fetch('/api/data');
+  return <div>Client UI</div>;
+}
+```
+
+### ✅ GOOD: Client-Side Data Fetching in Client Components
+
+Use `useEffect` or a dedicated client-side library (like SWR or React Query) for data fetching in Client Components.
+
+```tsx
+// components/MyClientComponent.tsx
+'use client';
+import { useState, useEffect } from 'react';
+
+export default function MyClientComponent() {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      const res = await fetch('/api/data');
+      const json = await res.json();
+      setData(json);
+    }
+    fetchData();
+  }, []);
+
+  return <div>{data ? `Data: ${data.message}` : 'Loading...'}</div>;
+}
+```

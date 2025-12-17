@@ -1,478 +1,465 @@
 ---
-description: Comprehensive best practices for Ruby development, covering code organization, common patterns, performance, security, testing, and tooling. This guide offers actionable advice to improve Ruby code quality, maintainability, and efficiency.
-globs: *.rb
+description: This guide provides opinionated, actionable best practices for writing modern Ruby code, focusing on maintainability, performance, and security, with a strong emphasis on RuboCop and Rails conventions.
+globs: **/*
 ---
 # Ruby Best Practices
 
-This document outlines best practices for Ruby development to ensure code quality, maintainability, performance, and security. It covers various aspects of Ruby projects, from code structure to testing and deployment.
+Our team adheres to a strict set of Ruby best practices, primarily enforced by RuboCop and aligned with the official Ruby and Rails Style Guides. This document serves as your definitive reference for writing clean, efficient, and maintainable Ruby code.
 
-## 1. Code Organization and Structure
+## 1. Code Organization & Structure
 
-### Directory Structure Best Practices
+Adhere to the Single Responsibility Principle (SRP) and keep files focused.
 
-Following a consistent and well-defined directory structure makes Ruby projects easier to navigate and maintain. Here's a recommended structure, especially for Rails applications but adaptable for other Ruby projects:
+### 1.1 Single Class/Module Per File
+Each Ruby file must define a single class or module. Name the file using `snake_case` corresponding to the `CamelCase` class/module name.
 
+❌ BAD
+```ruby
+# user.rb
+class User; end
+class UserProfile; end
+```
 
-project_root/
-├── app/
-│   ├── models/
-│   ├── controllers/
-│   ├── views/
-│   ├── helpers/
-│   ├── mailers/
-│   ├── assets/
-│   │   ├── stylesheets/
-│   │   ├── javascripts/
-│   │   └── images/
-│   └── jobs/
-├── config/
-│   ├── routes.rb
-│   ├── database.yml
-│   ├── environments/
-│   │   ├── development.rb
-│   │   ├── test.rb
-│   │   └── production.rb
-│   └── application.rb
-├── db/
-│   ├── migrate/
-│   └── seeds.rb
-├── lib/
-│   ├── tasks/
-│   └── modules/
-├── log/
-├── public/
-├── test/
-│   ├── models/
-│   ├── controllers/
-│   ├── integration/
-│   ├── fixtures/
-│   └── support/
-├── vendor/
-│   └── cache/
-├── Gemfile
-├── Gemfile.lock
-├── Rakefile
-└── README.md
+✅ GOOD
+```ruby
+# user.rb
+class User; end
 
+# user_profile.rb
+class UserProfile; end
+```
 
--   **app/:** Contains the core application code, organized into models, controllers, views, helpers, mailers, assets, and jobs.
--   **config/:** Holds configuration files, including routes, database settings, environment-specific configurations, and the main application configuration.
--   **db/:** Contains database-related files, such as migration scripts and seed data.
--   **lib/:** Used for custom modules, utility classes, and reusable code that doesn't fit into the app/ directory.
--   **log/:** Stores application logs.
--   **public/:** Contains static assets like HTML files, images, and compiled JavaScript/CSS.
--   **test/:** Holds test files organized in a structure mirroring the app/ directory.
--   **vendor/:** Stores third-party code, gems, or libraries.
--   **Gemfile:** Specifies the gems (Ruby packages) required by the project.
--   **Rakefile:** Defines Rake tasks for automating common development tasks.
+### 1.2 Rails Directory Structure
+Follow Rails' "convention over configuration" for project structure.
 
-### File Naming Conventions
+❌ BAD
+```ruby
+# app/services/user_management/create_user.rb
+# app/validators/email_validator.rb
+```
 
-Consistent file naming improves readability and maintainability. Follow these conventions:
+✅ GOOD
+```ruby
+# app/services/user_management/create_user.rb (for complex logic)
+# app/validators/email_validator.rb (standard Rails convention)
+```
 
--   **Models:** Use singular names (e.g., `user.rb`, `product.rb`).
--   **Controllers:** Use plural names (e.g., `users_controller.rb`, `products_controller.rb`).
--   **Views:** Use corresponding controller and action names (e.g., `users/index.html.erb`, `products/show.html.erb`).
--   **Helpers:** Use corresponding controller names with `_helper` suffix (e.g., `users_helper.rb`, `products_helper.rb`).
--   **Migrations:** Use descriptive names with timestamps (e.g., `20240101000000_create_users.rb`).
--   **Jobs:** Use descriptive names with `_job` suffix (e.g., `send_email_job.rb`).
+### 1.3 Configuration Files
+Place custom initialization code in `config/initializers`. Keep gem-specific initializers in separate files named after the gem.
 
-### Module Organization
+❌ BAD
+```ruby
+# config/initializers/app_setup.rb
+# Contains setup for CarrierWave, Sidekiq, and custom app config.
+```
 
-Modules provide a way to organize code into logical groups and avoid namespace collisions. Use modules to encapsulate related classes and methods:
+✅ GOOD
+```ruby
+# config/initializers/carrierwave.rb
+# config/initializers/sidekiq.rb
+# config/initializers/custom_app_config.rb
+```
 
-ruby
-module MyModule
-  class MyClass
-    def my_method
-      # ...
+## 2. Formatting
+
+Consistency is paramount. RuboCop enforces these rules automatically.
+
+### 2.1 Indentation & Line Length
+Use two-space soft tabs. Limit lines to 120 characters to balance readability and screen real estate.
+
+❌ BAD
+```ruby
+def long_method_name(param1, param2, param3, param4, param5, param6, param7) # > 120 chars
+    puts "This line is indented with four spaces."
+end
+```
+
+✅ GOOD
+```ruby
+def long_method_name(param1, param2, param3, param4, param5, param6, param7)
+  puts "This line is indented with two spaces."
+end
+```
+
+### 2.2 Trailing Whitespace & Newlines
+Remove all trailing whitespace. End every file with a single newline.
+
+❌ BAD
+```ruby
+puts "Hello"  # Trailing spaces
+# No newline at EOF
+```
+
+✅ GOOD
+```ruby
+puts "Hello"
+# Single newline at EOF
+```
+
+## 3. Naming Conventions
+
+Strictly follow Ruby community standards for naming.
+
+### 3.1 Variables, Methods, Files
+Use `snake_case`. Do not separate numbers from letters.
+
+❌ BAD
+```ruby
+someVar = 1
+def someMethod; end
+HelloWorld.rb
+```
+
+✅ GOOD
+```ruby
+some_var = 1
+def some_method; end
+hello_world.rb
+```
+
+### 3.2 Classes & Modules
+Use `CamelCase`.
+
+❌ BAD
+```ruby
+class Some_Class; end
+```
+
+✅ GOOD
+```ruby
+class SomeClass; end
+```
+
+### 3.3 Constants
+Use `SCREAMING_SNAKE_CASE`. Freeze mutable constants.
+
+❌ BAD
+```ruby
+SomeConst = 5
+ALL_COLORS = ['red', 'blue']
+```
+
+✅ GOOD
+```ruby
+SOME_CONST = 5
+ALL_COLORS = ['RED', 'BLUE'].freeze
+```
+
+### 3.4 Predicate & Bang Methods
+Predicate methods (return boolean) end with `?`. Methods with side effects or that raise exceptions end with `!`.
+
+❌ BAD
+```ruby
+def is_valid; end
+def save_record; end # if it raises on failure
+```
+
+✅ GOOD
+```ruby
+def valid?; end
+def save_record!; end # raises ActiveRecord::RecordInvalid on failure
+```
+
+## 4. Common Patterns & Anti-patterns
+
+Embrace idiomatic Ruby and Rails patterns.
+
+### 4.1 Block Shorthand
+Use `&:method_name` for simple blocks.
+
+❌ BAD
+```ruby
+names.map { |name| name.upcase }
+```
+
+✅ GOOD
+```ruby
+names.map(&:upcase)
+```
+
+### 4.2 Conditional Guards
+Prefer guard clauses to reduce nesting.
+
+❌ BAD
+```ruby
+def process_data(data)
+  if data
+    if data.valid?
+      # ... process ...
+    else
+      log_error("Invalid data")
     end
+  else
+    log_error("No data provided")
   end
 end
-
-
--   Organize modules in the `lib/modules/` directory.
--   Use namespaces to avoid naming conflicts.
--   Consider extracting complex logic into separate modules.
-
-### Component Architecture Recommendations
-
-For larger applications, consider a component-based architecture. This involves breaking down the application into independent, reusable components:
-
--   **Define Components:** Identify logical components (e.g., user authentication, payment processing, data analytics).
--   **Encapsulate Logic:** Each component should encapsulate its own logic, data, and dependencies.
--   **Expose Interfaces:** Define clear interfaces for components to interact with each other.
--   **Use Gems or Internal Libraries:** Package components as gems or internal libraries for reuse across multiple projects.
-
-### Code Splitting Strategies
-
-Code splitting can improve performance by reducing the amount of code that needs to be loaded at once. Common strategies include:
-
--   **Lazy Loading:** Load code only when it's needed. This can be achieved using `require` or `autoload`.
--   **Conditional Loading:** Load code based on certain conditions (e.g., user roles, feature flags).
--   **Service Objects:** Decompose large controllers/models into service objects which can be loaded as required.
-
-## 2. Common Patterns and Anti-patterns
-
-### Design Patterns
-
--   **Singleton:** Ensures that a class has only one instance and provides a global point of access to it.
-
-    ruby
-    class Configuration
-      @instance = Configuration.new
-
-      private_class_method :new
-
-      def self.instance
-        @instance
-      end
-    end
-    
--   **Observer:** Defines a one-to-many dependency between objects so that when one object changes state, all its dependents are notified and updated automatically.
-
-    ruby
-    class Subject
-      attr_accessor :observers
-
-      def initialize
-        @observers = []
-      end
-
-      def attach(observer)
-        @observers << observer
-      end
-
-      def detach(observer)
-        @observers.delete(observer)
-      end
-
-      def notify
-        @observers.each { |observer| observer.update(self) }
-      end
-    end
-    
-
--   **Factory:** Provides an interface for creating objects without specifying their concrete classes.
-
-    ruby
-    class AnimalFactory
-      def self.create(type)
-        case type
-        when :dog
-          Dog.new
-        when :cat
-          Cat.new
-        else
-          raise "Unknown animal type"
-        end
-      end
-    end
-    
-
--   **Strategy:** Defines a family of algorithms, encapsulates each one, and makes them interchangeable. Strategy lets the algorithm vary independently from clients that use it.
-
-    ruby
-    class PaymentProcessor
-      def initialize(strategy)
-        @strategy = strategy
-      end
-
-      def process_payment(amount)
-        @strategy.process(amount)
-      end
-    end
-    
-
-### Recommended Approaches for Common Tasks
-
--   **Data Validation:** Use ActiveRecord validations to ensure data integrity.
--   **Authentication:** Use Devise gem for authentication.
--   **Authorization:** Use CanCanCan or Pundit gem for authorization.
--   **Background Processing:** Use Sidekiq or Resque for background jobs.
--   **API Development:** Use Rails API or Grape gem for building APIs.
-
-### Anti-patterns and Code Smells
-
--   **Fat Models:** Models that contain too much business logic. Move logic to service objects or POROs.
--   **God Classes:** Classes that do too much. Break them down into smaller, more focused classes.
--   **Duplicated Code:** Code that is repeated in multiple places. Follow the DRY principle and extract it into a shared method or module.
--   **Long Methods:** Methods that are too long and complex. Break them down into smaller, more focused methods.
--   **Magic Numbers:** Hardcoded numerical values that are difficult to understand. Use constants or enums instead.
-
-### State Management Best Practices
-
--   **Session:** Use Rails session for storing user-specific data.
--   **Cookies:** Use cookies for storing small amounts of data on the client-side.
--   **Cache:** Use Rails cache for storing frequently accessed data.
--   **Database:** Use the database for storing persistent data.
--   **Redis/Memcached:** For complex state data or background job processing.
-
-### Error Handling Patterns
-
--   **Exceptions:** Use exceptions for handling unexpected errors.
-
-    ruby
-    begin
-      # Code that might raise an exception
-    rescue SomeException => e
-      # Handle the exception
-      Rails.logger.error("Error: #{e.message}")
-    end
-    
-
--   **Error Objects:** Use error objects for handling expected errors.
-
-    ruby
-    class Result
-      attr_reader :success, :error, :data
-
-      def initialize(success:, error: nil, data: nil)
-        @success = success
-        @error = error
-        @data = data
-      end
-
-      def self.success(data: nil)
-        new(success: true, data: data)
-      end
-
-      def self.failure(error:)
-        new(success: false, error: error)
-      end
-    end
-    
-
--   **Logging:** Log errors for debugging and monitoring.
-
-    ruby
-    Rails.logger.error("Error: Something went wrong")
-    
-
-## 3. Performance Considerations
-
-### Optimization Techniques
-
--   **Database Queries:** Optimize database queries by using indexes, eager loading, and avoiding N+1 queries.
-
-    ruby
-    # N+1 query problem
-    users = User.all
-    users.each { |user| puts user.posts.count } # one query per user
-
-    # Eager loading to solve N+1
-    users = User.includes(:posts).all
-    users.each { |user| puts user.posts.count } # only two queries
-    
-
--   **Caching:** Use caching to reduce database load and improve response times.
-
-    ruby
-    Rails.cache.fetch("user_count", expires_in: 1.hour) do
-      User.count
-    end
-    
-
--   **Code Profiling:** Use code profiling tools to identify performance bottlenecks.
--   **Garbage Collection:** Understand how Ruby's garbage collection works and optimize memory usage.
--   **Use Efficient Algorithms:** Choose appropriate algorithms and data structures for performance-critical operations.
-
-### Memory Management
-
--   **Avoid Memory Leaks:** Be careful about creating objects that are never garbage collected.
--   **Use Object Pooling:** Reuse objects instead of creating new ones.
--   **Minimize Object Creation:** Reduce the number of objects created in performance-critical sections of code.
-
-### Bundle Size Optimization
-
--   **Remove Unused Gems:** Identify and remove gems that are not being used.
--   **Use Lightweight Gems:** Choose smaller, more efficient gems when possible.
--   **Compress Assets:** Compress CSS, JavaScript, and image assets.
-
-### Lazy Loading Strategies
-
--   **Load Associations Lazily:** Use `lazy_load: true` option in associations.
--   **Load Code Lazily:** Use `require` or `autoload` to load code only when it's needed.
-
-## 4. Security Best Practices
-
-### Common Vulnerabilities
-
--   **SQL Injection:** Prevent SQL injection by using parameterized queries and avoiding string interpolation in SQL queries.
-
-    ruby
-    # Unsafe
-    User.where("email = '#{params[:email]}'")
-
-    # Safe
-    User.where(email: params[:email])
-    
-
--   **Cross-Site Scripting (XSS):** Prevent XSS by escaping user input and using content security policies.
-
-    erb
-    <%= sanitize @user.bio %> # Sanitize user input
-    
-
--   **Cross-Site Request Forgery (CSRF):** Protect against CSRF by using CSRF tokens.
--   **Mass Assignment:** Protect against mass assignment vulnerabilities by using strong parameters.
-
-    ruby
-    def user_params
-      params.require(:user).permit(:name, :email, :password, :password_confirmation)
-    end
-    
-
-### Input Validation
-
--   **Validate User Input:** Always validate user input to ensure it meets expected criteria.
--   **Sanitize User Input:** Sanitize user input to remove potentially harmful characters.
--   **Use Strong Parameters:** Use strong parameters to protect against mass assignment vulnerabilities.
-
-### Authentication and Authorization
-
--   **Use Devise:** Use Devise gem for authentication.
--   **Use CanCanCan or Pundit:** Use CanCanCan or Pundit gem for authorization.
--   **Implement Role-Based Access Control (RBAC):** Implement RBAC to control access to resources based on user roles.
-
-### Data Protection
-
--   **Encrypt Sensitive Data:** Encrypt sensitive data such as passwords and API keys.
--   **Use HTTPS:** Use HTTPS to encrypt communication between the client and server.
--   **Store Passwords Securely:** Use bcrypt or other secure password hashing algorithms.
-
-### Secure API Communication
-
--   **Use API Keys:** Use API keys to authenticate API requests.
--   **Implement Rate Limiting:** Implement rate limiting to prevent abuse.
--   **Use OAuth:** Use OAuth for secure authorization.
-
-## 5. Testing Approaches
-
-### Unit Testing
-
--   **Test Individual Components:** Write unit tests to test individual components in isolation.
--   **Use Mocks and Stubs:** Use mocks and stubs to isolate components from external dependencies.
--   **Test Edge Cases:** Test edge cases to ensure code handles unexpected input or conditions.
-
-### Integration Testing
-
--   **Test Interactions Between Components:** Write integration tests to test interactions between components.
--   **Test External Dependencies:** Test interactions with external dependencies such as databases and APIs.
-
-### End-to-End Testing
-
--   **Test Entire Application Flow:** Write end-to-end tests to test the entire application flow.
--   **Use Selenium or Capybara:** Use Selenium or Capybara to automate browser interactions.
-
-### Test Organization
-
--   **Mirror App Directory:** Organize tests in a directory structure mirroring the app/ directory.
--   **Use Descriptive Names:** Use descriptive names for test files and methods.
-
-### Mocking and Stubbing
-
--   **Use RSpec Mocks and Stubs:** Use RSpec's mocking and stubbing features to isolate components.
-
-    ruby
-    # Mocking
-    allow(User).to receive(:find).with(1).and_return(mock_user)
-
-    # Stubbing
-    allow(mock_user).to receive(:name).and_return("John Doe")
-    
-
-## 6. Common Pitfalls and Gotchas
-
-### Frequent Mistakes
-
--   **Not Using ActiveRecord Validations:** Forgetting to validate data in models can lead to data integrity issues.
--   **Not Understanding the Scope of Variables:** Misunderstanding variable scope can lead to unexpected behavior.
--   **Not Handling Exceptions:** Failing to handle exceptions can cause the application to crash.
--   **Not Writing Tests:** Neglecting to write tests can lead to bugs and regressions.
-
-### Edge Cases
-
--   **Handling Empty Datasets:** Ensure code handles empty datasets gracefully.
--   **Handling Large Datasets:** Optimize code to handle large datasets efficiently.
--   **Handling Time Zones:** Be aware of time zone issues when working with dates and times.
-
-### Version-Specific Issues
-
--   **Ruby Version Compatibility:** Ensure code is compatible with the target Ruby version.
--   **Rails Version Compatibility:** Ensure code is compatible with the target Rails version.
-
-### Compatibility Concerns
-
--   **Database Compatibility:** Be aware of compatibility issues between different databases.
--   **Operating System Compatibility:** Be aware of compatibility issues between different operating systems.
-
-### Debugging Strategies
-
--   **Use Debugger:** Use a debugger to step through code and inspect variables.
--   **Use Logging:** Use logging to track application behavior.
--   **Read Error Messages:** Carefully read error messages to understand the cause of the error.
--   **Use `binding.pry`:** Insert `binding.pry` into your code to pause execution and inspect variables.
-
-## 7. Tooling and Environment
-
-### Recommended Tools
-
--   **Text Editor:** VSCode, Sublime Text, Atom, RubyMine
--   **Debugger:** Byebug, RubyMine Debugger
--   **Testing Framework:** RSpec, Minitest
--   **Code Analysis:** RuboCop, Reek
--   **Package Manager:** Bundler
--   **Version Manager:** rbenv, rvm
-
-### Build Configuration
-
--   **Use Bundler:** Use Bundler to manage gem dependencies.
-
-    ruby
-    # Gemfile
-source 'https://rubygems.org'
-
-gem 'rails', '~> 7.0'
-gem 'pg'
-    
-
--   **Specify Ruby Version:** Specify the Ruby version in the `Gemfile`.
-
-    ruby
-    # Gemfile
-    ruby '3.2.2'
-    
-
--   **Use `.env` Files:** Use `.env` files to store environment variables.
-
-### Linting and Formatting
-
--   **Use RuboCop:** Use RuboCop to enforce Ruby style guidelines.
--   **Configure RuboCop:** Configure RuboCop to match project coding standards.
-
-    
-    # .rubocop.yml
-AllCops:
-  TargetRubyVersion: 3.2
-  Exclude:
-    - 'vendor/*'
-
-Style/Documentation:
-  Enabled: false
-    
-
--   **Use Prettier:** Use Prettier for code formatting.
-
-### Deployment
-
--   **Use a Deployment Tool:** Use a deployment tool such as Capistrano or Heroku.
--   **Automate Deployment:** Automate the deployment process to reduce errors and improve efficiency.
--   **Use a Production Database:** Use a production-grade database such as PostgreSQL or MySQL.
--   **Configure a Web Server:** Configure a web server such as Nginx or Apache.
-
-### CI/CD Integration
-
--   **Use a CI/CD Tool:** Use a CI/CD tool such as Jenkins, GitLab CI, or CircleCI.
--   **Automate Testing:** Automate testing as part of the CI/CD pipeline.
--   **Automate Deployment:** Automate deployment as part of the CI/CD pipeline.
+```
+
+✅ GOOD
+```ruby
+def process_data(data)
+  return log_error("No data provided") unless data
+  return log_error("Invalid data") unless data.valid?
+
+  # ... process ...
+end
+```
+
+### 4.3 Keyword Arguments
+Use keyword arguments for clarity and flexibility, especially for methods with many parameters.
+
+❌ BAD
+```ruby
+def create_user(name, email, role = 'guest')
+  # ...
+end
+create_user('Alice', 'alice@example.com', 'admin')
+```
+
+✅ GOOD
+```ruby
+def create_user(name:, email:, role: 'guest')
+  # ...
+end
+create_user(name: 'Alice', email: 'alice@example.com', role: 'admin')
+```
+
+### 4.4 Argument Forwarding
+Use `...` for forwarding arguments in Ruby 3.0+.
+
+❌ BAD
+```ruby
+def wrapper(*args, **kwargs, &block)
+  target_method(*args, **kwargs, &block)
+end
+```
+
+✅ GOOD
+```ruby
+def wrapper(...)
+  target_method(...)
+end
+```
+
+## 5. Performance Considerations
+
+Write efficient code, especially when dealing with collections or database queries.
+
+### 5.1 Eager Loading (Rails)
+Prevent N+1 query issues by eager loading associations.
+
+❌ BAD
+```ruby
+users = User.all
+users.each { |user| puts user.posts.count } # N+1 query
+```
+
+✅ GOOD
+```ruby
+users = User.includes(:posts).all
+users.each { |user| puts user.posts.count } # Single query for posts
+```
+
+### 5.2 Memoization
+Cache expensive computation results within a method call.
+
+❌ BAD
+```ruby
+def expensive_calculation
+  # performs complex calculation every time
+  @result = some_complex_operation
+end
+```
+
+✅ GOOD
+```ruby
+def expensive_calculation
+  @result ||= some_complex_operation
+end
+```
+
+## 6. Security Best Practices
+
+Prioritize security in all code.
+
+### 6.1 Strong Parameters (Rails)
+Always use strong parameters to prevent mass assignment vulnerabilities.
+
+❌ BAD
+```ruby
+def update
+  @user.update(params[:user]) # Mass assignment vulnerability
+end
+```
+
+✅ GOOD
+```ruby
+def update
+  @user.update(user_params)
+end
+
+private
+
+def user_params
+  params.require(:user).permit(:name, :email, :password)
+end
+```
+
+### 6.2 SQL Injection Prevention
+Use ActiveRecord's query methods or parameter binding. Never interpolate user input directly into SQL.
+
+❌ BAD
+```ruby
+User.where("name = '#{params[:name]}'") # SQL injection risk
+```
+
+✅ GOOD
+```ruby
+User.where(name: params[:name])
+User.where("name = ?", params[:name])
+```
+
+## 7. Error Handling
+
+Handle errors gracefully and informatively.
+
+### 7.1 Custom Exceptions
+Define custom exceptions for specific error conditions.
+
+❌ BAD
+```ruby
+raise "User not found"
+```
+
+✅ GOOD
+```ruby
+class UserNotFoundError < StandardError; end
+
+# ...
+raise UserNotFoundError, "User with ID #{id} not found"
+```
+
+### 7.2 `rescue` Blocks
+Use `rescue` for expected error scenarios. Be specific about the exception type.
+
+❌ BAD
+```ruby
+begin
+  # ... risky operation ...
+rescue
+  puts "An error occurred!" # Catches all exceptions, hides bugs
+end
+```
+
+✅ GOOD
+```ruby
+begin
+  # ... risky operation ...
+rescue ActiveRecord::RecordNotFound => e
+  Rails.logger.warn("Record not found: #{e.message}")
+  nil # or handle gracefully
+rescue StandardError => e
+  Rails.logger.error("Unexpected error: #{e.message}")
+  raise # Re-raise if unhandled
+end
+```
+
+## 8. API Design (Rails)
+
+Build RESTful and consistent APIs.
+
+### 8.1 RESTful Routes
+Use Rails' `resources` for standard RESTful actions. Use `member` and `collection` for non-standard actions.
+
+❌ BAD
+```ruby
+get '/users/:id/deactivate', to: 'users#deactivate'
+get '/users/active', to: 'users#active'
+```
+
+✅ GOOD
+```ruby
+resources :users do
+  member do
+    post :deactivate
+  end
+  collection do
+    get :active
+  end
+end
+```
+
+### 8.2 JSON API Standards
+Return consistent JSON responses, often following JSON:API specification.
+
+❌ BAD
+```json
+{ "user": { "id": 1, "name": "Alice" } }
+```
+
+✅ GOOD
+```json
+{
+  "data": {
+    "id": "1",
+    "type": "users",
+    "attributes": {
+      "name": "Alice"
+    }
+  }
+}
+```
+
+## 9. Testing Approaches
+
+RSpec is our preferred testing framework.
+
+### 9.1 RSpec for All Tests
+Write unit, integration, and feature tests using RSpec.
+
+❌ BAD
+```ruby
+# Some tests in Minitest, others in RSpec
+```
+
+✅ GOOD
+```ruby
+# spec/models/user_spec.rb (unit)
+# spec/requests/users_spec.rb (integration/feature)
+```
+
+### 9.2 Clear Test Descriptions
+Use descriptive `describe` and `it` blocks.
+
+❌ BAD
+```ruby
+describe User do
+  it 'works' do
+    # ...
+  end
+end
+```
+
+✅ GOOD
+```ruby
+describe User, '#full_name' do
+  it 'returns the first and last name concatenated' do
+    user = build(:user, first_name: 'John', last_name: 'Doe')
+    expect(user.full_name).to eq('John Doe')
+  end
+end
+```
+
+### 9.3 FactoryBot for Test Data
+Use FactoryBot for creating test data, avoiding direct `create` calls in tests.
+
+❌ BAD
+```ruby
+User.create!(name: 'Test User', email: 'test@example.com')
+```
+
+✅ GOOD
+```ruby
+create(:user) # Creates a user with default attributes from factory
+build(:user, email: 'custom@example.com') # Builds without saving
+```

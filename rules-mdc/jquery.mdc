@@ -1,410 +1,293 @@
 ---
-description: This rule file provides guidelines for jQuery development, covering code organization, performance, security, and testing. It helps developers write maintainable, efficient, and secure jQuery code.
-globs: *.js
+description: Definitive guidelines for writing performant, maintainable, and modern jQuery code, emphasizing best practices for DOM manipulation, event handling, and compatibility with jQuery 4.0 and ES6+.
+globs: **/*.{js,jsx}
 ---
-# jQuery Best Practices: A Comprehensive Guide
+# jQuery Best Practices
 
-This document outlines best practices for jQuery development to ensure code quality, performance, security, and maintainability.
+jQuery remains a powerful tool for DOM manipulation, but its use in 2025 demands a performance-first mindset and adherence to modern JavaScript standards. This guide outlines the definitive best practices for writing fast, clean, and maintainable jQuery code.
 
-## Library Information:
+## 1. Code Organization and Modern JavaScript
 
-- Name: jQuery
-- Tags: javascript, dom, library, frontend
+Always encapsulate your jQuery code within an Immediately Invoked Function Expression (IIFE) to prevent global scope pollution and ensure `$` correctly maps to `jQuery`, especially in environments like WordPress where `jQuery.noConflict()` is active. Embrace modern ES6+ syntax where possible.
 
-## 1. Code Organization and Structure
+### 1.1 Scope and `$.noConflict()`
 
-A well-structured project improves maintainability, collaboration, and scalability.
+**Always wrap your jQuery code in an IIFE.** This ensures `$` refers to `jQuery` and protects your code from global scope conflicts.
 
-### 1.1. Directory Structure Best Practices
-
-Adopt a clear and consistent directory structure:
-
-
-project-root/
-├── css/
-│   ├── style.css
-│   └── components/
-│       └── component.css
-├── js/
-│   ├── jquery.min.js  # jQuery library (ideally from a CDN)
-│   ├── app.js         # Main application file
-│   ├── modules/
-│   │   ├── module1.js
-│   │   └── module2.js
-│   ├── components/
-│   │   ├── component1.js
-│   │   └── component2.js
-│   └── utils/
-│       ├── helperFunctions.js
-│       └── ajaxUtils.js
-├── img/
-│   └── ...
-├── index.html
-├── .eslintrc.js      # ESLint configuration (see linting section)
-└── package.json      # Project dependencies and scripts
-
-
-**Explanation:**
-
--   `css/`: Contains all CSS files, potentially organized into components.
--   `js/`:  Contains all JavaScript files, including the main application script, modules, components, and utility functions.
--   `img/`: Contains images.
--   `index.html`: The main HTML file.
--   `.eslintrc.js`: Configuration file for ESLint (JavaScript linter).
--   `package.json`:  Defines project dependencies and scripts.
-
-### 1.2. File Naming Conventions
-
-Use descriptive and consistent file names:
-
--   JavaScript files: `[componentName].js`, `[moduleName].js`, `[utilityName].js` (e.g., `navigation.js`, `userAuthentication.js`, `dateFormatter.js`).
--   CSS files: `[componentName].css`, `style.css`.
--   jQuery plugins: `jquery.[pluginName].js`.
-
-### 1.3. Module Organization Best Practices
-
-Organize code into logical modules:
-
--   **Encapsulation:** Each module should encapsulate a specific functionality or feature.
--   **Loose Coupling:** Modules should be loosely coupled to minimize dependencies and promote reusability.
--   **Revealing Module Pattern:** Use the revealing module pattern to expose only the necessary functions and variables.
-
-javascript
-// js/modules/userAuthentication.js
-const userAuthentication = (function() {
-  let isAuthenticated = false;
-
-  function login(username, password) {
-    // Authentication logic (e.g., AJAX call)
-    // ...
-    isAuthenticated = true;
-  }
-
-  function logout() {
-    // Logout logic
-    //...
-    isAuthenticated = false;
-  }
-
-  function isLoggedIn() {
-    return isAuthenticated;
-  }
-
-  return {
-    login: login,
-    logout: logout,
-    isLoggedIn: isLoggedIn
-  };
-})();
-
-// In app.js
-$(document).ready(function() {
-  if (userAuthentication.isLoggedIn()) {
-    // Update UI for logged-in user
-  }
+❌ BAD: Global scope pollution, `$` conflicts
+```javascript
+// Potentially conflicts with other libraries or scripts
+$('.my-element').on('click', function() {
+  console.log('Clicked!');
 });
+```
 
+✅ GOOD: Isolated scope, `$` aliased correctly
+```javascript
+(function($) {
+  // Your jQuery code here, $ is safely aliased to jQuery
+  $('.my-element').on('click', function() {
+    console.log('Clicked!');
+  });
+})(jQuery); // Pass jQuery object into the IIFE
+```
 
-### 1.4. Component Architecture Recommendations
+### 1.2 Modern JavaScript Syntax
 
-Break down the UI into reusable components:
+Integrate `const`, `let`, arrow functions, and template literals. jQuery code coexists perfectly with modern JS.
 
--   **Modularity:** Components should be self-contained and independent.
--   **Reusability:** Components should be designed for reuse across the application.
--   **Maintainability:** Component-based architecture simplifies code updates and maintenance.
+❌ BAD: Old-school `var` and `function` syntax
+```javascript
+var myElement = $('#old-element');
+myElement.click(function() {
+  var message = 'Element ' + myElement.attr('id') + ' clicked.';
+  console.log(message);
+});
+```
 
-javascript
-// js/components/navigation.js
-function Navigation(elementId, options) {
-  this.element = $('#' + elementId);
-  this.options = $.extend({}, { /* Default options */ }, options);
+✅ GOOD: Modern ES6+ syntax
+```javascript
+const myElement = $('#modern-element');
+myElement.on('click', () => {
+  const message = `Element ${myElement.attr('id')} clicked.`;
+  console.log(message);
+});
+```
 
-  this.init = function() {
-    // Component initialization
-    this.element.on('click', '.nav-item', this.handleNavigation.bind(this));
-  };
+## 2. Performance Considerations
 
-  this.handleNavigation = function(event) {
-    event.preventDefault();
-    // Navigation logic
-    console.log('Navigating to:', $(event.target).attr('href'));
-  };
+Prioritize performance by minimizing DOM interactions, optimizing selectors, and caching frequently used elements and values.
 
-  this.init();
+### 2.1 Cache Selectors
+
+**Never re-query the DOM for the same element.** Store jQuery objects in variables for reuse. Prefix jQuery variables with `$` for clarity.
+
+❌ BAD: Repeated DOM queries
+```javascript
+$('.item').addClass('active');
+$('.item').css('background-color', 'blue');
+$('.item').on('click', function() { /* ... */ });
+```
+
+✅ GOOD: Cache selectors for efficiency
+```javascript
+const $items = $('.item');
+$items.addClass('active');
+$items.css('background-color', 'blue');
+$items.on('click', function() { /* ... */ });
+```
+
+### 2.2 Minimize DOM Updates
+
+Batch DOM modifications. Build HTML fragments off-document or use `detach()` before making multiple changes, then re-attach once. Each DOM write triggers potential reflows.
+
+❌ BAD: Repeated DOM appends in a loop
+```javascript
+const data = ['one', 'two', 'three'];
+const $list = $('#my-list');
+data.forEach(item => {
+  $list.append(`<li>${item}</li>`); // Each append causes a DOM update
+});
+```
+
+✅ GOOD: Batch DOM updates
+```javascript
+const data = ['one', 'two', 'three'];
+const $list = $('#my-list');
+const $fragment = $(document.createDocumentFragment()); // Create a document fragment
+data.forEach(item => {
+  $fragment.append(`<li>${item}</li>`);
+});
+$list.append($fragment); // Append once
+```
+
+### 2.3 Optimize Selectors
+
+Use the most specific and efficient selectors possible. Prefer ID and class selectors over complex descendant or attribute selectors.
+
+❌ BAD: Inefficient descendant selector
+```javascript
+// Sizzle has to traverse all divs, then check for 'my-class'
+$('div .my-class').css('color', 'red');
+```
+
+✅ GOOD: Direct class selector
+```javascript
+// Direct and fast
+$('.my-class').css('color', 'red');
+```
+
+### 2.4 Cache Loop Lengths
+
+When iterating over jQuery collections or arrays, cache the length to avoid re-evaluating it on each iteration.
+
+❌ BAD: Re-evaluating length in each loop iteration
+```javascript
+const $elements = $('.my-elements');
+for (let i = 0; i < $elements.length; i++) {
+  $elements.eq(i).addClass('processed');
 }
+```
 
-// In app.js
-$(document).ready(function() {
-  const nav = new Navigation('main-nav', {
-    // Custom options
-  });
+✅ GOOD: Cache loop length
+```javascript
+const $elements = $('.my-elements');
+const numElements = $elements.length; // Cache length
+for (let i = 0; i < numElements; i++) {
+  $elements.eq(i).addClass('processed');
+}
+```
+
+## 3. Common Patterns and Anti-patterns
+
+Adopt patterns that promote maintainability and performance.
+
+### 3.1 Delegated Events
+
+**Always use event delegation for dynamic content or large collections of elements.** Attach a single event handler to a static parent element (or `document`) and use the selector argument of `.on()`.
+
+❌ BAD: Attaching many individual event handlers
+```javascript
+// Attaches a handler to *every* current button. New buttons won't work.
+$('button.delete').on('click', function() {
+  $(this).closest('.item').remove();
 });
+```
 
-
-### 1.5. Code Splitting Strategies
-
-Improve initial load time by splitting code into smaller chunks:
-
--   **On-Demand Loading:** Load modules or components only when they are needed.
--   **Route-Based Splitting:** Load code specific to a particular route or page.
--   **Conditional Loading:** Load code based on user interactions or device capabilities.
-
-javascript
-// Example: Loading a module on button click
-$('#load-module-button').on('click', function() {
-  $.getScript('js/modules/heavyModule.js', function() {
-    // Module loaded and executed
-    heavyModule.init();
-  });
+✅ GOOD: Event delegation
+```javascript
+// Attaches one handler to the document, efficient for dynamic content
+$(document).on('click', 'button.delete', function() {
+  $(this).closest('.item').remove();
 });
+```
 
+### 3.2 Element-Specific State with `$.data()`
 
-## 2. Common Patterns and Anti-patterns
+Use `$.data()` to store and retrieve arbitrary data associated with DOM elements. This is cleaner and more memory-safe than attaching custom properties directly to DOM nodes.
 
-Employ established design patterns to improve code quality and avoid common mistakes.
+❌ BAD: Attaching custom properties directly
+```javascript
+const $el = $('#my-element');
+$el[0].customState = { count: 0 }; // Pollutes DOM node
+$el.on('click', function() {
+  $el[0].customState.count++;
+  console.log($el[0].customState.count);
+});
+```
 
-### 2.1. Design Patterns Specific to jQuery
+✅ GOOD: Using `$.data()`
+```javascript
+const $el = $('#my-element');
+$el.data('customState', { count: 0 }); // Cleanly stores data
+$el.on('click', function() {
+  const state = $el.data('customState');
+  state.count++;
+  $el.data('customState', state); // Update data
+  console.log($el.data('customState').count);
+});
+```
 
--   **Module Pattern:** (See section 1.3).  Encapsulates code and prevents global scope pollution.
--   **Observer Pattern:**  Facilitates communication between components without tight coupling. jQuery's event system is essentially an implementation of the observer pattern.
--   **Facade Pattern:** Provides a simplified interface to a complex system (e.g., jQuery's `$`).
+## 4. Common Pitfalls and Gotchas
 
-### 2.2. Recommended Approaches for Common Tasks
+Be aware of jQuery's nuances and recent changes, especially with jQuery 4.0.
 
--   **DOM Manipulation:** Minimize direct DOM manipulation. Use document fragments for batch updates.
--   **Event Handling:** Implement event delegation for dynamically added elements.
--   **AJAX:** Use `$.ajax()` for flexible AJAX requests. Use promises for asynchronous operations.
+### 4.1 `$(document).ready()` Syntax
 
-### 2.3. Anti-patterns and Code Smells
+As of jQuery 3.0, only `$(handler)` is the recommended syntax for DOM ready. Avoid deprecated forms.
 
--   **Global Variables:** Avoid using global variables to prevent naming conflicts and unexpected behavior.
--   **Chaining Overuse:**  Long chains can be difficult to read. Break them into smaller, more manageable chunks.
--   **Excessive DOM Traversal:** Minimize DOM traversal by caching selectors.
--   **Ignoring Performance:**  Avoid complex selectors and inefficient DOM manipulation.
--   **Inconsistent Coding Style:** Adhere to a consistent coding style to improve readability.
--   **Mixing Concerns:** Separate HTML structure, CSS styling, and JavaScript behavior.
--   **Deprecated Methods**: Avoid using deprecated methods.
+❌ BAD: Deprecated or misleading `ready` syntaxes
+```javascript
+$(document).ready(function() { /* ... */ }); // Deprecated
+$('img').ready(function() { /* ... */ });     // Misleading, doesn't wait for images
+$(document).on('ready', function() { /* ... */ }); // Removed in jQuery 3.0
+```
 
-### 2.4. State Management Best Practices
+✅ GOOD: Recommended `ready` syntax
+```javascript
+$(function() {
+  // Code executes when the DOM is fully loaded.
+  console.log('DOM is ready!');
+});
+```
 
--   **Keep it Simple:** For small applications, simple variables or data attributes may be sufficient.
--   **Centralized Store:** For larger applications, consider a centralized state management solution (though jQuery is rarely used on its own for complex single page apps that require advanced state management).
--   **Data Attributes:** Use data attributes (`data-*`) to store component-specific data.
+### 4.2 jQuery 4.0 API Changes
 
-### 2.5. Error Handling Patterns
+Stay updated with the jQuery 4.0 upgrade guide. Key breaking changes include `toggleClass(Boolean|undefined)` removal and updated Ajax API.
 
--   **Try-Catch Blocks:** Use `try-catch` blocks to handle exceptions gracefully.
--   **AJAX Error Handling:** Implement error handling for AJAX requests using the `error` callback or `$.Deferred`'s `fail` method.
--   **Global Error Handler:** Set up a global error handler to catch unhandled exceptions.
+❌ BAD: Using `toggleClass(Boolean)` (removed in 4.0)
+```javascript
+// This will break in jQuery 4.0
+$('.my-element').toggleClass('active', true);
+```
 
-javascript
+✅ GOOD: Use `addClass()` or `removeClass()` explicitly
+```javascript
+const isActive = true; // Or some condition
+if (isActive) {
+  $('.my-element').addClass('active');
+} else {
+  $('.my-element').removeClass('active');
+}
+// Or for toggling based on existence:
+$('.my-element').toggleClass('active');
+```
+
+❌ BAD: Relying on auto-execution of scripts in Ajax (removed in 4.0)
+```javascript
+// If fetching a script, this will no longer auto-execute in jQuery 4.0
 $.ajax({
-  url: 'api/data',
-  dataType: 'json',
-  success: function(data) {
-    // Process data
-  },
-  error: function(jqXHR, textStatus, errorThrown) {
-    console.error('AJAX error:', textStatus, errorThrown);
-    // Display error message to the user
-  }
+  url: '/my-script.js'
 });
+```
 
-
-## 3. Performance Considerations
-
-Optimize code for speed and efficiency.
-
-### 3.1. Optimization Techniques
-
--   **Selector Optimization:** Use ID selectors whenever possible. Be specific on the right-hand side of your selector and less specific on the left. Give your Selectors a Context.
--   **Caching Selectors:** Cache jQuery selector returned objects in variables for reuse.
--   **Minimize DOM Manipulations:** Batch updates, use document fragments, and detach elements before manipulation.
--   **Event Delegation:** Use event delegation to reduce the number of event listeners.
--   **Debouncing and Throttling:** Limit the rate at which a function is executed.
-
-### 3.2. Memory Management Considerations
-
--   **Avoid Memory Leaks:** Remove event listeners and data when elements are removed from the DOM.
--   **Release References:** Set variables to `null` to release memory when they are no longer needed.
--   **Garbage Collection:** Understand how JavaScript garbage collection works and avoid creating unnecessary objects.
-
-### 3.3. Rendering Optimization
-
--   **Minimize Reflows and Repaints:** Reduce the number of DOM manipulations that cause reflows and repaints.
--   **Use CSS Transitions and Animations:** Use CSS transitions and animations instead of jQuery animations for better performance.
--   **Hardware Acceleration:** Leverage hardware acceleration for smooth animations.
-
-### 3.4. Bundle Size Optimization
-
--   **Minification:** Use minification to reduce file sizes.
--   **Gzip Compression:** Enable Gzip compression on the server to reduce the size of transferred files.
--   **Code Splitting:** Split code into smaller chunks to improve initial load time (see section 1.5).
-
-### 3.5. Lazy Loading Strategies
-
--   **Lazy Load Images:** Load images only when they are visible in the viewport.
--   **Lazy Load Modules:** Load modules or components only when they are needed (see section 1.5).
--   **Use a Lazy Loading Library:**  Consider using a library like `lozad.js` for easy lazy loading.
-
-## 4. Security Best Practices
-
-Protect your application against common vulnerabilities.
-
-### 4.1. Common Vulnerabilities and Prevention
-
--   **Cross-Site Scripting (XSS):** Sanitize user input to prevent XSS attacks. Use jQuery's `text()` method to set text content instead of `html()` to prevent injecting HTML code.
--   **Cross-Site Request Forgery (CSRF):** Implement CSRF protection tokens.
--   **SQL Injection:**  Never directly use client-side data in database queries.  Use parameterized queries or ORMs.
--   **Open Redirects:** Validate and sanitize redirect URLs to prevent open redirects.
--   **Dependency Vulnerabilities:** Keep jQuery and all dependencies up to date to patch security vulnerabilities.
-
-### 4.2. Input Validation Best Practices
-
--   **Client-Side Validation:** Implement client-side validation to provide immediate feedback to the user.
--   **Server-Side Validation:** Always perform server-side validation to ensure data integrity.
--   **Sanitize Input:** Sanitize user input to remove potentially harmful characters.
-
-### 4.3. Authentication and Authorization Patterns
-
--   **Use HTTPS:** Always use HTTPS to encrypt data in transit.
--   **Secure Cookies:**  Set the `secure` and `httpOnly` flags for cookies.
--   **Authentication Tokens:** Use authentication tokens (e.g., JWT) for secure authentication.
--   **Role-Based Access Control (RBAC):** Implement RBAC to restrict access to sensitive resources.
-
-### 4.4. Data Protection Strategies
-
--   **Encrypt Sensitive Data:** Encrypt sensitive data at rest and in transit.
--   **Data Masking:** Mask sensitive data in the UI to prevent unauthorized access.
--   **Regular Backups:** Perform regular backups of your data.
-
-### 4.5. Secure API Communication
-
--   **Use HTTPS:** Always use HTTPS for API communication.
--   **API Keys:** Use API keys to authenticate requests.
--   **Rate Limiting:** Implement rate limiting to prevent abuse.
--   **Input Validation:** Validate all input data on the server-side.
-
-## 5. Testing Approaches
-
-Write tests to ensure code quality and prevent regressions.
-
-### 5.1. Unit Testing Strategies
-
--   **Test Individual Components:**  Write unit tests for individual components and modules.
--   **Use a Testing Framework:** Use a JavaScript testing framework like QUnit or Jasmine.
--   **Mock Dependencies:**  Mock dependencies to isolate the component being tested.
-
-### 5.2. Integration Testing Approaches
-
--   **Test Interactions:** Write integration tests to test the interactions between components.
--   **Use a Testing Framework:**  Use a testing framework like Mocha or Jest.
--   **Test API Integrations:** Test the integration with external APIs.
-
-### 5.3. End-to-End Testing Recommendations
-
--   **Simulate User Interactions:**  Write end-to-end tests to simulate user interactions.
--   **Use a Testing Framework:**  Use a testing framework like Cypress or Puppeteer.
--   **Test Critical Paths:**  Test the critical paths through the application.
-
-### 5.4. Test Organization
-
--   **Separate Test Files:**  Create separate test files for each component or module.
--   **Use Descriptive Names:**  Use descriptive names for test cases.
--   **Organize Tests:** Organize tests into logical groups.
-
-### 5.5. Mocking and Stubbing Techniques
-
--   **Mock AJAX Requests:** Mock AJAX requests to isolate the component being tested.
--   **Stub Functions:** Stub functions to control their behavior.
--   **Use a Mocking Library:** Use a mocking library like Sinon.js.
-
-javascript
-// Example using QUnit and Sinon.js
-QUnit.module('User Authentication Module', function(hooks) {
-  hooks.beforeEach(function() {
-    this.ajax = sinon.stub($, 'ajax');
-  });
-
-  hooks.afterEach(function() {
-    this.ajax.restore();
-  });
-
-  QUnit.test('login() should make an AJAX request', function(assert) {
-    this.ajax.resolves({ success: true });
-    userAuthentication.login('testuser', 'password');
-    assert.ok(this.ajax.calledOnce, 'AJAX request was made');
-  });
+✅ GOOD: Explicitly define `dataType: "script"` for script execution
+```javascript
+$.ajax({
+  url: '/my-script.js',
+  dataType: 'script' // Explicitly tells jQuery to execute the script
 });
+```
 
+## 5. Accessibility
 
-## 6. Common Pitfalls and Gotchas
+While jQuery itself doesn't directly provide accessibility features, ensure your DOM manipulations respect ARIA attributes and semantic HTML.
 
-Be aware of common mistakes and edge cases.
+❌ BAD: Relying solely on visual changes for state
+```javascript
+$('#my-button').on('click', function() {
+  $(this).css('opacity', '0.5'); // Visually disabled, but not for screen readers
+});
+```
 
-### 6.1. Frequent Mistakes
+✅ GOOD: Updating ARIA attributes for accessibility
+```javascript
+$('#my-button').on('click', function() {
+  $(this).attr('aria-disabled', 'true').prop('disabled', true).addClass('disabled-style');
+});
+```
 
--   **Not Caching Selectors:**  Re-querying the DOM for the same element repeatedly.
--   **Using Incorrect Scope (`this`):**  Understanding the scope of `this` in event handlers and callbacks.
--   **Ignoring Errors:**  Not handling errors properly in AJAX requests and other asynchronous operations.
--   **Overusing jQuery:**  Using jQuery for tasks that can be done more efficiently with native JavaScript.
+## 6. WordPress Specifics
 
-### 6.2. Edge Cases
+If working within a WordPress environment, always use the bundled jQuery version and respect its `noConflict` mode.
 
--   **Browser Compatibility:**  Testing your code in different browsers and versions.
--   **Mobile Devices:**  Optimizing your code for mobile devices.
--   **Accessibility:** Ensuring your code is accessible to users with disabilities.
+❌ BAD: Bundling your own jQuery version in a WordPress theme
+```html
+<script src="/path/to/my/jquery-3.7.1.min.js"></script>
+```
 
-### 6.3. Version-Specific Issues
-
--   **Deprecated Methods:**  Being aware of deprecated methods in newer versions of jQuery.
--   **API Changes:**  Understanding API changes between different versions of jQuery.
-
-### 6.4. Compatibility Concerns
-
--   **Conflicting Libraries:**  Avoiding conflicts with other JavaScript libraries (e.g., Prototype, MooTools) using `$.noConflict()`.
--   **Plugin Compatibility:** Ensuring that jQuery plugins are compatible with the version of jQuery being used.
-
-### 6.5. Debugging Strategies
-
--   **Use Browser Developer Tools:**  Use browser developer tools to inspect elements, debug JavaScript code, and profile performance.
--   **Console Logging:**  Use `console.log()` to debug your code.
--   **Breakpoints:**  Set breakpoints in your code to pause execution and inspect variables.
-
-## 7. Tooling and Environment
-
-Use the right tools to improve productivity and code quality.
-
-### 7.1. Recommended Development Tools
-
--   **Text Editor/IDE:** Visual Studio Code, Sublime Text, Atom.
--   **Browser:** Chrome, Firefox, Safari.
--   **Debugging Tools:** Chrome DevTools, Firefox Developer Tools.
--   **Build Tools:**  Webpack, Parcel, Gulp.
--   **Testing Frameworks:** QUnit, Jasmine, Mocha, Jest.
-
-### 7.2. Build Configuration
-
--   **Use a Build Tool:** Use a build tool like Webpack or Parcel to bundle and optimize your code.
--   **Configure Loaders:** Configure loaders to handle different file types (e.g., JavaScript, CSS, images).
--   **Optimize Output:** Optimize the output of the build process for production.
-
-### 7.3. Linting and Formatting
-
--   **Use a Linter:** Use a linter like ESLint to enforce coding standards and catch errors.
--   **Configure Rules:** Configure linting rules to match your project's coding style.
--   **Use a Formatter:** Use a code formatter like Prettier to automatically format your code.
-
-### 7.4. Deployment
-
--   **Minify and Gzip:** Minify and Gzip your code before deploying it.
--   **Use a CDN:** Use a CDN to host static assets.
--   **Cache Control Headers:** Set appropriate cache control headers.
-
-### 7.5. CI/CD Integration
-
--   **Automated Builds:** Automate the build process using a CI/CD tool like Jenkins, Travis CI, or GitHub Actions.
--   **Automated Testing:** Automate the testing process using a CI/CD tool.
--   **Automated Deployment:** Automate the deployment process using a CI/CD tool.
-
-By following these best practices, developers can write high-quality, performant, and secure jQuery code that is easy to maintain and scale.
+✅ GOOD: Enqueue WordPress's bundled jQuery
+```php
+// In functions.php
+wp_enqueue_script('my-script', get_template_directory_uri() . '/js/my-script.js', array('jquery'), '1.0.0', true);
+```
+Then, use the IIFE wrapper as described in 1.1 for your `my-script.js` file.
+```javascript
+// my-script.js
+(function($) {
+  // Your jQuery code here, $ is safely aliased to jQuery
+  $('#wp-element').on('click', function() {
+    console.log('WordPress element clicked!');
+  });
+})(jQuery);
+```

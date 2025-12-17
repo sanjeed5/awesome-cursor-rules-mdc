@@ -1,204 +1,335 @@
 ---
-description: This rule provides comprehensive best practices for developing Qwik applications, covering code organization, performance, security, testing, and common pitfalls. It aims to guide developers in writing maintainable, efficient, and secure Qwik code.
-globs: *.ts?(x)
+description: This guide outlines definitive best practices for building high-performance, resumable Qwik applications, focusing on maximizing lazy loading and ensuring optimal developer experience.
+globs: **/*.{js,jsx,ts,tsx}
 ---
-# Qwik Library Best Practices
+# qwik Best Practices
 
-This document outlines the best practices for developing Qwik applications. Adhering to these guidelines will help you write maintainable, efficient, and secure code.
+Qwik is an edge-first framework built on **resumability**, not hydration. This means your application's JavaScript is only loaded and executed when absolutely necessary, leading to instant Time-To-Interactive (TTI). Our guidelines prioritize this core principle.
 
-## 1. Code Organization and Structure
+## Critical Guidelines:
 
-- **Directory Structure:**
-    - `src/`: Contains the source code of your application.
-        - `components/`: Reusable UI components.
-        - `routes/`: Defines the application's routes and pages.  Use the file system routing for easy setup. Each file under `routes` will become a route based on the filename.
-        - `services/`: Contains business logic and data fetching services.
-        - `utils/`: Utility functions and helpers.
-        - `styles/`: Global styles and themes.
-        - `types/`: Type definitions used throughout the application.
-    - `public/`: Static assets like images, fonts, and favicons.
-    - `vite.config.ts`: Vite configuration file.
-    - `tsconfig.json`: TypeScript configuration file.
-    - `.eslintrc.js`: ESLint configuration file.
+### 1. Define Every UI Piece with `component$`
 
-- **File Naming Conventions:**
-    - Components: `ComponentName.tsx` (e.g., `MyButton.tsx`).
-    - Services: `serviceName.ts` (e.g., `userService.ts`).
-    - Utilities: `utilityName.ts` (e.g., `dateUtils.ts`).
-    - Styles: `componentName.css` or `componentName.module.css`.
-    - Routes: Filename dictates the route path (e.g., `index.tsx` for `/`, `about.tsx` for `/about`).
+All interactive UI components **must** be wrapped in `component$`. This is Qwik's fundamental primitive for enabling automatic code-splitting and lazy loading.
 
-- **Module Organization:**
-    - Group related components, services, and utilities into modules.
-    - Use `index.ts` files to re-export members from a module for cleaner imports.
-    - Keep modules focused and avoid creating large, monolithic modules.
+❌ **BAD: Regular function component**
+```typescript
+// my-button.tsx
+export const MyButton = () => { // Missing '$'
+  return <button onClick={() => alert('Clicked!')}>Click me</button>;
+};
+```
 
-- **Component Architecture:**
-    - Favor small, reusable components.
-    - Use a component-based architecture for building UIs.
-    - Separate concerns: presentational components and container components.
-        - Presentational components: Focus on rendering UI elements based on props.
-        - Container components: Handle data fetching, state management, and business logic.
-    - Use Qwik's `component$` and `use*` APIs for creating and managing components.
+✅ **GOOD: `component$` for resumability**
+```typescript
+// my-button.tsx
+import { component$ } from '@builder.io/qwik';
 
-- **Code Splitting Strategies:**
-    - Use Qwik's automatic code splitting capabilities.
-    - Ensure routes are lazily loaded by their nature in Qwik.
-    - For larger components or modules, consider manually triggering lazy loading.
+export const MyButton = component$(() => {
+  return <button onClick$={() => alert('Clicked!')}>Click me</button>; // onClick$ is also a QRL
+});
+```
 
-## 2. Common Patterns and Anti-patterns
+### 2. Use `useStore` for Reactive State
 
-- **Design Patterns:**
-    - **Composition:** Build complex components by composing smaller, reusable components.
-    - **Provider Pattern:** Use Context to share state or services across multiple components.
-    - **Hooks:** Use Qwik's `use*` hooks to manage state, effects, and other side effects.
-    - **Factories:** For complex object creation, consider using factory functions.
+Manage component-local reactive state using `useStore`. This ensures state is serializable and resumable across server-side rendering and client-side interactions. Always type your stores for clarity and safety.
 
-- **Recommended Approaches:**
-    - Use Qwik's state management features (`useStore`, `useSignal`) for managing component state.
-    - Use Qwik City's routing capabilities for defining routes and navigation.
-    - Use Qwik's optimizer and server rendering for performance.
+❌ **BAD: Non-reactive or non-serializable state**
+```typescript
+// counter.tsx
+import { component$ } from '@builder.io/qwik';
 
-- **Anti-patterns and Code Smells:**
-    - **Large Components:** Avoid creating overly large components. Break them down into smaller, more manageable pieces.
-    - **Tight Coupling:** Reduce dependencies between components and modules.
-    - **Mutating Props:** Never directly modify props passed to a component.
-    - **Global State Abuse:** Avoid using global state excessively. Prefer component-level state management.
-    - **Ignoring Server Rendering:** Ensure your components are server-renderable for initial page load performance.
+export const Counter = component$(() => {
+  let count = 0; // Not reactive, won't persist across renders/resumability
+  const increment = () => { count++; };
+  return <button onClick$={increment}>{count}</button>;
+});
+```
 
-- **State Management Best Practices:**
-    - Use Qwik's `useStore` for reactive state management.
-    - Consider `useSignal` for simpler reactive values.
-    - Avoid direct DOM manipulation; rely on Qwik's component rendering.
+✅ **GOOD: `useStore` with TypeScript interface**
+```typescript
+// counter.tsx
+import { component$, useStore } from '@builder.io/qwik';
 
-- **Error Handling Patterns:**
-    - Use `try...catch` blocks to handle errors gracefully.
-    - Display user-friendly error messages.
-    - Log errors for debugging and monitoring.
-    - Consider using error boundary components to prevent entire application crashes.
+interface CounterStore {
+  count: number;
+}
 
-## 3. Performance Considerations
+export const Counter = component$(() => {
+  const store = useStore<CounterStore>({ count: 0 });
+  return (
+    <button onClick$={() => store.count++}>
+      Count: {store.count}
+    </button>
+  );
+});
+```
 
-- **Optimization Techniques:**
-    - Use Qwik's optimizer to minimize bundle size and improve performance.
-    - Leverage server rendering to improve initial page load time.
-    - Optimize images and other assets.
-    - Use Qwik's built-in lazy loading features.
+### 3. Defer Client-Side Effects with `useVisibleTask$`
 
-- **Memory Management:**
-    - Avoid memory leaks by properly cleaning up resources.
-    - Unsubscribe from subscriptions and event listeners when components unmount.
+Execute client-specific logic, such as third-party library initialization or DOM manipulation, only when a component becomes visible in the viewport. This prevents unnecessary JavaScript execution on initial load. For effects that *must* run on the client regardless of visibility, use `useClientEffect$`.
 
-- **Rendering Optimization:**
-    - Use `track` property in `useStore` to selectively trigger updates.
-    - Memoize expensive computations using `useComputed$()`
-    - Avoid unnecessary re-renders by ensuring component props are stable.
+❌ **BAD: Eager client-side effect in component render**
+```typescript
+// chart-component.tsx
+import { component$ } from '@builder.io/qwik';
+import Chart from 'chart.js'; // This will be bundled and executed eagerly
 
-- **Bundle Size Optimization:**
-    - Use code splitting to reduce the initial bundle size.
-    - Remove unused code and dependencies.
-    - Use tree shaking to eliminate dead code.
+export const ChartComponent = component$(() => {
+  // This code runs on the server and client, potentially causing errors or unnecessary work
+  const canvasRef = useRef<HTMLCanvasElement>();
+  useEffect(() => { // React-style hook, not Qwik-native
+    if (canvasRef.current) {
+      new Chart(canvasRef.current, { /* ... */ });
+    }
+  }, []);
+  return <canvas ref={canvasRef}></canvas>;
+});
+```
 
-- **Lazy Loading Strategies:**
-    - Use Qwik's built-in lazy loading features for components and routes.
-    - Consider using dynamic imports for loading modules on demand.
+✅ **GOOD: `useVisibleTask$` for client-side effects**
+```typescript
+// chart-component.tsx
+import { component$, useSignal, useVisibleTask$ } from '@builder.io/qwik';
+// Import client-side library dynamically or ensure it's tree-shaken
+import type Chart from 'chart.js'; // Use type import to avoid bundling
 
-## 4. Security Best Practices
+export const ChartComponent = component$(() => {
+  const canvasRef = useSignal<HTMLCanvasElement>();
 
-- **Common Vulnerabilities:**
-    - **Cross-Site Scripting (XSS):** Prevent XSS attacks by sanitizing user inputs and using Qwik's built-in escaping mechanisms.
-    - **Cross-Site Request Forgery (CSRF):** Implement CSRF protection by using tokens and validating requests.
-    - **Injection Attacks:** Prevent SQL injection and other injection attacks by using parameterized queries and escaping user inputs.
+  useVisibleTask$(({ track }) => {
+    track(() => canvasRef.value); // Re-run if canvasRef changes
+    if (canvasRef.value) {
+      // Dynamically import Chart.js to ensure it's only loaded on the client when needed
+      import('chart.js').then(({ default: Chart }) => {
+        new Chart(canvasRef.value!, {
+          type: 'bar',
+          data: {
+            labels: ['Red', 'Blue', 'Yellow'],
+            datasets: [{
+              label: '# of Votes',
+              data: [12, 19, 3],
+              backgroundColor: ['red', 'blue', 'yellow'],
+            }],
+          },
+        });
+      });
+    }
+  });
 
-- **Input Validation:**
-    - Validate all user inputs on both the client and server sides.
-    - Use appropriate data types and formats.
-    - Sanitize user inputs to prevent XSS attacks.
+  return <canvas ref={canvasRef}></canvas>;
+});
+```
 
-- **Authentication and Authorization Patterns:**
-    - Use a secure authentication mechanism, such as OAuth or JWT.
-    - Implement proper authorization checks to ensure users only have access to the resources they are authorized to access.
+### 4. Use `$` Suffix for All QRLs
 
-- **Data Protection Strategies:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use HTTPS to secure communication between the client and server.
-    - Implement proper access controls to protect data from unauthorized access.
+Any function that needs to be code-split and lazy-loaded by Qwik's optimizer **must** end with a `$` suffix. This includes components (`component$`), event handlers (`onClick$`, `onInput$`), and hooks (`useStore`, `useTask$`, `useVisibleTask$`, `useClientEffect$`, `useResource$`, `useSignal$`).
 
-- **Secure API Communication:**
-    - Use HTTPS for all API requests.
-    - Validate API responses.
-    - Implement rate limiting to prevent abuse.
+❌ **BAD: Missing `$` suffix on event handler**
+```typescript
+// button.tsx
+import { component$ } from '@builder.io/qwik';
 
-## 5. Testing Approaches
+export const MyButton = component$(() => {
+  const handleClick = () => { // Missing '$'
+    console.log('Button clicked!');
+  };
+  return <button onClick={handleClick}>Click me</button>; // Will not be lazy-loaded
+});
+```
 
-- **Unit Testing Strategies:**
-    - Write unit tests for individual components, services, and utilities.
-    - Use a testing framework like Jest or Vitest.
-    - Mock dependencies to isolate units under test.
+✅ **GOOD: Correct `$` suffix for QRLs**
+```typescript
+// button.tsx
+import { component$ } from '@builder.io/qwik';
 
-- **Integration Testing:**
-    - Write integration tests to verify interactions between different parts of the application.
-    - Test the integration of components, services, and routes.
+export const MyButton = component$(() => {
+  const handleClick = component$(() => { // Even internal functions can be QRLs
+    console.log('Button clicked!');
+  });
+  return <button onClick$={handleClick}>Click me</button>; // Correctly lazy-loaded
+});
+```
 
-- **End-to-end Testing:**
-    - Write end-to-end tests to verify the entire application flow.
-    - Use a testing framework like Playwright or Cypress.
-    - Test user interactions and navigation.
+### 5. Leverage Qwik City for Routing and Data Loading
 
-- **Test Organization:**
-    - Organize tests into separate directories based on the type of test.
-    - Use descriptive test names.
-    - Follow a consistent testing style.
+For applications using Qwik City, utilize its file-system based routing, layouts, and `loader$` functions for efficient data fetching. This provides a zero-overhead solution for server-side data loading and routing.
 
-- **Mocking and Stubbing:**
-    - Use mocking and stubbing to isolate units under test.
-    - Mock external dependencies, such as APIs and databases.
+❌ **BAD: Manual routing or client-side data fetching for initial load**
+```typescript
+// routes/products/index.tsx
+import { component$, useClientEffect$, useStore } from '@builder.io/qwik';
 
-## 6. Common Pitfalls and Gotchas
+export default component$(() => {
+  const store = useStore({ products: [] });
+  useClientEffect$(async () => { // Data fetched on client, after hydration
+    const res = await fetch('/api/products');
+    store.products = await res.json();
+  });
+  return <div>{/* ... render products ... */}</div>;
+});
+```
 
-- **Frequent Mistakes:**
-    - Forgetting to use Qwik's `component$` for creating components.
-    - Not using `use*` hooks for managing state and effects.
-    - Over-reliance on `globalThis`.
+✅ **GOOD: `loader$` for server-side data fetching**
+```typescript
+// routes/products/index.tsx
+import { component$ } from '@builder.io/qwik';
+import { routeLoader$ } from '@builder.io/qwik-city';
 
-- **Edge Cases:**
-    - Handling errors during server rendering.
-    - Dealing with different browser environments.
-    - Managing application state across multiple pages.
+interface Product {
+  id: string;
+  name: string;
+}
 
-- **Version-Specific Issues:**
-    - Be aware of breaking changes between Qwik versions.
-    - Consult the Qwik changelog for migration instructions.
+// Data fetched on the server during SSR, then serialized and resumed on client
+export const useProducts = routeLoader$(async () => {
+  const res = await fetch('https://api.example.com/products'); // Fetch from an API
+  const products: Product[] = await res.json();
+  return products;
+});
 
-- **Compatibility Concerns:**
-    - Ensure your application is compatible with different browsers and devices.
-    - Use polyfills to support older browsers.
+export default component$(() => {
+  const products = useProducts(); // Access the loaded data
+  return (
+    <div>
+      <h1>Products</h1>
+      <ul>
+        {products.value.map((product) => (
+          <li key={product.id}>{product.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+});
+```
 
-- **Debugging Strategies:**
-    - Use browser developer tools for debugging.
-    - Use Qwik's built-in debugging features.
-    - Log errors and warnings.
+### 6. Use `PropFunction` for Passing Functions as Props
 
-## 7. Tooling and Environment
+When passing a function as a prop to a child component that itself is a `component$`, ensure the prop type is `PropFunction<(...args: any[]) => any>`. This signals to Qwik that the function is a QRL and should be serialized and lazy-loaded.
 
-- **Recommended Development Tools:**
-    - Visual Studio Code with the Qwik extension.
-    - Node.js and npm.
-    - A modern web browser.
+❌ **BAD: Passing a regular function type as a prop**
+```typescript
+// child-button.tsx
+import { component$ } from '@builder.io/qwik';
 
-- **Build Configuration:**
-    - Use Vite for building and bundling Qwik applications.
-    - Configure Vite to optimize the build for production.
+interface ChildButtonProps {
+  onClick: () => void; // Not a PropFunction
+}
 
-- **Linting and Formatting:**
-    - Use ESLint and Prettier for linting and formatting code.
-    - Configure ESLint and Prettier to follow Qwik's coding style.
+export const ChildButton = component$((props: ChildButtonProps) => {
+  return <button onClick$={props.onClick}>Child Button</button>;
+});
 
-- **Deployment Best Practices:**
-    - Deploy your application to a serverless environment, such as Netlify or Vercel.
-    - Configure your server to serve static assets efficiently.
-    - Use a CDN to cache static assets.
+// parent-component.tsx
+import { component$ } from '@builder.io/qwik';
+import { ChildButton } from './child-button';
 
-- **CI/CD Integration:**
-    - Integrate your application with a CI/CD pipeline.
-    - Automate testing, building, and deployment.
+export const ParentComponent = component$(() => {
+  const handleParentClick = component$(() => console.log('Parent handled click'));
+  return <ChildButton onClick={handleParentClick} />; // Type mismatch, potential issues
+});
+```
+
+✅ **GOOD: Using `PropFunction` for function props**
+```typescript
+// child-button.tsx
+import { component$, type PropFunction } from '@builder.io/qwik';
+
+interface ChildButtonProps {
+  onClick$: PropFunction<() => void>; // Correctly typed as a PropFunction
+}
+
+export const ChildButton = component$((props: ChildButtonProps) => {
+  return <button onClick$={props.onClick$}>Child Button</button>;
+});
+
+// parent-component.tsx
+import { component$ } from '@builder.io/qwik';
+import { ChildButton } from './child-button';
+
+export const ParentComponent = component$(() => {
+  const handleParentClick = component$(() => console.log('Parent handled click'));
+  return <ChildButton onClick$={handleParentClick} />; // Correctly passing QRL
+});
+```
+
+### 7. Adopt Atomic CSS (e.g., Tailwind CSS)
+
+Integrate styling solutions like Tailwind CSS that generate static, utility-first classes at build time. This avoids runtime style calculations and keeps CSS payloads minimal, aligning with Qwik's performance goals.
+
+❌ **BAD: Runtime CSS-in-JS or complex dynamic styling**
+```typescript
+// styled-button.tsx
+import { component$ } from '@builder.io/qwik';
+import { css } from '@emotion/css'; // Runtime CSS-in-JS
+
+const buttonStyle = css`
+  background-color: blue;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  &:hover {
+    background-color: darkblue;
+  }
+`;
+
+export const StyledButton = component$(() => {
+  return <button class={buttonStyle}>Styled Button</button>;
+});
+```
+
+✅ **GOOD: Tailwind CSS for static styling**
+```typescript
+// tailwind-button.tsx
+import { component$ } from '@builder.io/qwik';
+
+export const TailwindButton = component$(() => {
+  return (
+    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+      Tailwind Button
+    </button>
+  );
+});
+```
+
+### 8. Use Vitest and Playwright for Testing
+
+Leverage Qwik's built-in testing stack: Vitest for unit and component tests, and Playwright for end-to-end scenarios. These tools are integrated and optimized for Qwik's unique architecture, ensuring your lazy-loading and resumability work correctly.
+
+❌ **BAD: Using Jest/Enzyme for Qwik component testing**
+```typescript
+// my-component.test.js (using Jest)
+import { render } from '@testing-library/react'; // Incorrect library for Qwik
+import { MyComponent } from './my-component';
+
+test('MyComponent renders correctly', () => {
+  const { getByText } = render(<MyComponent />);
+  expect(getByText('Hello')).toBeInTheDocument();
+});
+```
+
+✅ **GOOD: Vitest for Qwik component testing**
+```typescript
+// my-component.test.tsx (using Vitest)
+import { render, screen } from '@builder.io/qwik/testing';
+import { component$ } from '@builder.io/qwik';
+import { MyComponent } from './my-component'; // Assuming MyComponent is a Qwik component
+
+describe('MyComponent', () => {
+  it('should render correctly', async () => {
+    await render(<MyComponent />);
+    expect(screen.getByText('Hello Qwik!')).toBeInTheDocument();
+  });
+
+  it('should handle click event', async () => {
+    const mockFn = vi.fn();
+    const TestComponent = component$(() => {
+      return <button onClick$={mockFn}>Click Me</button>;
+    });
+
+    await render(<TestComponent />);
+    await screen.getByRole('button', { name: 'Click Me' }).click();
+    expect(mockFn).toHaveBeenCalledTimes(1);
+  });
+});
+```

@@ -1,134 +1,241 @@
 ---
-description: Enforces consistent code formatting using Black, the uncompromising Python code formatter, promoting readability and reducing diffs. Covers best practices related to Black's configuration, usage, and integrations.
-globs: *.py
+description: Enforce consistent Python code formatting using Black, automate style checks, and integrate seamlessly into development workflows to eliminate style debates and speed up code reviews.
+globs: **/*.py
 ---
-- Adopt Black as the primary code formatter for all Python projects.
-- Adhere to Black's default style guide for consistent formatting across projects.
-- Integrate Black into the development workflow using pre-commit hooks and CI/CD pipelines.
-- Configure Black using `pyproject.toml` file for project-specific settings, if needed.
-- Use Black's CLI or editor integrations for seamless formatting.
+# black Best Practices
 
-## Black Code Formatting Best Practices
+`black` is the uncompromising Python code formatter. Our team adopts `black` as the definitive style guide for all Python projects. By using `black`, you cede control over formatting minutiae, gaining speed, determinism, and freedom from style debates.
 
-Black is the uncompromising Python code formatter. By using it, you agree to cede control over minutiae of hand-formatting. In return, Black gives you speed, determinism, and freedom from `pycodestyle` nagging about formatting. You will save time and mental energy for more important matters.
+**🚨 IMPORTANT: For new projects, or if migrating, strongly consider [Ruff](https://pydevtools.com/handbook/reference/ruff/) instead of `black`. Ruff offers superior performance and combines formatting, linting, and import sorting into a single tool. If your project is already committed to `black`, these guidelines apply.**
 
-### Key Principles
+## 1. Core Principle: Cede Control
 
-- **Consistency:** Black enforces a consistent code style, reducing ambiguity and promoting readability.
-- **Automation:** Black automates the formatting process, eliminating manual effort and reducing formatting-related code review comments.
-- **Integration:** Black integrates seamlessly with popular development tools and workflows.
-- **Minimal Configuration:** Black provides sensible defaults and limits configuration options to ensure consistency.
+`black` is opinionated by design. Do not fight its formatting. Embrace its defaults to achieve ultimate consistency across the codebase.
 
-### 1. Code Organization and Structure
+## 2. Installation and Configuration
 
-Black primarily focuses on formatting within files, but it indirectly influences code organization by promoting readability and consistent style. Consider the following:
+Always install the latest stable version of `black` (v25.12.0 as of Dec 2025) and configure it via `pyproject.toml`.
 
-- **Directory Structure:** Black doesn't enforce a specific directory structure. However, a well-organized project with clear module boundaries will benefit more from consistent formatting.
-- **File Naming Conventions:** Black uses the `.py` extension for python files. Adhering to PEP 8 naming conventions alongside Black is recommended for improved readability (`snake_case` for variables, functions, and modules; `PascalCase` for classes).
-- **Module Organization:** Black formats code within modules. Break large modules into smaller, more manageable files to improve readability and maintainability. Organize related functions and classes within modules.
-- **Component Architecture:** Black can be used with any component architecture. Focus on creating well-defined components with clear interfaces. Consistent formatting within each component enhances maintainability.
-- **Code Splitting Strategies:** Black formats code regardless of the splitting strategy. Break code into smaller functions or classes to improve code readability and organization.
+### 2.1. Project Dependency
 
-### 2. Common Patterns and Anti-patterns
+Declare `black` as a development dependency.
 
-- **Design Patterns:** Black doesn't impose any specific design patterns. However, it encourages clean, readable code that makes it easier to implement design patterns correctly. For example, consistent formatting makes it easier to identify and understand the structure of a Factory pattern.
-- **Recommended Approaches:**
-    - Use Black on all Python files in your project.
-    - Integrate Black into your pre-commit hooks to automatically format code before committing.
-    - Use Black's CLI to format entire directories or specific files.
-    - Configure Black using `pyproject.toml` to customize settings like line length, if necessary.
-- **Anti-patterns:**
-    - Manually formatting code instead of using Black.
-    - Ignoring Black's formatting suggestions.
-    - Disabling Black for specific files or sections of code without a strong reason.
-- **State Management:** Black doesn't directly address state management, but its consistent formatting promotes code clarity, making state management strategies easier to implement and understand. Consider using established state management patterns like Redux or Context API (if applicable).
-- **Error Handling:** Black encourages readable code, making it easier to implement and understand error handling mechanisms. Use `try...except` blocks to handle exceptions gracefully. Consistent formatting of exception handling code improves maintainability.
+❌ **BAD: Global installation or missing dependency**
+```toml
+# pyproject.toml
+# black not listed, relies on global install or manual management
+```
 
-### 3. Performance Considerations
+✅ **GOOD: `black` as a development dependency**
+```toml
+# pyproject.toml
+[project]
+name = "my-project"
+version = "0.1.0"
 
-Black's formatting process itself has minimal performance overhead. The main performance considerations are related to the code being formatted, not Black itself.
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
 
-- **Optimization Techniques:** Black-formatted code is easier to read and understand, which can help identify performance bottlenecks. Use profiling tools to identify slow code and optimize accordingly.
-- **Memory Management:** Black doesn't directly affect memory management. Follow Python's memory management best practices, such as using generators for large datasets and avoiding circular references.
-- **Rendering Optimization:** Not applicable as Black is primarily a code formatter and not directly involved in rendering.
-- **Bundle Size Optimization:** Not applicable as Black is a code formatter. Bundle size optimization techniques are relevant to web applications or other deployments where code size impacts load times.
-- **Lazy Loading:** Not applicable as Black is a code formatter.
+[tool.poetry.group.dev.dependencies]
+black = "^25.12.0" # Always pin to latest major/minor
+```
 
-### 4. Security Best Practices
+### 2.2. `pyproject.toml` Configuration
 
-Black improves code readability, which can help identify potential security vulnerabilities. However, Black itself doesn't directly address security. Focus on the following security best practices:
+Stick to `black`'s defaults. Only configure line length if absolutely necessary for legacy reasons (e.g., integrating with an older codebase that has a different standard).
 
-- **Common Vulnerabilities:** Black doesn't prevent common vulnerabilities like SQL injection or cross-site scripting (XSS). Use secure coding practices to avoid these vulnerabilities.
-- **Input Validation:** Implement robust input validation to prevent injection attacks. Black's consistent formatting makes it easier to review input validation code.
-- **Authentication and Authorization:** Use established authentication and authorization patterns to protect your application. Black's consistent formatting can improve the readability of authentication and authorization code.
-- **Data Protection:** Use encryption to protect sensitive data. Follow data protection best practices, such as storing passwords securely.
-- **Secure API Communication:** Use HTTPS to encrypt API communication. Implement API authentication and authorization to prevent unauthorized access.
-
-### 5. Testing Approaches
-
-Black promotes consistent code formatting, making tests easier to write, read, and maintain.
-
-- **Unit Testing:** Write unit tests for individual functions and classes. Black's consistent formatting makes it easier to write clear and concise unit tests.
-- **Integration Testing:** Write integration tests to verify that different components of your application work together correctly. Consistent formatting makes it easier to understand the interactions between components.
-- **End-to-end Testing:** Write end-to-end tests to verify that your application works as expected from a user's perspective. Consistent formatting makes it easier to debug end-to-end tests.
-- **Test Organization:** Organize your tests into a logical directory structure. Follow a consistent naming convention for test files and functions.
-- **Mocking and Stubbing:** Use mocking and stubbing to isolate units of code during testing. Black's consistent formatting makes it easier to understand the code being tested and create appropriate mocks.
-
-### 6. Common Pitfalls and Gotchas
-
-- **Frequent Mistakes:**
-    - Not integrating Black into the development workflow.
-    - Ignoring Black's formatting suggestions.
-    - Over-configuring Black and deviating from its default style.
-- **Edge Cases:**
-    - Black may have difficulty formatting very complex or deeply nested expressions.
-    - Black's formatting may not always be optimal for specific use cases.
-- **Version-specific Issues:**
-    - Ensure that all developers are using the same version of Black to avoid formatting inconsistencies.
-- **Compatibility Concerns:**
-    - Black may have compatibility issues with older versions of Python or other tools.
-- **Debugging Strategies:**
-    - Use Black's CLI to format code and identify formatting issues.
-    - Use a debugger to step through code and understand its behavior.
-
-### 7. Tooling and Environment
-
-- **Recommended Tools:**
-    - Black: The primary code formatter.
-    - Pre-commit: A tool for managing pre-commit hooks.
-    - VS Code, PyCharm, or other Python IDEs with Black integration.
-- **Build Configuration:**
-    - Configure Black in your project's `pyproject.toml` file.
-    - Integrate Black into your build process to automatically format code.
-- **Linting and Formatting:**
-    - Use Black for formatting and other linters (e.g., Flake8, pylint) for code quality checks.
-    - Configure your linter to ignore formatting errors reported by Black.
-- **Deployment:**
-    - Ensure that your deployment environment has Black installed.
-    - Run Black as part of your deployment process to ensure consistent formatting.
-- **CI/CD Integration:**
-    - Integrate Black into your CI/CD pipeline to automatically format code and run tests.
-
-### Example `.pre-commit-config.yaml`
-
-
-repos:
--   repo: https://github.com/psf/black
-    rev: 24.2.2  # Replace with the latest version
-    hooks:
-    -   id: black
-
-
-### Example `pyproject.toml`
-
-toml
+❌ **BAD: Over-configuring `black`**
+```toml
+# pyproject.toml
 [tool.black]
-line-length = 88
-target-version = ['py38', 'py39', 'py310']
-include = '\.pyi?$'
-exclude = '''
-/(\.(git|hg|mypy_cache|tox|venv)|_build|build|dist)/  # Removed: |/foo/bar/
-'''
+line-length = 100 # Deviating from 88 without strong reason
+skip-string-normalization = true # Disabling core black features
+```
 
+✅ **GOOD: Minimal `black` configuration (default 88 chars)**
+```toml
+# pyproject.toml
+[tool.black]
+# No configuration needed; defaults are best.
+# If you must change line-length, do so sparingly:
+# line-length = 88
+```
 
-By following these best practices, you can leverage Black to improve code quality, enhance collaboration, and reduce development time.
+## 3. Automated Formatting Workflow
+
+Integrate `black` into your development pipeline to ensure continuous consistency.
+
+### 3.1. Pre-commit Hooks
+
+Use `pre-commit` to automatically format files before every commit. This catches formatting issues early.
+
+❌ **BAD: Manual formatting or relying on CI only**
+```bash
+# Developer forgets to run black before committing
+git commit -m "feat: new feature" # Unformatted code committed
+```
+
+✅ **GOOD: `black` via `pre-commit`**
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/psf/black
+    rev: 25.12.0 # Use the latest stable version
+    hooks:
+      - id: black
+        language_version: python3.11 # Match your project's Python version
+```
+**Action**: Install `pre-commit` (`pip install pre-commit`) and set up hooks (`pre-commit install`).
+
+### 3.2. CI/CD Integration
+
+Ensure your CI pipeline checks for `black` compliance and fails the build on any formatting mismatch.
+
+❌ **BAD: CI passes even with unformatted code**
+```bash
+# In CI script
+# No black check, or black --diff only
+```
+
+✅ **GOOD: CI enforces `black` formatting**
+```bash
+# In CI script (e.g., .github/workflows/main.yml)
+- name: Check code style with Black
+  run: pip install black==25.12.0 && black --check .
+```
+
+## 4. Code Organization and Structure
+
+`black` ensures consistent formatting, which indirectly improves code organization and readability.
+
+### 4.1. Import Sorting
+
+`black` does *not* sort imports. Pair it with `isort` (or Ruff's built-in import sorting) for a complete solution.
+
+❌ **BAD: Unsorted imports**
+```python
+import os
+from my_module import ClassA
+import sys
+from third_party import lib
+```
+
+✅ **GOOD: Sorted imports (with `isort` or Ruff)**
+```python
+import os
+import sys
+
+from third_party import lib
+
+from my_module import ClassA
+```
+**Action**: Add `isort` to your `pre-commit-config.yaml` or use Ruff.
+
+### 4.2. Consistent String Quotes and Trailing Commas
+
+`black` enforces double quotes for strings and trailing commas in multi-line constructs.
+
+❌ **BAD: Inconsistent quotes, missing trailing commas**
+```python
+my_string = 'hello world'
+my_list = [
+    1,
+    2
+]
+```
+
+✅ **GOOD: `black`-formatted strings and lists**
+```python
+my_string = "hello world"
+my_list = [
+    1,
+    2, # Trailing comma for multi-line
+]
+```
+
+## 5. Type Hints
+
+`black` consistently formats type hints, making them more readable. Always use explicit type hints.
+
+❌ **BAD: Inconsistent spacing or missing type hints**
+```python
+def process_data(data : list):
+    return len(data)
+
+def get_name(user):
+    return user.name
+```
+
+✅ **GOOD: `black`-formatted and explicit type hints**
+```python
+from typing import Any
+
+def process_data(data: list[Any]) -> int:
+    return len(data)
+
+def get_name(user: Any) -> str:
+    return user.name
+```
+
+## 6. Testing Approaches
+
+`black` ensures your test files are as consistently formatted and readable as your application code. This aids in test maintenance and debugging.
+
+❌ **BAD: Unformatted or inconsistently formatted test files**
+```python
+def test_addition():
+    assert 1+1 == 2
+```
+
+✅ **GOOD: `black`-formatted test files**
+```python
+def test_addition():
+    assert 1 + 1 == 2
+```
+**Action**: Ensure `black` runs on your `tests/` directory.
+
+## 7. Common Pitfalls and Gotchas
+
+### 7.1. Version Mismatches
+
+Inconsistent `black` versions across the team or CI can lead to re-formatting churn.
+
+❌ **BAD: Different `black` versions in use**
+```bash
+# Dev A uses black 24.1.0, Dev B uses black 25.12.0
+# Code formatted by A gets re-formatted by B, leading to noisy diffs.
+```
+
+✅ **GOOD: Standardized `black` version**
+```toml
+# pyproject.toml
+[tool.poetry.group.dev.dependencies]
+black = "==25.12.0" # Pin to exact version for consistency
+```
+**Action**: Pin `black` to an exact version in `pyproject.toml` and `pre-commit-config.yaml`.
+
+### 7.2. Ignoring `black`
+
+Disabling `black` for specific files or sections without a strong, documented reason undermines consistency.
+
+❌ **BAD: Disabling `black` for convenience**
+```python
+# my_module.py
+# fmt: off
+def ugly_function():
+    # ... unformatted code ...
+# fmt: on
+```
+
+✅ **GOOD: Trust `black`'s formatting**
+```python
+# my_module.py
+def ugly_function():
+    # black will format this consistently
+    result = (
+        "a_very_long_string_that_black_will_wrap_nicely"
+        + "another_part_of_the_string"
+    )
+    return result
+```
+**Action**: Only use `fmt: off`/`fmt: on` directives as a last resort for genuinely un-black-able code, and document why.

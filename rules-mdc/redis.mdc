@@ -1,75 +1,330 @@
 ---
-description: This rule provides best practices for working with Redis, covering code organization, performance, security, testing, and common pitfalls to ensure efficient and reliable usage. It applies to any language file interacting with Redis.
-globs: *.py,*.js,*.go,*.java,*.c,*.cpp,*.rb,*.php,*.ts,*.rs,*.kt,*.scala
+description: This guide provides definitive, actionable best practices for using Redis effectively, focusing on data modeling, performance, security, and cluster-aware client usage to build robust and scalable applications.
+globs: **/*
 ---
-- **General Best Practices**
-  - Follow official Redis documentation and community best practices.
-  - Use the most recent stable version of the Redis client library for your language.
-  - Regularly update the Redis server and client libraries to benefit from bug fixes, performance improvements, and security patches.
+# Redis Best Practices
 
-- **Connection Management**
-  - **Connection Pooling:** Use connection pooling to reduce the overhead of creating new connections for each operation.  This significantly improves performance, especially in high-traffic scenarios.
-  - **Connection Timeout:** Configure appropriate connection timeouts to prevent indefinite blocking in case of network issues.
-  - **Retry Logic:** Implement retry logic with exponential backoff for transient connection errors.
-  - **Secure Connections:**  When connecting to a remote Redis instance, always use TLS/SSL encryption (redis+ssl://) to protect data in transit, especially when dealing with sensitive information. Ensure proper certificate validation.
+Redis is a powerful, single-threaded, in-memory database. Its efficiency hinges on how you interact with it. Follow these rules to ensure your applications are performant, scalable, and resilient.
 
-- **Data Modeling and Serialization**
-  - **Key Naming:** Use consistent and meaningful key naming conventions. Consider using namespaces or prefixes to organize keys and avoid collisions.
-  - **Data Serialization:** Choose an efficient serialization format (e.g., JSON, Protocol Buffers, MessagePack) and use it consistently.  Consider the trade-offs between human readability, storage space, and serialization/deserialization performance.
-  - **Smaller Values:**  Redis works best with smaller values. Break larger data structures into smaller chunks and distribute them across multiple keys.  This improves memory utilization and performance.
-  - **Data Types:**  Leverage Redis's rich data types (strings, lists, sets, sorted sets, hashes, streams) effectively to optimize data storage and operations.  Choose the data type that best suits the use case.
+## 1. Data Modeling & Key Design
 
-- **Command Usage**
-  - **Transactions:** Use transactions (`MULTI`, `EXEC`, `DISCARD`, `WATCH`) to ensure atomicity when performing multiple operations.  Be aware of the limitations of Redis transactions (no rollback on individual command failure).
-  - **Pipelines:** Use pipelines to batch multiple commands together and reduce network round-trip time. This dramatically improves performance for bulk operations.
-  - **Lua Scripting:** Use Lua scripting for complex operations that require atomicity and server-side processing.  This reduces network traffic and improves performance compared to executing multiple individual commands.
-  - **Avoid Blocking Commands:**  Avoid using blocking commands like `KEYS`, `FLUSHALL`, `FLUSHDB`, `SORT` without `LIMIT` in production environments. These commands can block the Redis server and degrade performance.
-  - **Use SCAN:** Instead of `KEYS`, use the `SCAN` command for iterating over keys in a non-blocking manner.  This allows the Redis server to continue serving other requests while iterating.
-  - **Efficient Deletion:** Instead of `FLUSHALL` or `FLUSHDB`, use `SCAN` with `DEL` to delete keys in batches, minimizing disruption to the server.
-  - **TTL Management:** Set appropriate Time-To-Live (TTL) values for keys to automatically expire data that is no longer needed. This helps manage memory usage and prevent data from becoming stale.
+Efficient key design is paramount for performance and memory.
 
-- **Memory Management**
-  - **Maxmemory:** Configure the `maxmemory` directive to limit the amount of memory Redis can use.  When the limit is reached, Redis will evict keys based on the configured eviction policy.
-  - **Eviction Policies:** Choose an appropriate eviction policy (e.g., `LRU`, `LFU`, `volatile-ttl`) based on your application's needs. Understand the trade-offs between different eviction policies.
-  - **Memory Fragmentation:** Monitor memory fragmentation and consider restarting Redis periodically to defragment memory. The `INFO memory` command provides information about memory usage and fragmentation.
+### 1.1. Use Hierarchical Key Naming
 
-- **Performance Monitoring and Tuning**
-  - **Redis Monitor:** Use the `MONITOR` command (with caution in production) to observe real-time commands being executed on the server.  This can help identify performance bottlenecks.
-  - **Redis Slow Log:** Configure the Redis slow log to record commands that take longer than a specified amount of time to execute. Analyze the slow log to identify performance issues.
-  - **INFO Command:** Use the `INFO` command to gather information about the Redis server, including memory usage, CPU usage, and client connections.  This information can be used to monitor performance and identify potential problems.
-  - **Latency Monitoring:** Monitor Redis latency using tools like `redis-cli --latency` or dedicated monitoring solutions.  High latency can indicate performance issues.
+Adopt a consistent, hierarchical key naming convention. This improves readability and allows for logical grouping.
 
-- **Security Considerations**
-  - **Authentication:**  Enable authentication using the `requirepass` directive to protect the Redis server from unauthorized access.  Use a strong password.
-  - **Access Control Lists (ACLs):** Use ACLs to restrict access to specific commands and keys for different users.  This provides fine-grained control over access to Redis data.
-  - **Network Security:**  Restrict network access to the Redis server using firewalls or other network security measures.  Only allow connections from trusted sources.
-  - **Disable Unsafe Commands:**  Disable or rename potentially dangerous commands like `FLUSHALL`, `FLUSHDB`, `KEYS`, `EVAL` using the `rename-command` directive.  This reduces the risk of accidental or malicious misuse.
-  - **Regular Audits:** Conduct regular security audits of the Redis configuration and usage patterns to identify and address potential vulnerabilities.
-  - **Input Validation:** Always validate and sanitize any data being stored in Redis to prevent injection attacks.
+❌ BAD
+```redis
+user:1:name
+user:1:email
+product:123:details
+order:456:items
+```
 
-- **Testing Strategies**
-  - **Unit Tests:** Write unit tests to verify the functionality of your code that interacts with Redis.  Use mocking or stubbing to isolate the Redis interactions from the rest of the code.
-  - **Integration Tests:** Write integration tests to verify the interaction between your code and the Redis server.  Use a dedicated test Redis instance for integration tests.
-  - **End-to-End Tests:** Write end-to-end tests to verify the entire application flow, including the interaction with Redis.  This ensures that the application works correctly in a realistic environment.
-  - **Data Population:** When testing, consider populating your redis database with a representative set of data. 
-  - **Test Organization:** Organize tests logically, separating unit, integration, and end-to-end tests into different directories or modules.
-  - **Mocking and Stubbing:** Use mocking and stubbing frameworks to simulate Redis behavior during unit tests.
+✅ GOOD
+```redis
+user:1:profile:name
+user:1:profile:email
+product:123:data
+order:456:cart:items
+```
+*Rationale*: Clearer separation, better organization.
 
-- **Code Organization and Structure**
-  - **Dedicated Module:** Create a dedicated module or class to encapsulate all Redis-related operations.  This promotes code reuse and maintainability.
-  - **Configuration Management:** Store Redis connection parameters (host, port, password) in a configuration file or environment variables.  This makes it easy to change the Redis configuration without modifying code.
-  - **Abstraction Layer:**  Consider creating an abstraction layer on top of the Redis client library to provide a higher-level API for your application.  This can improve code readability and make it easier to switch to a different Redis client library in the future.
+### 1.2. Avoid Large Objects in Single Keys
 
-- **Common Pitfalls and Gotchas**
-  - **N+1 Problem:** Avoid the N+1 problem when retrieving data from Redis.  Instead of making multiple individual requests, use pipelining or Lua scripting to retrieve the data in a single request.
-  - **Race Conditions:** Be aware of potential race conditions when updating data in Redis.  Use transactions or Lua scripting to ensure atomicity.
-  - **Large Values:** Avoid storing extremely large values in Redis.  This can lead to performance issues and memory exhaustion.
-  - **Key Expiration:**  Be careful when using key expiration (TTL).  If keys expire unexpectedly, it can lead to data loss or inconsistent application behavior.
-  - **Blocking Operations in Event Loops:** Do not perform blocking Redis operations directly in event loops or GUI threads. Use asynchronous operations instead to avoid blocking the main thread.
+Do not store multi-megabyte objects in a single key. Break down complex data into hashes or streams. This improves eviction, replication, and memory efficiency.
 
-- **Tooling and Environment**
-  - **Redis CLI:** Use the Redis CLI (`redis-cli`) for interacting with the Redis server, executing commands, and monitoring performance.
-  - **Redis Desktop Manager:** Use a Redis desktop manager (e.g., RedisInsight, Medis) for visualizing data, managing keys, and monitoring the Redis server.
-  - **Linting and Formatting:** Configure linters and formatters to enforce consistent code style and best practices in your Redis-related code.
-  - **CI/CD Integration:** Integrate Redis testing and deployment into your CI/CD pipeline to automate the testing and deployment process.
-  - **Monitoring Tools:** Utilize monitoring tools like Prometheus, Grafana, or Datadog to monitor Redis performance and health in production environments.
+❌ BAD
+```python
+# Storing a large JSON object directly as a string
+user_data = {"id": 1, "name": "Alice", "preferences": {...large_object...}, "history": [...many_items...]}
+redis_client.set(f"user:1:data", json.dumps(user_data))
+```
+
+✅ GOOD
+```python
+# Using a Redis Hash for structured data
+redis_client.hset(f"user:1:profile", mapping={
+    "id": 1,
+    "name": "Alice",
+    "email": "alice@example.com"
+})
+# Storing large, evolving data in a stream or separate keys
+redis_client.xadd(f"user:1:activity_stream", {"action": "login", "timestamp": time.time()})
+```
+*Rationale*: Hashes are optimized for field-value pairs, streams for time-series data. This keeps individual values small, aiding Redis's single-threaded nature.
+
+### 1.3. Use Hashtags for Multi-Key Operations in Clusters
+
+When performing multi-key operations (e.g., transactions, Lua scripts) in a Redis Cluster, ensure all involved keys reside on the same hash slot by using hashtags.
+
+❌ BAD
+```python
+# These keys will likely be on different slots, causing MOVED errors in a cluster
+redis_client.mget("user:1:profile", "user:1:orders")
+```
+
+✅ GOOD
+```python
+# Keys with the same hashtag ({...}) are guaranteed to be on the same slot
+redis_client.mget("{user:1}:profile", "{user:1}:orders")
+```
+*Rationale*: Hashtags (`{...}`) force Redis to hash only the content within the braces, ensuring co-location for atomic operations.
+
+### 1.4. Never Use Numbered Databases (`SELECT`)
+
+Numbered databases (`SELECT`) are an anti-pattern. They provide false isolation and are not supported by Redis Cluster.
+
+❌ BAD
+```python
+redis_client.select(1) # Using database 1
+redis_client.set("mykey", "myvalue")
+```
+
+✅ GOOD
+```python
+# Use distinct key prefixes instead of numbered databases
+redis_client.set("app:cache:mykey", "myvalue")
+redis_client.set("app:sessions:mykey", "myvalue")
+```
+*Rationale*: Numbered databases share the same underlying instance, meaning operations like `KEYS` on one database block all others. Key prefixes are the correct way to logically separate data.
+
+## 2. Connection & Memory Management
+
+Proper client configuration and instance sizing are critical.
+
+### 2.1. Always Use Connection Pooling
+
+Creating new TCP connections for every Redis command is expensive. Use a connection pool to reuse connections.
+
+❌ BAD
+```python
+# Creates a new connection for each operation
+redis_client = redis.Redis(host='localhost', port=6379)
+redis_client.set("key", "value")
+redis_client.get("key")
+```
+
+✅ GOOD
+```python
+# Uses a connection pool (default for most clients, but explicitly shown)
+pool = redis.ConnectionPool(host='localhost', port=6379, max_connections=10)
+redis_client = redis.Redis(connection_pool=pool)
+redis_client.set("key", "value")
+redis_client.get("key")
+```
+*Rationale*: Connection pooling significantly reduces overhead and improves latency.
+
+### 2.2. Monitor and Manage Memory Usage
+
+Configure `maxmemory` policies and lazy freeing. Provision instances with sufficient headroom for write spikes.
+
+```redis
+# redis.conf
+maxmemory 8gb             # Set maximum memory usage
+maxmemory-policy allkeys-lru # Evict least recently used keys when memory limit is reached
+lazyfree-lazy-eviction yes # Asynchronously free memory during eviction
+lazyfree-lazy-expire yes   # Asynchronously free memory during key expiration
+lazyfree-lazy-server-del yes # Asynchronously free memory when deleting keys
+```
+*Rationale*: Proactive memory management prevents OOM errors and maintains predictable performance.
+
+## 3. Cluster-Aware Client Usage
+
+When using Redis Cluster, your client must understand the cluster topology.
+
+### 3.1. Use Cluster-Aware Clients
+
+Always use client libraries specifically designed for Redis Cluster (e.g., `redis-py-cluster`, Lettuce, GLIDE). These clients handle slot mapping and `MOVED` redirections automatically.
+
+❌ BAD
+```python
+# This client is not cluster-aware and will fail or perform poorly
+import redis
+client = redis.Redis(host='cluster-node-1', port=6379)
+client.set("mykey", "myvalue")
+```
+
+✅ GOOD
+```python
+# Use a cluster-aware client
+from redis.cluster import RedisCluster
+client = RedisCluster(host='cluster-node-1', port=6379, decode_responses=True)
+client.set("mykey", "myvalue")
+```
+*Rationale*: Cluster-aware clients prevent `MOVED` errors and ensure requests are routed to the correct node, enabling seamless scaling.
+
+### 3.2. Implement Exponential Backoff for Client Discovery
+
+When clients disconnect or need to discover cluster topology, implement exponential backoff with jitter on retries to prevent overwhelming the cluster with `CLUSTER SLOTS` commands.
+
+```python
+import time
+import random
+from redis.cluster import RedisCluster, RedisClusterException
+
+def connect_with_backoff(hosts, max_retries=5):
+    for i in range(max_retries):
+        try:
+            client = RedisCluster(startup_nodes=hosts, decode_responses=True)
+            client.ping() # Verify connection
+            return client
+        except RedisClusterException as e:
+            print(f"Connection failed (attempt {i+1}/{max_retries}): {e}")
+            sleep_time = (2 ** i) + random.uniform(0, 1) # Exponential backoff with jitter
+            time.sleep(sleep_time)
+    raise ConnectionError("Failed to connect to Redis Cluster after multiple retries")
+
+# Example usage
+startup_nodes = [{"host": "node1", "port": 6379}, {"host": "node2", "port": 6379}]
+redis_cluster_client = connect_with_backoff(startup_nodes)
+```
+*Rationale*: Prevents a thundering herd problem during cluster reconfigurations or outages.
+
+## 4. Query Optimization & Batch Operations
+
+Minimize network round-trips and avoid resource-intensive commands.
+
+### 4.1. Use Pipelining for Batch Operations
+
+Group multiple commands into a single request to reduce network latency.
+
+❌ BAD
+```python
+# Multiple round-trips
+redis_client.set("key1", "value1")
+redis_client.set("key2", "value2")
+redis_client.get("key1")
+redis_client.get("key2")
+```
+
+✅ GOOD
+```python
+# Single round-trip for multiple commands
+pipe = redis_client.pipeline()
+pipe.set("key1", "value1")
+pipe.set("key2", "value2")
+pipe.get("key1")
+pipe.get("key2")
+results = pipe.execute()
+```
+*Rationale*: Pipelining batches commands, sending them in one go and receiving all results at once, drastically improving throughput.
+
+### 4.2. Avoid `KEYS` in Production
+
+`KEYS` is a blocking, O(N) operation that can halt your Redis server. Use `SCAN` for iterating keys.
+
+❌ BAD
+```python
+# Blocks the server for large datasets
+all_keys = redis_client.keys("user:*")
+```
+
+✅ GOOD
+```python
+# Iterates keys incrementally without blocking
+cursor = 0
+while True:
+    cursor, keys = redis_client.scan(cursor, match="user:*", count=100)
+    for key in keys:
+        # Process key
+        pass
+    if cursor == 0:
+        break
+```
+*Rationale*: `SCAN` provides an iterator-like interface, distributing the work over multiple calls and preventing server stalls.
+
+### 4.3. Limit Result Sets for Collections
+
+Avoid fetching entire large lists, sets, or hashes. Use `LRANGE` with limits, `HSCAN`, or `SSCAN`.
+
+❌ BAD
+```python
+# Fetches all members of a potentially huge set
+all_members = redis_client.smembers("my_large_set")
+```
+
+✅ GOOD
+```python
+# Iterates members incrementally
+cursor = 0
+while True:
+    cursor, members = redis_client.sscan(cursor, name="my_large_set", count=100)
+    for member in members:
+        # Process member
+        pass
+    if cursor == 0:
+        break
+```
+*Rationale*: Prevents excessive memory usage on both the server and client, and reduces network transfer.
+
+## 5. Security Best Practices
+
+Secure your Redis instances from unauthorized access.
+
+### 5.1. Always Set a Strong Password
+
+Never run a Redis instance without authentication enabled, especially in production.
+
+❌ BAD
+```redis
+# No password configured, highly insecure
+# redis.conf (default)
+# requirepass foobared
+```
+
+✅ GOOD
+```redis
+# redis.conf
+requirepass your_strong_and_unique_password_here
+```
+*Rationale*: An unprotected Redis instance is a common target for attackers.
+
+### 5.2. Isolate Redis Instances
+
+Deploy Redis behind a firewall, in a private network, or within a VPC. Only allow access from trusted application servers.
+
+*Rationale*: Reduces the attack surface by preventing direct public access.
+
+## 6. Testing Approaches
+
+Ensure your Redis interactions are robust and performant.
+
+### 6.1. Use a Dedicated Test Redis Instance
+
+For unit and integration tests, spin up a clean Redis instance (e.g., via Docker) to ensure isolated and repeatable tests.
+
+```python
+# Example using pytest and a local Redis fixture
+import pytest
+import redis
+import docker
+
+@pytest.fixture(scope="session")
+def redis_container():
+    client = docker.from_env()
+    container = client.containers.run('redis:latest', detach=True, ports={'6379/tcp': 6379})
+    time.sleep(2) # Give Redis time to start
+    yield container
+    container.stop()
+    container.remove()
+
+@pytest.fixture(scope="function")
+def redis_client(redis_container):
+    client = redis.Redis(host='localhost', port=6379, decode_responses=True)
+    client.flushdb() # Clear database for each test
+    yield client
+    client.flushdb()
+```
+*Rationale*: Prevents test pollution and ensures tests run against a known state.
+
+### 6.2. Conduct Load Testing
+
+Simulate real-world traffic patterns to identify performance bottlenecks and validate scaling strategies. Tools like `memtier_benchmark` are ideal.
+
+```bash
+# Example memtier_benchmark command
+memtier_benchmark -s localhost -p 6379 -n 100000 -c 50 -t 4 --ratio=1:1
+```
+*Rationale*: Uncovers issues related to connection limits, memory pressure, and command latency under stress.

@@ -1,176 +1,437 @@
 ---
-description: This rule provides comprehensive best practices and coding standards for developing Astro projects. It covers code organization, performance, security, testing, and common pitfalls.
-globs: *.astro
+description: This guide provides opinionated, actionable best practices for building high-performance Astro applications, focusing on zero-JavaScript by default, island architecture, and type safety.
+globs: **/*.{js,jsx,ts,tsx,astro}
 ---
-# Astro Library Best Practices and Coding Standards
+# Astro Best Practices
 
-This document outlines the recommended best practices and coding standards for developing Astro projects to ensure maintainability, performance, and security.
+Astro is a "disappearing" framework designed for shipping zero JavaScript by default, adding interactivity only where needed. Our team leverages Astro for its unparalleled performance and developer experience, especially for content-focused sites. Adhere to these guidelines to maintain a consistent, high-performing, and maintainable codebase.
 
 ## 1. Code Organization and Structure
 
-### 1.1 Project Structure
+Maintain a predictable and logical file structure for easy navigation and scaling.
 
--   **`src/` Directory:**  This directory contains the core source code of your Astro project.
-    -   **`src/pages/`:**  This directory is crucial for routing. Every `.astro`, `.md`, or `.mdx` file in this directory automatically becomes a route. Use a clear and consistent naming convention for your pages (e.g., `about.astro`, `blog/index.astro`, `blog/[slug].astro`).
-    -   **`src/components/`:**  Store reusable UI components in this directory. Organize components into subdirectories based on their functionality or feature area (e.g., `src/components/Header/`, `src/components/Card/`).
-    -   **`src/layouts/`:** Layouts define the overall structure of your pages (e.g., header, footer, navigation).  Use layouts to maintain a consistent look and feel across your website.
-    -   **`src/content/`:**  (Recommended for content-driven sites) Use the Content Collections feature to manage structured content like blog posts, documentation, or product listings.  Define schemas for your content types to ensure data consistency.
-    -   **`src/styles/`:** Store global styles and CSS variables in this directory. Consider using CSS Modules or a CSS-in-JS solution for component-specific styling.
-    -   **`src/scripts/`:**  Place client-side JavaScript files in this directory. Use modules and avoid polluting the global scope.
-    -   **`src/assets/`:**  Store static assets like images, fonts, and other media files in this directory.
--   **`public/` Directory:** This directory contains static assets that don't need processing, such as `robots.txt`, `favicon.ico`, and other files that should be served directly.  Avoid placing images that require optimization in this directory; use the `src/assets/` directory instead.
--   **`astro.config.mjs`:** This file contains the Astro configuration options, including integrations, build settings, and more.  Keep this file well-organized and documented.
--   **`.env`:** Store environment variables in this file.  Use a library like `dotenv` to load environment variables into your application.
+### 1.1 Standard Project Structure
 
-### 1.2 Component Design
+Always scaffold new projects with the official Astro starter and maintain the following structure:
 
--   **Atomic Design Principles:** Consider using Atomic Design principles to structure your components into atoms, molecules, organisms, templates, and pages.  This promotes reusability and maintainability.
--   **Single Responsibility Principle:** Each component should have a single, well-defined responsibility.  Avoid creating large, complex components that do too much.
--   **Props and Slots:** Use props to pass data to components and slots to allow components to accept children.  Define prop types using TypeScript to ensure type safety.
+```
+src/
+├── components/ # Reusable UI components (Astro or UI framework islands)
+│   ├── ui/ # Generic, framework-agnostic components
+│   └── react/ # React-specific components
+├── content/ # Markdown/MDX files for Content Collections
+├── layouts/ # Base page layouts
+├── pages/ # Top-level routes
+├── styles/ # Global CSS, utility classes, Tailwind config
+├── env.d.ts # Global type declarations
+└── astro.config.ts # Type-safe Astro configuration
+```
 
-## 2. Common Patterns and Anti-patterns
+### 1.2 Naming Conventions
 
-### 2.1 UI Framework Integration
+- **Astro Components (`.astro`):** Use `kebab-case`.
+- **UI Framework Components (e.g., React `.jsx`, `.tsx`):** Use `PascalCase`.
+- **Pages (`.astro`):** Use `kebab-case` for file names.
 
--   **Island Architecture:** Embrace Astro's island architecture to minimize JavaScript and improve performance.  Only hydrate interactive components.
--   **Client Directives:** Use `client:load`, `client:idle`, `client:visible`, `client:media`, and `client:only` directives appropriately to control when components are hydrated.  Avoid over-hydrating components.
--   **Framework Component Composition:**  Compose components from different frameworks (React, Vue, Svelte, etc.) within the same Astro page.  This allows you to leverage the strengths of different frameworks.
--   **Passing Props and Children:**  Pass props and children to framework components from Astro components.  Use named slots to organize children.
--   **Anti-pattern: Mixing Astro and Framework Components:** Do not import `.astro` components directly into UI framework components (e.g., `.jsx` or `.svelte`). Use slots to pass static content from Astro components to framework components.
+❌ BAD
+```astro
+<!-- src/components/MyCard.astro -->
+<div class="myCard">...</div>
+```
+```jsx
+// src/components/Mycard.jsx
+export default function Mycard() { return <div>...</div>; }
+```
 
-### 2.2 Data Fetching
+✅ GOOD
+```astro
+<!-- src/components/my-card.astro -->
+<div class="my-card">...</div>
+```
+```jsx
+// src/components/react/MyCard.tsx
+export default function MyCard() { return <div>...</div>; }
+```
 
--   **`fetch` API:** Use the `fetch` API to fetch data from external sources or internal APIs.  Handle errors appropriately.
--   **Content Collections API:** Use the Content Collections API to manage structured content like blog posts or documentation.  Define schemas for your content types.
--   **CMS Integration:** Integrate with a headless CMS like Hygraph, Contentful, or Strapi to manage content.  Use the CMS's API to fetch data and display it on your website.
--   **GraphQL:** When using a CMS that supports GraphQL (like Hygraph), use GraphQL queries to fetch only the data you need.  This can improve performance and reduce data transfer.
+### 1.3 TypeScript Configuration
 
-### 2.3 Routing
+Leverage TypeScript throughout the codebase for type safety, even in `.astro` components.
 
--   **File-Based Routing:**  Use Astro's file-based routing to create routes automatically.  Follow a consistent naming convention for your pages.
--   **Dynamic Routes:** Use dynamic routes (e.g., `[slug].astro`) to handle variable segments in the URL.  Access the route parameters using `Astro.params`.
--   **Nested Routes:** Use nested folders within `src/pages/` to create nested routes.
--   **Anti-pattern: Overly Complex Routing:**  Avoid creating overly complex routing structures.  Keep your routes simple and intuitive.
+**`tsconfig.json`**
+```json
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "verbatimModuleSyntax": true, // Enforce explicit type imports
+    "plugins": [
+      {
+        "name": "@astrojs/ts-plugin" // Essential for editor support
+      }
+    ],
+    "paths": {
+      "@components/*": ["./src/components/*"],
+      "@layouts/*": ["./src/layouts/*"],
+      "@content/*": ["./src/content/*"],
+      "@styles/*": ["./src/styles/*"]
+    }
+  },
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"]
+}
+```
 
-### 2.4 Styling
+**`astro.config.ts`**
+Always use a `.ts` extension for your Astro configuration for type safety.
+```ts
+import { defineConfig } from 'astro/config';
+import react from '@astrojs/react'; // Example integration
 
--   **Scoped CSS:**  Use scoped CSS within Astro components to avoid style conflicts.  This ensures that component styles are isolated.
--   **Global Styles:**  Use global styles for site-wide styling.  Store global styles in `src/styles/global.css`.
--   **CSS Frameworks:** Use CSS frameworks like Tailwind CSS, Bootstrap, or Materialize to speed up development and maintain a consistent look and feel. Install the appropriate integration for your chosen CSS framework.
--   **CSS Modules:** Consider using CSS Modules for component-specific styling.  CSS Modules generate unique class names to avoid naming collisions.
+export default defineConfig({
+  integrations: [react()],
+  // ... other config
+});
+```
+
+## 2. Component Architecture: Astro Islands
+
+Astro's "islands" architecture is fundamental. Prioritize static HTML and introduce interactivity only when and where needed.
+
+### 2.1 Astro Components for Static Content & Layouts
+
+Use `.astro` files for pages, layouts, and components that are primarily static or orchestrate other components. They render to HTML on the server and ship zero JavaScript by default.
+
+```astro
+---
+import Layout from '@layouts/Layout.astro';
+import MyReactCounter from '@components/react/MyReactCounter';
+---
+
+<Layout title="Welcome to Astro">
+  <main>
+    <h1>Hello, Astro!</h1>
+    <p>This is static content.</p>
+    <!-- Render a React island only when visible -->
+    <MyReactCounter client:visible />
+  </main>
+</Layout>
+```
+
+### 2.2 UI Framework Components for Interactivity (Islands)
+
+Use React, Vue, Svelte, etc., components *only* for interactive UI pieces. These are your "islands."
+
+```tsx
+// src/components/react/MyReactCounter.tsx
+import { useState } from 'react';
+
+export default function MyReactCounter() {
+  const [count, setCount] = useState(0);
+  return (
+    <div className="counter">
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(count + 1)}>Increment</button>
+    </div>
+  );
+}
+```
+
+### 2.3 Client Directives for Selective Hydration
+
+Explicitly tell Astro *when* to hydrate an island. Avoid `client:load` unless the component is critical for initial interaction.
+
+❌ BAD (Hydrates immediately, even if not needed)
+```astro
+<MyHeavyAnimation client:load />
+```
+
+✅ GOOD (Hydrates only when visible, saving bandwidth and CPU)
+```astro
+<MyHeavyAnimation client:visible />
+```
 
 ## 3. Performance Considerations
 
-### 3.1 Minimizing JavaScript
+Astro's primary strength is performance. Ensure every decision aligns with shipping minimal JavaScript.
 
--   **Static-First Architecture:**  Embrace Astro's static-first architecture to minimize JavaScript and improve performance.  Render as much as possible as static HTML.
--   **Island Architecture:**  Only hydrate interactive components.  Avoid over-hydrating components.
--   **Code Splitting:**  Use code splitting to break up your JavaScript into smaller chunks.  This can improve initial load times.
--   **Lazy Loading:**  Use lazy loading for images and other assets that are not immediately visible.  This can improve initial load times.
+### 3.1 Zero JavaScript by Default
 
-### 3.2 Image Optimization
+Always assume components are static unless explicitly told otherwise. If a component doesn't need client-side JS, don't add it.
 
--   **Astro's `<Image />` Component:**  Use Astro's built-in `<Image />` component to optimize images.  The `<Image />` component automatically optimizes images, resizes them, and generates responsive versions.
--   **Image Formats:**  Use modern image formats like WebP to reduce file sizes. Use AVIF for even better compression, where supported.
--   **Compression:**  Compress images to reduce file sizes.  Use tools like ImageOptim or TinyPNG.
--   **Lazy Loading:**  Use lazy loading for images that are not immediately visible.
--   **Responsive Images:**  Use responsive images to serve different image sizes based on the user's screen size.
+❌ BAD (Unnecessary client-side script for a simple toggle)
+```astro
+<button id="toggleButton">Toggle</button>
+<script>
+  document.getElementById('toggleButton').addEventListener('click', () => { /* ... */ });
+</script>
+```
 
-### 3.3 Font Optimization
+✅ GOOD (Pure CSS or server-rendered state for simple interactions)
+```astro
+<button class="toggle-button">Toggle</button>
+<style>
+  .toggle-button:focus + .content { display: block; } /* Example CSS toggle */
+</style>
+```
 
--   **Web Font Formats:** Use modern web font formats like WOFF2.  These formats offer better compression and performance.
--   **Font Loading:**  Use font loading strategies to avoid blocking rendering.  Consider using `font-display: swap`.
--   **Preloading:**  Preload important fonts to improve loading times.
+### 3.2 Optimize Client Directives
 
-### 3.4 Caching
+- **`client:visible`**: Default for most interactive components that appear lower on the page.
+- **`client:idle`**: For non-critical interactivity that can wait until the main thread is free.
+- **`client:load`**: Only for critical, above-the-fold interactions (e.g., main navigation, search bar).
+- **`client:media={query}`**: For components that only become interactive on specific screen sizes.
 
--   **Browser Caching:**  Configure browser caching to cache static assets like images, fonts, and JavaScript files.  This can improve performance for returning users.
--   **CDN:**  Use a Content Delivery Network (CDN) to serve static assets from geographically distributed servers.  This can improve performance for users around the world.
+### 3.3 Image Optimization
 
-## 4. Security Best Practices
+Use Astro's built-in image optimization for responsive, performant images.
 
-### 4.1 Input Validation
+```astro
+---
+import { Image } from 'astro:assets';
+import myImage from '@assets/my-image.jpg'; // Import local images
+---
+<Image src={myImage} alt="A descriptive alt text" width={800} height={600} format="webp" quality={80} />
+```
 
--   **Validate User Input:**  Validate all user input to prevent injection attacks and other security vulnerabilities.  Use server-side validation in addition to client-side validation.
--   **Sanitize User Input:**  Sanitize user input to remove potentially malicious code.  Use a library like DOMPurify to sanitize HTML.
+## 4. Common Pitfalls and Anti-patterns
 
-### 4.2 Cross-Site Scripting (XSS)
+Avoid these common mistakes that undermine Astro's performance benefits.
 
--   **Escape Output:**  Escape all output to prevent XSS attacks.  Use Astro's built-in escaping mechanisms or a library like Handlebars.js.
--   **Content Security Policy (CSP):**  Implement a Content Security Policy (CSP) to control the resources that the browser is allowed to load.  This can help prevent XSS attacks.
+### 4.1 Over-Hydration
 
-### 4.3 Cross-Site Request Forgery (CSRF)
+Do not wrap entire pages or large sections in a single interactive component. This defeats the purpose of islands.
 
--   **CSRF Tokens:**  Use CSRF tokens to protect against CSRF attacks.  Generate a unique CSRF token for each user session and include it in all forms.
+❌ BAD (Treating Astro like an SPA)
+```astro
+<MyReactApp client:load /> <!-- MyReactApp contains the entire page -->
+```
 
-### 4.4 Authentication and Authorization
+✅ GOOD (Granular islands)
+```astro
+<header>...</header>
+<MyReactNav client:load />
+<main>
+  <MyStaticContent />
+  <MyInteractiveCarousel client:visible />
+</main>
+<footer>...</footer>
+```
 
--   **Secure Authentication:**  Use secure authentication mechanisms to protect user accounts.  Use a library like Passport.js or Auth0.
--   **Authorization:**  Implement authorization to control access to resources.  Use roles and permissions to define what users are allowed to do.
+### 4.2 Unnecessary Client-Side Scripts
 
-### 4.5 Dependency Management
+Avoid `<script>` tags in `.astro` files unless they are explicitly marked `is:inline` (for tiny, critical scripts) or are part of an island.
 
--   **Keep Dependencies Up-to-Date:**  Keep your dependencies up-to-date to patch security vulnerabilities.  Use a tool like `npm audit` or `yarn audit` to identify and fix vulnerabilities.
--   **Lock Dependencies:**  Lock your dependencies to prevent unexpected changes.  Use `package-lock.json` or `yarn.lock`.
+❌ BAD (Implicit client-side JS)
+```astro
+<script>
+  console.log('This script runs on the client by default, even if not needed.');
+</script>
+```
 
-### 4.6 Environment Variables
+✅ GOOD (Explicitly inline or part of an island)
+```astro
+<script is:inline>
+  // Only for tiny, critical, non-blocking scripts
+  console.log('This script is inlined and runs early.');
+</script>
+```
 
--   **Store Secrets Securely:**  Store secrets like API keys and database passwords in environment variables.  Do not hardcode secrets in your code.
--   **Avoid Committing `.env`:**  Never commit your `.env` file to version control.  Use a `.gitignore` file to exclude it.
+## 5. State Management
 
-## 5. Testing Approaches
+Keep state management simple and localized. Astro is not an SPA framework; most "state" should be server-rendered or localized to islands.
 
-### 5.1 Unit Testing
+### 5.1 Local Island State
 
--   **Test Individual Components:**  Write unit tests to test individual components in isolation.  Use a testing framework like Jest or Mocha.
--   **Mock Dependencies:**  Mock dependencies to isolate components during testing.
+For interactivity within an island, use the UI framework's native state management (e.g., React `useState`, Svelte stores).
 
-### 5.2 Integration Testing
+```tsx
+// src/components/react/ThemeToggle.tsx
+import { useState } from 'react';
 
--   **Test Component Interactions:**  Write integration tests to test how components interact with each other.  Use a testing framework like Cypress or Playwright.
+export default function ThemeToggle() {
+  const [theme, setTheme] = useState('light');
+  const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
 
-### 5.3 End-to-End Testing
+  return (
+    <button onClick={toggleTheme}>
+      Switch to {theme === 'light' ? 'dark' : 'light'} theme
+    </button>
+  );
+}
+```
 
--   **Test User Flows:**  Write end-to-end tests to test complete user flows.  Use a testing framework like Cypress or Playwright.
+### 5.2 Global State (Minimal)
 
-### 5.4 Accessibility Testing
+For truly global, cross-island state (e.g., user authentication status), consider:
+1. **Server-side data:** Fetch global data in the Astro component frontmatter and pass it down as props. This is the preferred method.
+2. **Lightweight context/store within a shared island:** If client-side global state is unavoidable, use a minimal library like Zustand or Jotai within a single, shared UI framework component that wraps other islands.
 
--   **Automated Accessibility Testing:**  Use automated accessibility testing tools to identify accessibility issues.  Use a tool like axe-core.
--   **Manual Accessibility Testing:**  Perform manual accessibility testing to ensure that your website is accessible to users with disabilities.  Use a screen reader to test your website.
+❌ BAD (Heavy global state management for a content site)
+```tsx
+// src/components/react/MyApp.tsx (large, complex context provider)
+<MyGlobalContextProvider>
+  <Header client:load />
+  <Content />
+  <Footer />
+</MyGlobalContextProvider>
+```
 
-## 6. Common Pitfalls and Gotchas
+✅ GOOD (Server-rendered global data, localized island state)
+```astro
+---
+import Layout from '@layouts/Layout.astro';
+import UserProfile from '@components/react/UserProfile';
+import { getAuthStatus } from '../utils/auth'; // Server-side utility
 
--   **Over-Hydration:**  Avoid over-hydrating components.  Only hydrate interactive components.
--   **Incorrect Client Directives:**  Use the correct client directives for your components.  Using the wrong client directive can lead to performance issues or unexpected behavior.
--   **Global Scope Pollution:**  Avoid polluting the global scope with JavaScript variables.  Use modules to encapsulate your code.
--   **Missing `alt` Attributes:**  Always include `alt` attributes for images.  The `alt` attribute is important for accessibility and SEO.
--   **Hardcoded Secrets:**  Never hardcode secrets in your code.  Store secrets in environment variables.
--   **Insecure Dependencies:**  Keep your dependencies up-to-date to patch security vulnerabilities.
--   **Not handling errors:** Always handle errors gracefully, especially when fetching data or interacting with external APIs.
+const user = await getAuthStatus(Astro.request);
+---
+<Layout title="My Page">
+  <header>
+    <UserProfile client:load user={user} /> {/* Pass server data as props */}
+  </header>
+  <main>
+    <!-- ... other static content and localized islands -->
+  </main>
+</Layout>
+```
 
-## 7. Tooling and Environment
+## 6. Accessibility
 
-### 7.1 Code Editor
+Build accessible experiences from the ground up.
 
--   **Visual Studio Code:**  Use Visual Studio Code as your code editor.  VS Code has excellent support for Astro and other web development technologies.
--   **Astro VS Code Extension:**  Install the Astro VS Code extension for syntax highlighting, code completion, and other features.
--   **ESLint and Prettier:**  Install ESLint and Prettier for code linting and formatting.
+### 6.1 Semantic HTML
 
-### 7.2 Package Manager
+Always use appropriate HTML5 semantic elements.
 
--   **npm, Yarn, or pnpm:**  Use npm, Yarn, or pnpm as your package manager.  Choose the package manager that best suits your needs.
+❌ BAD
+```html
+<div onclick="doSomething()">Click me</div>
+```
 
-### 7.3 Build Tool
+✅ GOOD
+```html
+<button type="button" onclick="doSomething()">Click me</button>
+```
 
--   **Astro's Built-in Build Tool:**  Use Astro's built-in build tool to build your website.  The build tool automatically optimizes your code and assets.
+### 6.2 ARIA Attributes
 
-### 7.4 Version Control
+Apply ARIA attributes when native HTML semantics are insufficient, especially for complex interactive widgets within islands.
 
--   **Git:**  Use Git for version control.  Git allows you to track changes to your code and collaborate with other developers.
--   **GitHub, GitLab, or Bitbucket:**  Use GitHub, GitLab, or Bitbucket to host your Git repository.  These platforms provide a centralized location for managing and collaborating on code.
+```jsx
+// src/components/react/AccessibleAccordion.tsx
+<div role="region" aria-labelledby="accordion-header">
+  <h3 id="accordion-header">
+    <button aria-expanded={isOpen} aria-controls="accordion-panel" onClick={toggle}>
+      Section Title
+    </button>
+  </h3>
+  {isOpen && <div id="accordion-panel" role="region">...</div>}
+</div>
+```
 
-### 7.5 Deployment
+### 6.3 Image Alt Text
 
--   **Netlify, Vercel, or Cloudflare Pages:**  Use Netlify, Vercel, or Cloudflare Pages to deploy your website.  These platforms provide easy-to-use deployment workflows and CDN integration.
+All `<img>` tags must have descriptive `alt` attributes.
 
-By following these best practices and coding standards, you can ensure that your Astro projects are maintainable, performant, and secure.
+❌ BAD
+```html
+<img src="/image.jpg" alt="">
+```
+
+✅ GOOD
+```html
+<img src="/image.jpg" alt="A detailed description of the image content.">
+```
+
+## 7. Testing Approaches
+
+Implement a robust testing strategy that covers both static content and interactive islands.
+
+### 7.1 Type Checking
+
+Run `astro check` as part of your CI pipeline to catch TypeScript errors early.
+
+```bash
+# In your CI script
+npm run astro check
+```
+
+### 7.2 Linting
+
+Enforce code style and catch common errors with ESLint, including `eslint-plugin-astro`.
+
+**`.eslintrc.cjs`**
+```javascript
+module.exports = {
+  extends: [
+    'eslint:recommended',
+    'plugin:astro/recommended',
+    'plugin:react/recommended', // If using React
+    'plugin:@typescript-eslint/recommended' // If using TypeScript
+  ],
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+    project: './tsconfig.json',
+    extraFileExtensions: ['.astro']
+  },
+  rules: {
+    // Custom rules
+  },
+  overrides: [
+    {
+      files: ['*.astro'],
+      parser: 'astro-eslint-parser',
+      parserOptions: {
+        parser: '@typescript-eslint/parser',
+        extraFileExtensions: ['.astro']
+      }
+    }
+  ],
+  settings: {
+    react: {
+      version: 'detect'
+    }
+  }
+};
+```
+
+### 7.3 Unit Testing Islands
+
+Test interactive UI framework components (islands) using their native testing libraries (e.g., React Testing Library, Vue Test Utils).
+
+```tsx
+// src/components/react/MyReactCounter.test.tsx
+import { render, screen, fireEvent } from '@testing-library/react';
+import MyReactCounter from './MyReactCounter';
+
+test('increments count on button click', () => {
+  render(<MyReactCounter />);
+  const button = screen.getByRole('button', { name: /increment/i });
+  const countDisplay = screen.getByText(/count: 0/i);
+
+  expect(countDisplay).toBeInTheDocument();
+  fireEvent.click(button);
+  expect(screen.getByText(/count: 1/i)).toBeInTheDocument();
+});
+```
+
+### 7.4 End-to-End (E2E) Testing
+
+Use Playwright or Cypress for E2E tests to verify page rendering, navigation, and island hydration in a real browser environment.
+
+```javascript
+// tests/example.spec.ts (Playwright)
+import { test, expect } from '@playwright/test';
+
+test('basic page loads and counter works', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('h1')).toHaveText('Hello, Astro!');
+
+  // Interact with the React island
+  const counterButton = page.getByRole('button', { name: 'Increment' });
+  await expect(page.getByText('Count: 0')).toBeVisible();
+  await counterButton.click();
+  await expect(page.getByText('Count: 1')).toBeVisible();
+});
+```

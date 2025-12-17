@@ -1,179 +1,277 @@
 ---
-description: This rule provides comprehensive best practices for developing with the CrewAI library, covering code organization, performance, security, testing, and common pitfalls. It serves as a guide for building robust and scalable AI applications using CrewAI.
-globs: *.py
+description: Definitive guidelines for building robust, maintainable, and scalable multi-agent systems using CrewAI, focusing on modularity, clear role definition, and disciplined LLM configuration.
+globs: **/*.py
 ---
-- **General Best Practices**:
-  - Leverage structured responses from LLM calls using Pydantic for output validation.
-  - Maintain a modular architecture for flexibility and scalability.
-  - Regularly validate outputs from agents and tasks.
-  - Use UV for dependency management and Python 3.12.
-  - Prioritize classes over functions for better organization and maintainability.
+# CrewAI Best Practices
 
-- **Code Organization and Structure**:
-  - **Directory Structure:**
-    - `crewai_project/` (Root directory)
-      - `agents/`: Contains agent definitions (e.g., `research_agent.py`, `writer_agent.py`).
-      - `tasks/`: Contains task definitions (e.g., `research_task.py`, `writing_task.py`).
-      - `tools/`: Contains custom tools for agents (e.g., `web_search.py`, `data_analysis.py`).
-      - `models/`: Contains Pydantic models for structured LLM responses (e.g., `article_summary.py`).
-      - `utils/`: Contains utility functions and helper classes (e.g., `api_utils.py`, `string_formatter.py`).
-      - `config/`: Configuration files (e.g., `config.yaml`, `api_keys.json`). **Important:** Never commit API keys directly to the repo. Use environment variables or secure vault.
-      - `tests/`: Unit and integration tests.
-      - `main.py`: Entry point for the CrewAI application.
-      - `requirements.txt` or `pyproject.toml`: Project dependencies.
-  - **File Naming Conventions:**
-    - Use descriptive, lowercase names with underscores (e.g., `data_processing_agent.py`).
-    - Pydantic models should be singular (e.g., `ArticleSummary.py` -> `article_summary.py` and class `ArticleSummary`)
-    - Tests should mirror the source file name with a `_test` suffix (e.g., `data_processing_agent_test.py`).
-  - **Module Organization:**
-    - Group related agents, tasks, and tools into separate modules.
-    - Use clear and concise module names.
-    - Avoid circular dependencies between modules.
-  - **Component Architecture:**
-    - Follow a layered architecture (e.g., agent layer, task layer, tool layer).
-    - Design components with single responsibilities (Single Responsibility Principle).
-    - Prefer composition over inheritance for agent and task configurations.
-  - **Code Splitting:**
-    - Break down complex tasks into smaller, manageable subtasks.
-    - Use helper functions and classes to encapsulate reusable logic.
-    - Consider using a task orchestration framework (e.g., Celery, Dask) for asynchronous task execution if you have long running tasks.
+This document outlines the definitive best practices for developing with CrewAI, ensuring your multi-agent systems are maintainable, performant, and production-ready. Adhere to these guidelines for all new and existing CrewAI projects.
 
-- **Common Patterns and Anti-patterns**:
-  - **Design Patterns:**
-    - **Hierarchical Task Delegation:** Implement a manager agent to oversee task execution and validate outcomes.
-    - **Tool Abstraction:** Create a tool abstraction layer to allow agents to interact with different tools seamlessly.
-    - **Observer Pattern:**  Implement an observer pattern to monitor task progress and trigger events.
-  - **Recommended Approaches:**
-    - Define clear roles for each agent.
-    - Utilize advanced CrewAI features for task delegation.
-    - Ensure efficient communication among agents through well-defined task interfaces.
-  - **Anti-patterns:**
-    - Hardcoding API keys or sensitive information in the code.
-    - Creating overly complex or tightly coupled agents.
-    - Ignoring error handling and validation.
-    - Neglecting proper logging and monitoring.
-    - Allowing agents unrestricted access to tools and resources.
-  - **State Management:**
-    - Use agent's memory (the `memory` attribute) to persist state between tasks.
-    - Consider using a dedicated state management library (e.g., Redis, Memcached) for complex applications.
-    - Ensure that state is properly serialized and deserialized.
-  - **Error Handling:**
-    - Implement try-except blocks to handle exceptions gracefully.
-    - Log errors with detailed information for debugging.
-    - Define custom exception types for specific error scenarios.
-    - Use retry mechanisms for transient errors (e.g., network timeouts).
+## 1. Code Organization and Structure
 
-- **Performance Considerations:**
-  - **Optimization Techniques:**
-    - Optimize LLM calls by using smaller context windows where possible.
-    - Cache LLM responses to avoid redundant calls.
-    - Use asynchronous operations for I/O-bound tasks.
-    - Optimize tools and utilities for performance.
-    - Implement rate limiting for API calls to avoid exceeding limits.
-  - **Memory Management:**
-    - Be mindful of the memory footprint of agents and tasks.
-    - Avoid storing large amounts of data in agent memory.
-    - Use generators for processing large datasets.
-    - Release resources promptly after use.
-  - **Bundle Size Optimization:** Not directly applicable to CrewAI but important for related web apps or interfaces.
-  - **Lazy Loading:** Not directly applicable to CrewAI but important for related web apps or interfaces.
+Always modularize your agents, tasks, and crews into dedicated Python modules. This promotes reusability, version control, and clear separation of concerns.
 
-- **Security Best Practices**:
-  - **Common Vulnerabilities:**
-    - Prompt injection attacks.
-    - Data breaches due to insecure storage of sensitive information.
-    - Unauthorized access to tools and resources.
-  - **Input Validation:**
-    - Validate all inputs from users and external sources.
-    - Sanitize inputs to prevent code injection attacks.
-    - Use regular expressions or validation libraries to enforce input constraints.
-  - **Authentication and Authorization:**
-    - Implement authentication to verify the identity of users and agents.
-    - Use authorization to control access to tools and resources.
-    - Follow the principle of least privilege: grant agents only the necessary permissions.
-  - **Data Protection:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use secure storage mechanisms for API keys and credentials.
-    - Implement data masking to protect sensitive information.
-    - Comply with relevant data privacy regulations (e.g., GDPR, CCPA).
-  - **Secure API Communication:**
-    - Use HTTPS for all API communication.
-    - Implement API rate limiting to prevent abuse.
-    - Validate API responses to prevent data corruption.
-    - Use secure authentication mechanisms for API access.
+### 1.1. Dedicated Modules for Agents, Tasks, and Crews
 
-- **Testing Approaches:**
-  - **Unit Testing:**
-    - Write unit tests for individual agents, tasks, and tools.
-    - Use mocking and stubbing to isolate components during testing.
-    - Assert that components behave as expected under different conditions.
-  - **Integration Testing:**
-    - Write integration tests to verify the interactions between different components.
-    - Test the end-to-end flow of a CrewAI application.
-    - Use realistic test data to simulate real-world scenarios.
-  - **End-to-end Testing:**
-    - Use tools like Selenium or Playwright to test the entire application flow.
-    - Verify that the application meets the specified requirements.
-    - Test the application in different environments.
-  - **Test Organization:**
-    - Organize tests into separate modules that mirror the source code structure.
-    - Use descriptive test names.
-    - Follow a consistent testing style.
-  - **Mocking and Stubbing:**
-    - Use mocking libraries (e.g., `unittest.mock`, `pytest-mock`) to replace external dependencies with mock objects.
-    - Use stubbing to provide canned responses for external dependencies.
-    - Verify that mock objects are called as expected.
+**Always separate definitions.** Agents belong in `agents.py`, tasks in `tasks.py`, and the crew orchestration in `crew.py` (or `main.py`).
 
-- **Common Pitfalls and Gotchas:**
-  - **Frequent Mistakes:**
-    - Using overly complex prompts that are difficult to understand and maintain.
-    - Failing to handle errors and exceptions gracefully.
-    - Neglecting to validate inputs and outputs.
-    - Not monitoring and logging application behavior.
-  - **Edge Cases:**
-    - Handling unexpected LLM responses.
-    - Dealing with rate limits and API errors.
-    - Managing long-running tasks.
-  - **Version-Specific Issues:**
-    - Be aware of breaking changes between CrewAI versions.
-    - Consult the CrewAI changelog for information about new features and bug fixes.
-    - Test your application with different CrewAI versions to ensure compatibility.
-  - **Compatibility Concerns:**
-    - Ensure that CrewAI is compatible with the other libraries and frameworks used in your application.
-    - Be aware of potential conflicts between different versions of dependencies.
-  - **Debugging Strategies:**
-    - Use logging to track application behavior.
-    - Use a debugger to step through the code and inspect variables.
-    - Use print statements to debug simple issues.
-    - Use the CrewAI debugger and introspection tools.
+❌ BAD: Monolithic file
+```python
+# main.py
+from crewai import Agent, Task, Crew
+researcher = Agent(role='Researcher', ...)
+research_task = Task(description='Research topic', agent=researcher, ...)
+crew = Crew(agents=[researcher], tasks=[research_task], ...)
+```
 
-- **Tooling and Environment**:
-  - **Recommended Tools:**
-    - VS Code, PyCharm
-    - Debugger: pdb, ipdb
-    - Profiler: cProfile
-  - **Build Configuration:**
-    - Use `pyproject.toml` for managing dependencies and build settings.
-    - Use Poetry or pip-tools for dependency management.
-  - **Linting and Formatting:**
-    - Use Black for code formatting.
-    - Use Pylint or Flake8 for code linting.
-    - Configure pre-commit hooks to automatically format and lint code before committing.
-  - **Deployment:**
-    - Containerize your CrewAI application using Docker.
-    - Deploy your application to a cloud platform (e.g., AWS, Google Cloud, Azure).
-    - Use a deployment framework (e.g., Docker Compose, Kubernetes) to manage your application.
-  - **CI/CD Integration:**
-    - Use a CI/CD platform (e.g., GitHub Actions, GitLab CI, Jenkins) to automate the build, test, and deployment process.
-    - Write automated tests for your application.
-    - Configure CI/CD pipelines to run tests and deploy your application on every commit.
+✅ GOOD: Modular structure
+```python
+# agents.py
+from crewai import Agent
+from tools import search_tool # Assume tools.py exists
 
-- **LLMs and CrewAI**
-  - CrewAI uses LLMs to provide context, enable decision-making, and generate human-like responses in the agents.
-  - Configure LLMs with environment variables or advanced features for optimization.
-  - Available Models and Capabilities:
-    - GPT-4: High-accuracy tasks, complex reasoning, 8,192 tokens
-    - GPT-4 Turbo: Long-form content, document analysis, 128,000 tokens
-    - GPT-4o & GPT-4o-mini: Cost-effective large context processing, 128,000 tokens
-    - o3-mini: Fast reasoning, complex reasoning, 200,000 tokens
-  - Structured LLM calls can be used for defining response formats using Pydantic models.
+class ResearchAgents:
+    def senior_researcher(self) -> Agent:
+        return Agent(
+            role='Senior Researcher',
+            goal='Uncover critical insights and data points.',
+            backstory='Expert in data analysis and synthesis.',
+            verbose=True, allow_delegation=False, tools=[search_tool]
+        )
+
+# tasks.py
+from crewai import Task
+from agents import ResearchAgents
+
+class ResearchTasks:
+    def __init__(self):
+        self.agents = ResearchAgents()
+
+    def research_topic(self, topic: str) -> Task:
+        return Task(
+            description=f"Conduct comprehensive research on '{topic}'.",
+            expected_output='A detailed report summarizing key findings.',
+            agent=self.agents.senior_researcher(),
+            async_execution=False
+        )
+
+# crew.py
+from crewai import Crew, Process
+from agents import ResearchAgents
+from tasks import ResearchTasks
+
+class MyCrew:
+    def __init__(self, topic: str):
+        self.topic = topic
+        self.agents = ResearchAgents()
+        self.tasks = ResearchTasks()
+
+    def run(self):
+        crew = Crew(
+            agents=[self.agents.senior_researcher()],
+            tasks=[self.tasks.research_topic(self.topic)],
+            process=Process.sequential,
+            verbose=2
+        )
+        return crew.kickoff()
+
+if __name__ == "__main__":
+    result = MyCrew("AI Agent Frameworks in 2025").run()
+    print(result)
+```
+
+### 1.2. Clear Agent Role Definition
+
+Every agent *must* have explicit `role`, `goal`, and `backstory`. These are the primary drivers of agent behavior.
+
+❌ BAD: Vague agent
+```python
+researcher = Agent(role='Researcher')
+```
+
+✅ GOOD: Detailed agent
+```python
+researcher = Agent(
+    role='Senior Market Analyst',
+    goal='Provide actionable insights on emerging AI trends.',
+    backstory='With years of experience in tech market analysis, I excel at identifying key drivers and potential disruptors.',
+    verbose=True, allow_delegation=False
+)
+```
+
+## 2. LLM Selection and Configuration
+
+Match LLM capabilities to agent requirements. Always externalize LLM configuration.
+
+### 2.1. Strategic LLM Selection
+
+Choose LLMs based on task complexity, cost, and latency. For complex reasoning, use powerful models (e.g., GPT-4o, Claude Opus). For simple, high-volume tasks, use faster, cheaper models.
+
+❌ BAD: Arbitrary LLM choice
+```python
+from langchain_openai import ChatOpenAI
+llm = ChatOpenAI(model_name="gpt-3.5-turbo") # No justification
+```
+
+✅ GOOD: Purpose-driven LLM choice
+```python
+from langchain_openai import ChatOpenAI
+# For complex analysis where accuracy is paramount
+complex_llm = ChatOpenAI(model_name="gpt-4o", temperature=0.2)
+# For quick, high-volume data retrieval
+fast_llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
+
+# Assign to agents based on their role
+researcher = Agent(llm=complex_llm, ...)
+summarizer = Agent(llm=fast_llm, ...)
+```
+
+### 2.2. Externalized LLM Configuration
+
+Never hardcode API keys or sensitive configurations. Use environment variables.
+
+❌ BAD: Hardcoded API key
+```python
+from langchain_openai import ChatOpenAI
+llm = ChatOpenAI(openai_api_key="sk-YOUR_HARDCODED_KEY")
+```
+
+✅ GOOD: Environment variables (`.env`)
+```python
+# .env file (NOT committed to Git)
+OPENAI_API_KEY="sk-YOUR_ACTUAL_API_KEY"
+
+# config.py
+import os
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+
+load_dotenv() # Load environment variables from .env
+
+def get_openai_llm(model: str = "gpt-4o", temperature: float = 0.2) -> ChatOpenAI:
+    return ChatOpenAI(
+        model_name=model,
+        temperature=temperature,
+        api_key=os.getenv("OPENAI_API_KEY")
+    )
+
+# Usage in agents.py or crew.py
+from config import get_openai_llm
+complex_llm = get_openai_llm("gpt-4o")
+```
+
+## 3. Common Patterns and Anti-patterns
+
+### 3.1. Agent Collaboration with `context`
+
+Leverage `context` in tasks to enable agents to build upon each other's work. This is fundamental to multi-agent systems.
+
+❌ BAD: Isolated tasks
+```python
+task1 = Task(description='Research X', agent=researcher)
+task2 = Task(description='Summarize Y', agent=summarizer) # Y is not from X
+```
+
+✅ GOOD: Chained tasks with `context`
+```python
+research_task = Task(
+    description='Research quantum computing trends.',
+    expected_output='A comprehensive report.', agent=researcher
+)
+
+analysis_task = Task(
+    description='Analyze the research report and identify key investment opportunities.',
+    expected_output='A list of 3-5 high-potential investment opportunities.',
+    agent=analyst,
+    context=[research_task] # Analyst uses output of researcher
+)
+```
+
+### 3.2. Effective Tool Usage
+
+Equip agents with specific tools for specific jobs. Agents should not "hallucinate" tool usage.
+
+❌ BAD: Agent without necessary tools
+```python
+# Agent needs to search but has no search tool
+researcher = Agent(role='Researcher', goal='Find data', ...)
+```
+
+✅ GOOD: Agent with relevant tools
+```python
+from crewai_tools import SerperDevTool # Example search tool
+search_tool = SerperDevTool()
+
+researcher = Agent(
+    role='Data Gatherer',
+    goal='Collect up-to-date information on market shifts.',
+    backstory='My expertise lies in rapidly extracting relevant data from the web.',
+    tools=[search_tool], # Agent can now use search_tool
+    verbose=True
+)
+```
+
+## 4. Performance Considerations
+
+Optimize for cost and speed by managing verbosity, process flow, and asynchronous execution.
+
+### 4.1. Controlled Verbosity
+
+Use `verbose=1` for production, `verbose=2` for development/debugging. Excessive verbosity impacts performance.
+
+❌ BAD: Always `verbose=2` in production
+```python
+crew = Crew(..., verbose=2)
+```
+
+✅ GOOD: Conditional verbosity
+```python
+import os
+is_dev = os.getenv("ENV", "dev") == "dev"
+crew = Crew(..., verbose=2 if is_dev else 1)
+```
+
+### 4.2. Process Flow and Asynchronous Tasks
+
+Choose `Process.sequential` for dependent tasks and `Process.hierarchical` for complex, multi-layered coordination. Use `async_execution=True` for tasks that can run in parallel.
+
+❌ BAD: Defaulting to sequential for independent tasks
+```python
+# These tasks could run in parallel
+task1 = Task(description='Scrape website A', agent=scraper)
+task2 = Task(description='Scrape website B', agent=scraper)
+crew = Crew(tasks=[task1, task2], process=Process.sequential)
+```
+
+✅ GOOD: Parallel execution for independent tasks
+```python
+task1 = Task(description='Scrape website A', agent=scraper, async_execution=True)
+task2 = Task(description='Scrape website B', agent=scraper, async_execution=True)
+crew = Crew(tasks=[task1, task2], process=Process.sequential) # Crew still sequential, but tasks run in parallel
+```
+
+## 5. Common Pitfalls and Gotchas
+
+### 5.1. Agent Drift and Hallucination
+
+Agents can stray from their goal or invent information. Mitigate this with clear `goal`, `backstory`, specific `tools`, and `allow_delegation=False` where appropriate.
+
+❌ BAD: Agent frequently goes off-topic
+```python
+agent = Agent(role='Generalist', goal='Explore AI', temperature=0.8)
+```
+
+✅ GOOD: Focused agent
+```python
+agent = Agent(
+    role='Specific Data Extractor',
+    goal='Extract financial data from quarterly reports.',
+    backstory='I am precise and only focus on numerical data.',
+    tools=[pdf_reader_tool],
+    allow_delegation=False, # Prevents delegating
+    temperature=0.1 # Lower temperature for factual tasks
+)
+```
+
+### 5.2. Infinite Loops
+
+Agents can get stuck in repetitive cycles. Set `max_rpm` (requests per minute

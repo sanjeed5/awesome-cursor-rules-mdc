@@ -1,182 +1,206 @@
 ---
-description: This rule file provides best practices and coding standards for using the `tqdm` library in Python. It focuses on performance, customization, and avoiding common pitfalls.
-globs: *.py
+description: This guide defines best practices for using the `tqdm` library to implement clear, efficient, and robust progress bars in Python applications, ensuring consistent user feedback and maintainable code.
+globs: **/*.py
 ---
-# tqdm Best Practices and Coding Standards
+# tqdm Best Practices
 
-This document outlines best practices for using the `tqdm` library in Python, focusing on simplicity, customization, performance optimization, and avoiding common pitfalls. Adhering to these guidelines will help you create efficient and informative progress bars for your projects.
+`tqdm` is the definitive library for adding progress bars to Python applications. It's lightweight, fast, and works across various environments (terminal, Jupyter). This guide outlines the mandatory practices for its use.
 
-## Library Information
+## 1. Import Strategy
 
-- Name: tqdm
-- Tags: python, utilities, progress-bar, command-line
+Always import `tqdm` directly from the library for clarity. Use `trange` as a convenient shortcut for `tqdm(range(N))`.
 
-## 1. Basic Usage and Integration
+❌ BAD: Generic import
+```python
+import tqdm
+for i in tqdm.tqdm(range(100)):
+    pass
+```
 
-- **Wrap Iterables Directly:** The simplest and most common way to use `tqdm` is by wrapping your iterable object directly with the `tqdm()` function.
+✅ GOOD: Direct and clear imports
+```python
+from tqdm import tqdm, trange
 
-  python
-  from tqdm import tqdm
+for i in trange(100):  # Use trange for simple range loops
+    pass
 
-  for item in tqdm(my_iterable):
-      # Process item
-      ...
-  
+data = [1, 2, 3] * 10
+for item in tqdm(data, desc="Processing items"): # Use tqdm for iterables
+    pass
+```
 
-- **Descriptive Progress Bars:** Always use the `desc` parameter to add a short, descriptive text to your progress bar, providing context to the user.
+## 2. Prefer Context Managers
 
-  python
-  for item in tqdm(my_iterable, desc="Processing Data"):
-      ...
-  
+Use `tqdm` as a context manager (`with ... as pbar:`) whenever possible. This ensures the progress bar is properly closed and resources are released, even if exceptions occur.
 
-- **Integration with Pandas:**  Use `tqdm` with Pandas `apply` functions for data analysis tasks.
+❌ BAD: Manual `close()` (prone to errors)
+```python
+pbar = tqdm(total=100)
+for i in range(100):
+    pbar.update(1)
+    # What if an error occurs here? pbar.close() might be skipped.
+pbar.close()
+```
 
-  python
-  import pandas as pd
-  from tqdm import tqdm
+✅ GOOD: Context manager for robust cleanup
+```python
+with tqdm(total=100, desc="Calculating") as pbar:
+    for i in range(100):
+        # Simulate work
+        if i == 50:
+            # Example of an error, pbar will still close
+            # raise ValueError("Something went wrong!")
+            pass
+        pbar.update(1)
+```
 
-  tqdm.pandas()
-  df['column'].progress_apply(lambda x: some_function(x))
-  
+## 3. Manual Updates for Non-Iterables or Custom Logic
 
-## 2. Performance Considerations
+When wrapping an iterable isn't feasible (e.g., callbacks, async operations, or custom progress logic), use `pbar.update(n)`. **Always provide `total`** when using manual updates.
 
-- **Update Frequency:** Avoid updating the progress bar too frequently, as it can significantly impact performance, especially with large datasets or computationally intensive tasks. Adjust `mininterval` and `maxinterval` to optimize refresh rates.
+❌ BAD: Missing `total` with manual updates (bar won't show percentage/ETA)
+```python
+pbar = tqdm(desc="Downloading")
+# ... later in a callback ...
+pbar.update(chunk_size)
+```
 
-  python
-  for item in tqdm(my_iterable, desc="Processing Data", mininterval=1, maxinterval=10):
-      ...
-  
+✅ GOOD: Explicit `total` for manual updates
+```python
+import time
+import random
 
-- **Manual Control for Performance:** In scenarios where automatic iteration tracking isn't feasible, use manual control with `tqdm` to update the progress bar at strategic intervals.
+file_size = 1024 * 1024 * 50  # 50 MB
+downloaded_bytes = 0
 
-  python
-  from tqdm import tqdm
-  import time
+with tqdm(total=file_size, unit="B", unit_scale=True, desc="Downloading file") as pbar:
+    while downloaded_bytes < file_size:
+        chunk = random.randint(1024, 1024 * 10) # Simulate chunk download
+        chunk = min(chunk, file_size - downloaded_bytes)
+        downloaded_bytes += chunk
+        pbar.update(chunk)
+        time.sleep(0.01)
+```
 
-  total_iterations = 1000
-  with tqdm(total=total_iterations, desc="Manual Progress") as pbar:
-      for i in range(total_iterations):
-          # Perform some operation
-          time.sleep(0.001) # simulate work
-          if i % 10 == 0:
-              pbar.update(10) # update after every 10 iterations
-  
+## 4. Use Descriptive Labels and Postfix Information
 
-- **`tqdm.write()` for Printing:**  Use `tqdm.write()` to print messages to the console without disrupting the progress bar. This is especially useful for logging information or displaying intermediate results.
+Enhance readability by providing a `desc` (description) and dynamic `postfix` information. `set_description()` and `set_postfix()` are preferred for updating these dynamically.
 
-  python
-  from tqdm import tqdm
+❌ BAD: Static or cluttered description
+```python
+for epoch in tqdm(range(10), desc="Epoch"):
+    loss = 0.5 - epoch * 0.01
+    # This doesn't update dynamically without re-creating the bar
+    for batch in tqdm(range(100), desc=f"Epoch {epoch} Loss: {loss:.4f}", leave=False):
+        pass
+```
 
-  for i in tqdm(range(100), desc='Processing'):
-      if i % 10 == 0:
-          tqdm.write(f'Iteration {i}: Some intermediate result')
-  
+✅ GOOD: Dynamic description and postfix updates
+```python
+import random
 
-## 3. Nested Progress Bars
+for epoch in tqdm(range(10), desc="Training Epochs"):
+    total_loss = 0.0
+    for batch in trange(100, desc=f"Batch {epoch+1}", leave=False):
+        current_loss = random.uniform(0.1, 0.5)
+        total_loss += current_loss
+        # Update postfix with real-time metrics
+        tqdm.set_postfix(loss=f"{current_loss:.4f}", avg_loss=f"{total_loss/(batch+1):.4f}")
+        # Simulate work
+        time.sleep(0.005)
+```
 
-- **`leave=False` for Nested Bars:** When using nested loops with `tqdm`, set `leave=False` for inner loops to prevent cluttering the output. This ensures that only the outer loop's progress bar remains after the inner loop completes.
+## 5. Handle Output with `tqdm.write()`
 
-  python
-  from tqdm import tqdm
-  import time
+Never use `print()` directly when a `tqdm` bar is active. It will corrupt the progress bar display. Use `tqdm.write()` instead, which intelligently prints messages without interfering.
 
-  for i in tqdm(range(5), desc="Outer Loop", leave=True):
-      for j in tqdm(range(3), desc="Inner Loop", leave=False):
-          time.sleep(0.1)
-  
+❌ BAD: Corrupts progress bar
+```python
+for i in trange(10):
+    if i == 5:
+        print("Mid-loop message!") # This will mess up the bar
+    time.sleep(0.1)
+```
 
-## 4. Customization and Advanced Features
+✅ GOOD: Preserves progress bar integrity
+```python
+for i in trange(10, desc="Processing"):
+    if i == 5:
+        tqdm.write("Mid-loop message: Halfway there!")
+    time.sleep(0.1)
+```
 
-- **Dynamic Descriptions:** Update the progress bar description dynamically during iterations to provide more context-specific information.
+## 6. Fine-tune Display Options
 
-  python
-  from tqdm import tqdm
-  import time
+Use `leave=False` for inner loops to remove them upon completion, keeping the terminal clean. Leverage `unit`, `unit_scale`, and `dynamic_ncols` for better presentation.
 
-  with tqdm(range(10), desc="Starting") as pbar:
-      for i in pbar:
-          time.sleep(0.5)
-          pbar.set_description(f"Step {i+1} completed")
-  
+❌ BAD: Cluttered terminal with nested bars
+```python
+for i in tqdm(range(3), desc="Outer"):
+    for j in tqdm(range(5), desc="Inner"): # leave=True by default
+        time.sleep(0.05)
+```
 
-- **Custom Formatting:** Customize the appearance of the progress bar using `bar_format` to control the layout, colors, and displayed information.
+✅ GOOD: Clean nested bars and scaled units
+```python
+for i in tqdm(range(3), desc="Outer Loop"):
+    for j in tqdm(range(5), desc="Inner Loop", leave=False): # Bar disappears after inner loop finishes
+        time.sleep(0.05)
 
-  python
-  from tqdm import tqdm
-  import time
+# Example with units
+with tqdm(total=100_000_000, unit="B", unit_scale=True, dynamic_ncols=True, desc="Transferring") as pbar:
+    for _ in range(100):
+        pbar.update(1_000_000)
+        time.sleep(0.01)
+```
 
-  for i in tqdm(range(5), bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]"):
-      time.sleep(0.5)
-  
+## 7. Integrate with Data Science Libraries
 
-- **GUI Mode (Jupyter Notebooks):** Use `tqdm.notebook` for a more visually appealing progress bar in Jupyter notebooks.  Import `tqdm.notebook` rather than `tqdm`.
+`tqdm.pandas()` and `tqdm.auto` provide seamless integration for common data science workflows.
 
-  python
-  from tqdm.notebook import tqdm
-  import time
+### Pandas DataFrames
 
-  for i in tqdm(range(1000)):
-      time.sleep(0.001)
-  
+Use `tqdm.pandas()` to add a `.progress_apply()` method to DataFrames.
 
-## 5. Common Pitfalls and Anti-Patterns
+```python
+import pandas as pd
+from tqdm.auto import tqdm # Use tqdm.auto for notebook compatibility
 
-- **Over-Updating:** Updating the progress bar too frequently is a common mistake.  This can significantly slow down your code.  Adjust `mininterval` and `maxinterval`, or use manual updates.
+tqdm.pandas() # Register tqdm with pandas
 
-- **Ignoring `leave=False` in Nested Loops:** Forgetting to set `leave=False` in nested loops can lead to cluttered output, making it difficult to read the progress of the outer loop.
+df = pd.DataFrame({'col': range(100000)})
 
-- **Not Closing the Progress Bar:**  If you're using manual control, ensure you close the progress bar with `pbar.close()` to release resources.
+# Applying a function with a progress bar
+df['new_col'] = df['col'].progress_apply(lambda x: x * 2)
+```
 
-- **Incorrect Total Value:** Providing an incorrect `total` value in the `tqdm()` constructor can lead to inaccurate progress display. Double-check the iterable's length.
+### Jupyter Notebooks
 
-- **Using `print()` Within the Loop:** Using the standard `print()` function within the loop can disrupt the progress bar display.  Use `tqdm.write()` instead.
+`tqdm.auto` automatically detects if it's running in a Jupyter environment and uses the appropriate display.
 
-## 6. Testing Approaches
+```python
+# In a .py file that might be run in a notebook or terminal
+from tqdm.auto import tqdm, trange
 
-- **Unit Tests:** When using `tqdm` in functions, test the function's core logic independently of `tqdm`. If you need to verify `tqdm` output, consider capturing standard output for assertions, though this is generally less valuable than testing the core function logic.
+def long_running_task():
+    for i in trange(100, desc="Auto-detected progress"):
+        time.sleep(0.01)
 
-- **Integration Tests:** Ensure that `tqdm` integrates correctly with your data processing pipelines. Verify that the progress bars are displayed accurately and don't introduce unexpected performance bottlenecks.
+long_running_task()
+```
 
-## 7. Tooling and Environment
+## 8. Performance Considerations
 
-- **Development Tools:**  Use standard Python development tools like VS Code, PyCharm, or Jupyter Notebooks for working with `tqdm`.
+`tqdm` is highly optimized, but for extremely fast loops (e.g., millions of iterations per second), consider batching updates or disabling the bar if not strictly necessary.
 
-- **Linting and Formatting:** Adhere to PEP 8 style guidelines and use linters like `flake8` or `pylint` to maintain code quality. Format your code with `black` or `autopep8` for consistency.
+```python
+# For loops where each iteration is extremely fast
+total_iterations = 10_000_000
+batch_size = 1000
 
-## 8. Example: Downloading Files with Progress
-
-python
-import requests
-from tqdm import tqdm
-
-
-def download_file(url, filename):
-    """Downloads a file from a URL with a progress bar."""
-    try:
-        response = requests.get(url, stream=True)
-        response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
-        total_size = int(response.headers.get('content-length', 0))
-        block_size = 8192  # 8KB
-        with tqdm(desc=filename, total=total_size, unit='B', unit_scale=True, unit_divisor=1024) as pbar:
-            with open(filename, 'wb') as f:
-                for data in response.iter_content(block_size):
-                    f.write(data)
-                    pbar.update(len(data))
-        print(f"Download complete: {filename}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error downloading {url}: {e}")
-    except IOError as e:
-        print(f"Error writing to file {filename}: {e}")
-
-
-# Example usage:
-file_url = "https://www.example.com/large_file.zip"  # Replace with an actual URL
-file_name = "large_file.zip"
-download_file(file_url, file_name)
-
-
-## 9. Conclusion
-
-By following these best practices, you can effectively leverage the `tqdm` library to create informative and efficient progress bars in your Python projects, improving the user experience and providing valuable insights into the execution of your code.
+with tqdm(total=total_iterations, desc="Batch Processing") as pbar:
+    for i in range(0, total_iterations, batch_size):
+        # Perform batch_size operations here
+        # ...
+        pbar.update(batch_size) # Update once per batch
+```

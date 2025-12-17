@@ -1,263 +1,366 @@
 ---
-description: This rule provides comprehensive best practices for developing applications using the notion-api library, covering code organization, performance, security, testing, and common pitfalls.
-globs: *.js,*.ts,*.jsx,*.tsx
+description: Definitive guidelines for building secure, typed, and maintainable integrations with the Notion API using modern best practices and official SDKs.
+globs: **/*
 ---
-# Notion API Library Best Practices
+# notion-api Best Practices
 
-This document outlines the recommended best practices for developing applications using the `notion-api` library. Following these guidelines will help you create maintainable, performant, secure, and testable Notion integrations.
+This guide establishes the definitive best practices for interacting with the Notion API. Adhering to these rules ensures our integrations are secure, performant, type-safe, and easily maintainable. We prioritize official SDKs and structured data handling.
 
 ## 1. Code Organization and Structure
 
-### 1.1. Directory Structure Best Practices
-
-Adopt a clear and consistent directory structure to improve code maintainability and collaboration. Here's a suggested structure for projects using `notion-api`:
-
-
-project-root/
- ├── src/
- │   ├── components/        # Reusable UI components (if applicable)
- │   ├── pages/             # Page-specific components/logic (if applicable)
- │   ├── services/          # Notion API interaction logic
- │   │   ├── notion-client.js  # or notion-client.ts: Initializes the Notion client
- │   │   ├── database-service.js # or database-service.ts: Handles database interactions
- │   │   ├── page-service.js     # or page-service.ts: Handles page interactions
- │   │   └── utils.js          # or utils.ts: Utility functions for API calls, data formatting
- │   ├── models/             # Data models for Notion objects
- │   ├── utils/              # General utility functions
- │   ├── config/             # Configuration files
- │   └── app.js              # or app.ts: Main application entry point
- ├── tests/              # Unit and integration tests
- ├── .env                 # Environment variables
- ├── package.json          # Project dependencies
- └── README.md            # Project documentation
-
-
-### 1.2. File Naming Conventions
-
-Use descriptive and consistent file names:
-
-*   **Components:** `ComponentName.jsx` or `ComponentName.tsx`
-*   **Services:** `service-name.js` or `service-name.ts`
-*   **Models:** `model-name.js` or `model-name.ts`
-*   **Utility functions:** `utility-name.js` or `utility-name.ts`
-*   **Configuration files:** `config-name.js` or `config-name.ts`
-
-### 1.3. Module Organization
-
-Organize your code into logical modules based on functionality.  For `notion-api`, this commonly involves separating:
-
-*   **Notion Client Initialization:**  A module responsible for initializing the Notion client with your API key. This should handle authentication.
-*   **Data Access Layer (Services):** Modules that encapsulate all interactions with the Notion API. These modules should provide functions for common operations like creating pages, querying databases, and updating content.  Use separate modules for database and page-related operations.
-*   **Data Models:**  Define TypeScript interfaces or JavaScript classes to represent Notion objects (e.g., Page, Database, Block). This improves type safety and code readability.
-*   **Utility Functions:**  Create utility functions for tasks such as formatting data for the Notion API, handling pagination, and error handling.
-
-### 1.4. Component Architecture (If Applicable)
-
-If you're building a UI that interacts with the Notion API, consider using a component-based architecture (e.g., React, Vue, Angular).  Separate concerns by creating reusable components for displaying and interacting with Notion data.
-
-### 1.5. Code Splitting
-
-For larger applications, use code splitting to improve initial load times.  Lazy-load components and modules that are not immediately needed. This is particularly useful for components that display large amounts of Notion data or perform complex API operations.
-
-## 2. Common Patterns and Anti-patterns
-
-### 2.1. Design Patterns
-
-*   **Repository Pattern:** Use the repository pattern to abstract data access logic.  This makes it easier to switch data sources in the future (e.g., using a mock API for testing).
-*   **Adapter Pattern:**  Adapt the data returned by the Notion API to your application's specific needs. This helps decouple your application from the API's data structure.
-*   **Singleton Pattern (for Notion Client):** Use the singleton pattern to ensure only one instance of the Notion client is created. This can improve performance and avoid rate limiting issues.
-
-### 2.2. Recommended Approaches for Common Tasks
-
-*   **Fetching Data:** Use asynchronous functions (`async/await`) to fetch data from the Notion API. Implement proper error handling (see below).
-*   **Creating Pages:**  Use the `pages.create` method to create new pages. Ensure you provide the required properties for the parent (database or page).
-*   **Querying Databases:** Use the `databases.query` method to query databases.  Learn how to use filters, sorts, and pagination to retrieve the data you need efficiently.
-*   **Updating Content:**  Use the `blocks.update` and `pages.update` method to update content. Understand how to update different types of blocks and page properties.
-*   **Handling Pagination:** Implement proper pagination to handle large datasets.  Use the `has_more` and `next_cursor` properties returned by the API to iterate through all pages of data.
-
-### 2.3. Anti-patterns and Code Smells
-
-*   **Directly calling the Notion API in UI components:** This violates separation of concerns and makes testing difficult.  Use a service layer to handle API interactions.
-*   **Hardcoding API keys:** Store API keys in environment variables and never commit them to your repository.
-*   **Ignoring errors:** Always handle errors and log them appropriately.  Do not swallow exceptions.
-*   **Over-fetching data:** Only request the data you need. Use filters and projections to reduce the amount of data transferred.
-*   **Creating too many Notion client instances:**  Re-use existing client instances to optimize performance and avoid rate limiting.
-*   **Lack of Pagination:** Neglecting to handle pagination when fetching large datasets from Notion databases.
-
-### 2.4. State Management (If Applicable)
-
-If you're building a UI, choose a state management solution that fits your application's complexity (e.g., React Context, Redux, Zustand).  Store Notion data in a normalized format to improve performance and avoid unnecessary re-renders.  Use selectors to efficiently retrieve data from the state.
-
-### 2.5. Error Handling Patterns
-
-Implement robust error handling to gracefully handle API errors and unexpected situations.
-
-*   **Try-Catch Blocks:** Use `try-catch` blocks to wrap API calls and handle potential errors.
-*   **Error Logging:** Log errors with sufficient detail to facilitate debugging.
-*   **User Feedback:** Provide informative error messages to the user.
-*   **Retry Mechanism:** Implement a retry mechanism for transient errors (e.g., network errors, rate limiting).
-*   **Centralized Error Handling:** Create a centralized error handling function or middleware to handle errors consistently across your application.
-
-## 3. Performance Considerations
-
-### 3.1. Optimization Techniques
-
-*   **Caching:** Implement caching to reduce the number of API calls. Cache frequently accessed data in memory or in a persistent store.
-*   **Batching:** Batch multiple API requests into a single request to reduce network overhead (where supported by the API.  Currently, Notion's API offers limited batching capabilities.
-*   **Minimize Data Transfer:** Only request the data you need.  Use filters and projections to reduce the amount of data transferred.
-*   **Compression:** Enable compression (e.g., gzip) to reduce the size of API responses.
-*   **Optimize Database Queries:** Carefully design your database queries to retrieve data efficiently. Use indexes to improve query performance.
-
-### 3.2. Memory Management
-
-*   **Avoid Memory Leaks:**  Be mindful of memory leaks, especially in long-running applications.  Release resources when they are no longer needed.
-*   **Use Efficient Data Structures:**  Use efficient data structures to store Notion data. Avoid creating unnecessary copies of data.
-
-### 3.3. Rendering Optimization (If Applicable)
-
-*   **Virtualization:** Use virtualization to efficiently render large lists of Notion blocks.
-*   **Memoization:** Use memoization to avoid re-rendering components that haven't changed.
-*   **Code Splitting:** As described above.
-
-### 3.4. Bundle Size Optimization
-
-*   **Tree Shaking:** Use tree shaking to remove unused code from your bundles.
-*   **Minification:** Minify your code to reduce bundle size.
-*   **Code Splitting:** As described above.
-*   **Use a CDN:** Serve static assets from a CDN to improve loading times.
-
-### 3.5. Lazy Loading
-
-*   **Lazy Load Images:** Lazy load images to improve initial load times.
-*   **Lazy Load Components:** As described above.
-
-## 4. Security Best Practices
-
-### 4.1. Common Vulnerabilities and Prevention
-
-*   **API Key Exposure:** Never commit API keys to your repository. Store them in environment variables and access them securely.
-*   **Injection Attacks:**  Sanitize user input to prevent injection attacks (e.g., SQL injection, XSS).
-*   **Cross-Site Scripting (XSS):** If your application renders user-generated content from Notion, sanitize it to prevent XSS attacks.
-*   **Cross-Site Request Forgery (CSRF):** Implement CSRF protection to prevent malicious websites from making requests on behalf of authenticated users.
-*   **Man-in-the-Middle Attacks:** Ensure that all communication with the Notion API is encrypted using HTTPS.
-
-### 4.2. Input Validation
-
-*   **Validate All User Input:**  Validate all user input before sending it to the Notion API. This includes checking data types, formats, and ranges.
-*   **Sanitize User Input:** Sanitize user input to remove potentially harmful characters.
-
-### 4.3. Authentication and Authorization
-
-*   **Use OAuth 2.0:** Use OAuth 2.0 for authentication and authorization. This allows users to grant your application access to their Notion data without sharing their passwords.
-*   **Store Tokens Securely:** Store access tokens securely.  Use encryption or a secure storage mechanism (e.g., Keychain).
-*   **Follow the Principle of Least Privilege:** Only request the permissions you need.
-
-### 4.4. Data Protection
-
-*   **Encrypt Sensitive Data:**  Encrypt sensitive data at rest and in transit.
-*   **Follow Data Privacy Regulations:**  Comply with all applicable data privacy regulations (e.g., GDPR, CCPA).
-*   **Regularly Audit Security Practices:** Regularly audit your security practices to identify and address potential vulnerabilities.
-
-### 4.5. Secure API Communication
-
-*   **Use HTTPS:** Ensure that all communication with the Notion API is encrypted using HTTPS.
-*   **Validate SSL Certificates:** Validate SSL certificates to prevent man-in-the-middle attacks.
-*   **Use a Secure API Client:** Use a secure API client that supports encryption and certificate validation.
-
-## 5. Testing Approaches
-
-### 5.1. Unit Testing
-
-*   **Test Individual Components:** Unit test individual components and modules to ensure they function correctly in isolation.
-*   **Mock External Dependencies:** Mock external dependencies (e.g., the Notion API) to isolate your code and make tests more predictable.
-*   **Use a Testing Framework:** Use a testing framework like Jest or Mocha to write and run your unit tests.
-
-### 5.2. Integration Testing
-
-*   **Test Interactions Between Components:** Integration test the interactions between different components and modules to ensure they work together correctly.
-*   **Use a Test Database:** Use a test database to avoid affecting your production data.
-*   **Seed the Test Database:** Seed the test database with sample data to make tests more realistic.
-
-### 5.3. End-to-End Testing
-
-*   **Test the Entire Application Flow:** End-to-end test the entire application flow to ensure that everything works correctly from start to finish.
-*   **Use a Testing Framework:** Use a testing framework like Cypress or Puppeteer to write and run your end-to-end tests.
-*   **Run Tests in a CI/CD Pipeline:** Run your tests in a CI/CD pipeline to ensure that changes don't break existing functionality.
-
-### 5.4. Test Organization
-
-*   **Create a Dedicated Test Directory:** Create a dedicated test directory to store your tests.
-*   **Follow a Consistent Naming Convention:** Follow a consistent naming convention for your test files.
-*   **Organize Tests by Feature:** Organize tests by feature to make them easier to find and maintain.
-
-### 5.5. Mocking and Stubbing
-
-*   **Use Mocking Libraries:** Use mocking libraries like Jest or Sinon to create mocks and stubs.
-*   **Mock the Notion API:** Mock the Notion API to isolate your code and make tests more predictable.
-*   **Stub API Responses:** Stub API responses to control the data returned by the API.
-
-## 6. Common Pitfalls and Gotchas
-
-### 6.1. Frequent Mistakes
-
-*   **Not Understanding the Notion API Data Model:**  Failing to understand the Notion API data model can lead to incorrect API calls and unexpected results. Study the documentation thoroughly.
-*   **Misunderstanding Rate Limits:**  Exceeding rate limits can lead to temporary blocking. Implement proper rate limiting handling and retry mechanisms.
-*   **Improperly Handling Errors:**  Ignoring errors can lead to silent failures and difficult debugging. Always handle errors and log them appropriately.
-*   **Not Using Pagination:**  Failing to use pagination can lead to incomplete data retrieval. Implement proper pagination to handle large datasets.
-
-### 6.2. Edge Cases
-
-*   **Empty Databases:** Handle the case where a database is empty or doesn't contain the expected properties.
-*   **Deleted Pages:** Handle the case where a page has been deleted or moved.
-*   **Permission Errors:**  Handle the case where the application doesn't have the required permissions to access a page or database.
-*   **API Downtime:** Handle the case where the Notion API is temporarily unavailable.
-
-### 6.3. Version-Specific Issues
-
-*   **Breaking Changes:** Be aware of breaking changes in new versions of the Notion API. Test your application thoroughly after upgrading.
-*   **Deprecated Features:** Avoid using deprecated features, as they may be removed in future versions.
-
-### 6.4. Compatibility Concerns
-
-*   **Library Conflicts:** Be aware of potential library conflicts between `notion-api` and other libraries in your project.
-*   **Browser Compatibility:** Ensure that your application is compatible with the target browsers.
-
-### 6.5. Debugging Strategies
-
-*   **Use Debugging Tools:** Use debugging tools to inspect your code and identify errors.
-*   **Log API Requests and Responses:** Log API requests and responses to help diagnose issues.
-*   **Use a Network Monitor:** Use a network monitor to inspect network traffic and identify performance bottlenecks.
-
-## 7. Tooling and Environment
-
-### 7.1. Recommended Development Tools
-
-*   **IDE:** Visual Studio Code, IntelliJ IDEA, or WebStorm
-*   **Node.js:**  A JavaScript runtime environment
-*   **npm or Yarn:** Package managers
-*   **Git:** Version control system
-*   **Postman or Insomnia:** API testing tools
-
-### 7.2. Build Configuration
-
-*   **Use a Build Tool:** Use a build tool like Webpack or Parcel to bundle your code.
-*   **Configure Environment Variables:** Configure environment variables to store API keys and other sensitive information.
-*   **Use a .gitignore File:** Use a `.gitignore` file to exclude sensitive files from your repository.
-
-### 7.3. Linting and Formatting
-
-*   **Use a Linter:** Use a linter like ESLint or JSHint to enforce coding standards.
-*   **Use a Formatter:** Use a formatter like Prettier to automatically format your code.
-*   **Configure CI/CD:** Configure CI/CD to automatically lint and format your code.
-
-### 7.4. Deployment
-
-*   **Choose a Deployment Platform:** Choose a deployment platform that fits your application's needs (e.g., Vercel, Netlify, AWS).
-*   **Configure Environment Variables:** Configure environment variables on your deployment platform to store API keys and other sensitive information.
-*   **Monitor Your Application:** Monitor your application to identify and address performance issues and errors.
-
-### 7.5. CI/CD Integration
-
-*   **Use a CI/CD Platform:** Use a CI/CD platform like GitHub Actions or GitLab CI/CD to automate your build, test, and deployment processes.
-*   **Run Tests in CI/CD:** Run your tests in your CI/CD pipeline to ensure that changes don't break existing functionality.
-*   **Automate Deployment:** Automate deployment to reduce the risk of human error.
+Organize your Notion API interactions into dedicated modules. Separate concerns like authentication, data fetching, and data transformation.
+
+**✅ GOOD: Modular Structure**
+```typescript
+// src/notion/client.ts
+import { Client } from '@notionhq/client';
+
+export const notionClient = new Client({
+  auth: process.env.NOTION_API_TOKEN,
+});
+
+// src/notion/pages.ts
+import { notionClient } from './client';
+import { CreatePageParameters, GetPageResponse } from '@notionhq/client/build/src/api-endpoints';
+
+export async function createNotionPage(params: CreatePageParameters): Promise<GetPageResponse> {
+  return notionClient.pages.create(params);
+}
+
+// src/notion/databases.ts
+import { notionClient } from './client';
+import { QueryDatabaseParameters, QueryDatabaseResponse } from '@notionhq/client/build/src/api-endpoints';
+
+export async function queryNotionDatabase(databaseId: string, params?: QueryDatabaseParameters): Promise<QueryDatabaseResponse> {
+  return notionClient.databases.query({ database_id: databaseId, ...params });
+}
+```
+
+**❌ BAD: Monolithic or Scattered Logic**
+```typescript
+// src/index.ts (or any random file)
+import { Client } from '@notionhq/client';
+
+async function main() {
+  const notion = new Client({ auth: 'secret_token_hardcoded' }); // Hardcoded token is a major NO
+  const response = await notion.databases.query({ database_id: 'some_id' });
+  // ... page creation, block updates, all in one place
+}
+```
+
+## 2. Authentication and Token Management
+
+Always use granular integration tokens, store them in environment variables, and implement rotation. Never hardcode tokens.
+
+**✅ GOOD: Secure Token Handling**
+```typescript
+// .env
+NOTION_API_TOKEN="secret_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+// src/notion/client.ts
+import { Client } from '@notionhq/client';
+
+if (!process.env.NOTION_API_TOKEN) {
+  throw new Error('NOTION_API_TOKEN is not set in environment variables.');
+}
+
+export const notionClient = new Client({
+  auth: process.env.NOTION_API_TOKEN,
+});
+```
+
+**❌ BAD: Insecure Token Handling**
+```typescript
+// Directly in code
+const notion = new Client({ auth: 'secret_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' });
+```
+
+## 3. Typed SDKs and Data Structures
+
+Leverage the official Notion SDKs (e.g., `@notionhq/client` for TypeScript/JavaScript, `notion-sdk` for Python) for type safety and schema validation. Prefer page properties for structured data and blocks for free-form content.
+
+**✅ GOOD: Using Typed SDK for Page Creation**
+```typescript
+import { notionClient } from './client';
+import { CreatePageParameters } from '@notionhq/client/build/src/api-endpoints';
+
+async function createProjectPage(databaseId: string, projectName: string, dueDate: string) {
+  const params: CreatePageParameters = {
+    parent: { database_id: databaseId },
+    properties: {
+      'Name': {
+        title: [{ text: { content: projectName } }],
+      },
+      'Due Date': {
+        date: { start: dueDate },
+      },
+      'Status': {
+        select: { name: 'To Do' },
+      },
+    },
+    children: [ // Use children for rich content, not properties
+      {
+        object: 'block',
+        type: 'paragraph',
+        paragraph: {
+          rich_text: [{ type: 'text', text: { content: 'Initial project description.' } }],
+        },
+      },
+    ],
+  };
+  return notionClient.pages.create(params);
+}
+```
+
+**❌ BAD: Manual JSON Construction & Mixing Concerns**
+```typescript
+// Prone to typos, schema mismatches, and difficult to maintain
+async function createUntypedPage(databaseId: string, projectName: string) {
+  return fetch('https://api.notion.com/v1/pages', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.NOTION_API_TOKEN}`,
+      'Notion-Version': '2022-06-28', // Old version, bad practice
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      parent: { database_id: databaseId },
+      properties: {
+        'Name': {
+          title: [{ text: { content: projectName } }],
+        },
+        'Description': { // Attempting to put rich text in a property that expects a different type
+          rich_text: [{ text: { content: 'This is a description.' } }],
+        },
+      },
+    }),
+  });
+}
+```
+
+## 4. Performance Considerations
+
+Optimize API calls by fetching only necessary data, using pagination, and batching operations where supported.
+
+**✅ GOOD: Paginated Database Query with Filters**
+```typescript
+import { notionClient } from './client';
+import { QueryDatabaseResponse } from '@notionhq/client/build/src/api-endpoints';
+
+async function getAllActiveTasks(databaseId: string): Promise<QueryDatabaseResponse['results']> {
+  let allResults: QueryDatabaseResponse['results'] = [];
+  let cursor: string | undefined = undefined;
+
+  while (true) {
+    const response = await notionClient.databases.query({
+      database_id: databaseId,
+      filter: {
+        property: 'Status',
+        select: {
+          does_not_equal: 'Done',
+        },
+      },
+      page_size: 100, // Fetch in reasonable chunks
+      start_cursor: cursor,
+    });
+
+    allResults = allResults.concat(response.results);
+    if (!response.has_more) {
+      break;
+    }
+    cursor = response.next_cursor || undefined;
+  }
+  return allResults;
+}
+```
+
+**❌ BAD: Fetching All Data Without Pagination**
+```typescript
+// Will fail for large databases, or be very slow
+async function getTooManyTasks(databaseId: string) {
+  return notionClient.databases.query({
+    database_id: databaseId,
+    // No pagination, no filters
+  });
+}
+```
+
+## 5. Error Handling and Rate Limiting
+
+Implement robust error handling, including retries with exponential back-off for rate limits and transient errors. Always check `X-RateLimit-Remaining`.
+
+**✅ GOOD: Robust Error Handling with Exponential Back-off**
+```typescript
+import { notionClient } from './client';
+import { APIResponseError } from '@notionhq/client';
+
+async function safeNotionCall<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  delay = 1000 // 1 second
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (error instanceof APIResponseError) {
+      if (error.status === 429 && retries > 0) { // Rate limit error
+        console.warn(`Rate limit hit. Retrying in ${delay / 1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return safeNotionCall(fn, retries - 1, delay * 2); // Exponential back-off
+      }
+      console.error(`Notion API Error (${error.status}): ${error.message}`);
+      throw error;
+    }
+    console.error('Unexpected error during Notion API call:', error);
+    throw error;
+  }
+}
+
+// Usage
+async function updatePageSafely(pageId: string, properties: any) {
+  await safeNotionCall(() =>
+    notionClient.pages.update({ page_id: pageId, properties })
+  );
+}
+```
+
+**❌ BAD: Ignoring Errors or Blind Retries**
+```typescript
+async function unsafeNotionCall(pageId: string, properties: any) {
+  try {
+    await notionClient.pages.update({ page_id: pageId, properties });
+  } catch (error) {
+    // Just logs, no retry, no specific handling
+    console.error('Failed to update page:', error);
+  }
+}
+```
+
+## 6. Request/Response Patterns
+
+Understand and leverage the `object` and `type` fields in Notion API responses for dynamic content handling. Always assume nested blocks and rich text.
+
+**✅ GOOD: Processing Block Children**
+```typescript
+import { notionClient } from './client';
+import { BlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
+
+async function processBlockChildren(blockId: string) {
+  const { results } = await notionClient.blocks.children.list({ block_id: blockId });
+
+  for (const block of results) {
+    if ('type' in block) { // Type guard for BlockObjectResponse
+      console.log(`Block Type: ${block.type}`);
+      if (block.type === 'paragraph' && block.paragraph.rich_text) {
+        console.log('Paragraph content:', block.paragraph.rich_text.map(rt => rt.plain_text).join(''));
+      }
+      if (block.has_children) {
+        console.log(`Block ${block.id} has children. Recursively processing...`);
+        await processBlockChildren(block.id); // Recursive call for nested blocks
+      }
+    }
+  }
+}
+```
+
+**❌ BAD: Assuming Flat Structure or Ignoring `has_children`**
+```typescript
+async function incompleteBlockProcessing(blockId: string) {
+  const { results } = await notionClient.blocks.children.list({ block_id: blockId });
+  // Only processes top-level blocks, misses all nested content
+  for (const block of results) {
+    if ('type' in block && block.type === 'paragraph') {
+      console.log(block.paragraph.rich_text[0]?.plain_text);
+    }
+  }
+}
+```
+
+## 7. Testing Approaches
+
+Implement unit tests for utility functions and integration tests for API interactions. Use mock clients for unit tests and a dedicated, isolated Notion workspace for integration tests.
+
+**✅ GOOD: Mocking Notion Client for Unit Tests**
+```typescript
+// src/utils/notionHelpers.ts
+export function extractPageTitle(page: any): string {
+  const titleProperty = page.properties.Name?.title;
+  return titleProperty ? titleProperty.map((t: any) => t.plain_text).join('') : 'Untitled';
+}
+
+// tests/notionHelpers.test.ts
+import { extractPageTitle } from '../src/utils/notionHelpers';
+
+describe('extractPageTitle', () => {
+  it('should extract the title from a Notion page object', () => {
+    const mockPage = {
+      properties: {
+        Name: {
+          title: [{ type: 'text', text: { content: 'My Test Page' }, plain_text: 'My Test Page' }],
+        },
+      },
+    };
+    expect(extractPageTitle(mockPage)).toBe('My Test Page');
+  });
+
+  it('should return "Untitled" if title property is missing', () => {
+    const mockPage = { properties: {} };
+    expect(extractPageTitle(mockPage)).toBe('Untitled');
+  });
+});
+```
+
+**✅ GOOD: Integration Tests with Dedicated Workspace**
+*   Set up a separate Notion workspace or database specifically for testing.
+*   Use a dedicated integration token with minimal permissions for this test workspace.
+*   Clean up test data after each test run.
+
+```typescript
+// tests/integration/notion.test.ts
+import { notionClient } from '../../src/notion/client'; // Your actual client
+import { v4 as uuidv4 } from 'uuid';
+
+const TEST_DATABASE_ID = process.env.NOTION_TEST_DATABASE_ID!; // Ensure this is set
+
+describe('Notion API Integration', () => {
+  let createdPageId: string;
+
+  beforeAll(() => {
+    if (!TEST_DATABASE_ID) {
+      throw new Error('NOTION_TEST_DATABASE_ID must be set for integration tests.');
+    }
+  });
+
+  afterEach(async () => {
+    // Clean up created pages
+    if (createdPageId) {
+      await notionClient.pages.update({
+        page_id: createdPageId,
+        archived: true, // Archive instead of delete to preserve history if needed
+      });
+      createdPageId = ''; // Reset for next test
+    }
+  });
+
+  it('should create and retrieve a page in the test database', async () => {
+    const pageTitle = `Test Page ${uuidv4()}`;
+    const newPage = await notionClient.pages.create({
+      parent: { database_id: TEST_DATABASE_ID },
+      properties: {
+        'Name': {
+          title: [{ text: { content: pageTitle } }],
+        },
+      },
+    });
+    createdPageId = newPage.id;
+    expect(newPage.properties.Name.type).toBe('title');
+
+    const retrievedPage = await notionClient.pages.retrieve({ page_id: createdPageId });
+    expect(extractPageTitle(retrievedPage)).toBe(pageTitle);
+  });
+});
+```
+
+**❌ BAD: No Testing or Manual Testing Only**
+*   Relying solely on manual checks after deployment.
+*   No automated verification of API interactions.

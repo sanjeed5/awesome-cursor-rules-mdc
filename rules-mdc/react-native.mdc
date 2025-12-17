@@ -1,217 +1,441 @@
 ---
-description: This rule provides comprehensive best practices and coding standards for React Native development, covering code organization, performance, security, testing, and common pitfalls.
-globs: *.js,*.jsx,*.ts,*.tsx
+description: Definitive guidelines for building robust, performant, and maintainable React Native applications using modern TypeScript, functional components, and a feature-first architecture.
+globs: **/*.{js,jsx,ts,tsx}
 ---
-- Use TypeScript for type safety and improved code maintainability.
-- Prefer functional components with hooks over class components for simplicity and reusability.
-- Maintain a clear and consistent project structure for scalability and maintainability.
+# React Native Best Practices
 
-## 1. Code Organization and Structure:
+This guide outlines the mandatory practices for React Native development. Adherence ensures a consistent, high-quality, and scalable codebase.
 
-- **Directory Structure:**
-    - Adopt a feature-based or component-based structure. For example:
-        
-        src/
-        ├── components/
-        │   ├── Button/
-        │   │   ├── Button.tsx
-        │   │   ├── Button.styles.ts
-        │   │   ├── Button.test.tsx
-        │   ├── Input/
-        │   └── ...
-        ├── screens/
-        │   ├── Home/
-        │   │   ├── HomeScreen.tsx
-        │   │   ├── HomeScreen.styles.ts
-        │   │   ├── HomeScreen.test.tsx
-        │   ├── Profile/
-        │   └── ...
-        ├── navigation/
-        ├── services/
-        ├── utils/
-        ├── types/
-        └── App.tsx
-        
-    - Separate concerns into distinct directories (e.g., components, screens, navigation, services, utils, types).
+## 1. Code Organization and Structure
 
-- **File Naming Conventions:**
-    - Use descriptive names for files and components (e.g., `HomeScreen.tsx`, `useUserData.ts`).
-    - Follow a consistent naming convention (e.g., PascalCase for components, camelCase for functions and variables).
-    - Use `.styles.ts` for style files and `.test.tsx` for test files to keep components readable and organized.
+Adopt a feature-based structure with clear separation of concerns.
 
-- **Module Organization:**
-    - Group related components and modules into logical units.
-    - Use absolute imports and module aliases to avoid long relative paths (e.g., `@components/Button` instead of `../../../components/Button`).
-    - Configure module aliases in `tsconfig.json` or `jsconfig.json`.
+### 1.1. Feature-First Directory Structure
 
-- **Component Architecture:**
-    - Favor small, reusable components with a single responsibility (Single Responsibility Principle).
-    - Use composition over inheritance to create complex components.
-    - Consider using a UI library like React Native Paper or NativeBase for pre-built components.
+Organize code by feature, not by type. Each component, screen, or hook should reside in its own directory with co-located styles and tests.
 
-- **Code Splitting Strategies:**
-    - Implement lazy loading for screens or components that are not immediately needed.
-    - Use `React.lazy` and `Suspense` to load components on demand.
-    - Utilize dynamic imports for conditional loading of modules.
+**✅ GOOD:**
 
-## 2. Common Patterns and Anti-patterns:
+```
+src/
+├── features/
+│   ├── Auth/
+│   │   ├── components/
+│   │   │   ├── LoginForm/
+│   │   │   │   ├── LoginForm.tsx
+│   │   │   │   ├── LoginForm.styles.ts
+│   │   │   │   └── LoginForm.test.tsx
+│   │   ├── screens/
+│   │   │   ├── LoginScreen/
+│   │   │   │   ├── LoginScreen.tsx
+│   │   │   │   ├── LoginScreen.styles.ts
+│   │   │   │   └── LoginScreen.test.tsx
+│   │   └── hooks/
+│   │       └── useAuth.ts
+│   ├── Profile/
+│   └── ...
+├── components/ # Shared, generic UI components
+│   ├── Button/
+│   │   ├── Button.tsx
+│   │   ├── Button.styles.ts
+│   │   └── Button.test.tsx
+│   └── ...
+├── navigation/ # App-level navigation config
+├── services/   # Global API clients, utility services
+├── utils/      # Generic helper functions
+├── types/      # Global TypeScript types
+└── App.tsx
+```
 
-- **Design Patterns:**
-    - **Higher-Order Components (HOCs):** Use HOCs for cross-cutting concerns like authentication or logging.
-    - **Render Props:** Use render props to share code between React components.
-    - **Hooks:** Use custom hooks to encapsulate logic and stateful behavior.
+### 1.2. File Naming and Co-location
 
-- **Recommended Approaches:**
-    - **State Management:**
-        - Use React Context for simple state management.
-        - Use Redux, Zustand, or Jotai for complex state management.
-        - Consider using Recoil for fine-grained state management.
-    - **API Calls:**
-        - Use `axios` or `fetch` for making API requests.
-        - Create a service layer to handle API calls and data transformations.
-    - **Navigation:**
-        - Use React Navigation for managing app navigation.
-        - Define navigation stacks and routes in a separate module.
+Use PascalCase for components/screens, camelCase for hooks/utilities. Co-locate related files.
 
-- **Anti-patterns and Code Smells:**
-    - **Long Component Files:** Break down large components into smaller, more manageable pieces.
-    - **Deeply Nested Components:** Avoid excessive nesting, which can impact performance.
-    - **Mutating State Directly:** Always use `setState` or a state management library to update state.
-    - **Unnecessary Re-renders:** Optimize components to prevent unnecessary re-renders.
-    - **Global Styles:** Avoid using global styles, as they can lead to conflicts and make it difficult to maintain the application.
+**❌ BAD:**
 
-- **State Management Best Practices:**
-    - Choose a state management solution that fits the complexity of your application.
-    - Keep state minimal and derive values when possible.
-    - Use selectors to access state and memoize computed values.
+```
+// components/Button.js
+// components/buttonStyles.js
+// components/buttonTests.js
+```
 
-- **Error Handling Patterns:**
-    - Use `try...catch` blocks to handle errors gracefully.
-    - Implement a global error handler to catch unhandled exceptions.
-    - Log errors to a remote monitoring service.
+**✅ GOOD:**
 
-## 3. Performance Considerations:
+```
+// components/Button/Button.tsx
+// components/Button/Button.styles.ts
+// components/Button/Button.test.tsx
+```
 
-- **Optimization Techniques:**
-    - **Memoization:** Use `React.memo` to memoize components and prevent unnecessary re-renders.
-    - **Pure Components:** Extend `React.PureComponent` for components that only depend on props.
-    - **Debouncing and Throttling:** Use debouncing and throttling to limit the frequency of function calls.
-    - **Virtualization:** Use `FlatList` or `SectionList` for rendering large lists of data.
+### 1.3. Absolute Imports
 
-- **Memory Management:**
-    - Avoid memory leaks by properly cleaning up event listeners and timers.
-    - Use `useCallback` and `useMemo` to prevent creating new functions and objects on every render.
+Configure and use absolute imports to avoid deeply nested relative paths.
 
-- **Rendering Optimization:**
-    - Minimize the number of re-renders by optimizing component updates.
-    - Use `shouldComponentUpdate` (for class components) or `React.memo` to control re-renders.
-    - Avoid using inline styles, as they are re-created on every render.
+**❌ BAD:**
 
-- **Bundle Size Optimization:**
-    - Use code splitting to reduce the initial bundle size.
-    - Remove unused code and dependencies.
-    - Use a bundler like Metro or Webpack with tree shaking enabled.
-    - Compress images and other assets.
+```typescript
+import { Button } from '../../../../components/Button/Button';
+```
 
-- **Lazy Loading Strategies:**
-    - Implement lazy loading for images and other assets using `React.lazy` and `Suspense`.
-    - Use dynamic imports to load modules on demand.
+**✅ GOOD:**
 
-## 4. Security Best Practices:
+```typescript
+import { Button } from '@components/Button/Button';
+```
 
-- **Common Vulnerabilities:**
-    - **Cross-Site Scripting (XSS):** Sanitize user input to prevent XSS attacks.
-    - **SQL Injection:** Use parameterized queries to prevent SQL injection attacks.
-    - **Cross-Site Request Forgery (CSRF):** Implement CSRF protection tokens.
-    - **Man-in-the-Middle (MITM) Attacks:** Use HTTPS to encrypt communication.
+**`tsconfig.json` (or `jsconfig.json`):**
 
-- **Input Validation:**
-    - Validate user input on both the client and server sides.
-    - Use regular expressions or validation libraries to enforce input constraints.
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@components/*": ["src/components/*"],
+      "@features/*": ["src/features/*"],
+      "@navigation/*": ["src/navigation/*"],
+      "@services/*": ["src/services/*"],
+      "@utils/*": ["src/utils/*"],
+      "@types/*": ["src/types/*"]
+    }
+  }
+}
+```
 
-- **Authentication and Authorization Patterns:**
-    - Use a secure authentication protocol like OAuth 2.0 or JWT.
-    - Implement role-based access control (RBAC) to restrict access to sensitive resources.
+### 1.4. One Component Per File
 
-- **Data Protection Strategies:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use secure storage mechanisms for storing API keys and other secrets.
+Each `.tsx` file must export exactly one React component as its default export. Pure stateless components can be co-located if they are tightly coupled and small.
 
-- **Secure API Communication:**
-    - Use HTTPS for all API communication.
-    - Implement API rate limiting to prevent abuse.
-    - Validate API responses to prevent data injection attacks.
+## 2. Component Architecture
 
-## 5. Testing Approaches:
+Prioritize functional components, hooks, and strong typing.
 
-- **Unit Testing Strategies:**
-    - Write unit tests for individual components and modules.
-    - Use a testing framework like Jest or Mocha.
-    - Mock dependencies to isolate the component being tested.
+### 2.1. Functional Components with Hooks
 
-- **Integration Testing:**
-    - Write integration tests to verify the interaction between components and modules.
-    - Test the integration with external APIs and services.
+Always use functional components and React Hooks. Class components are deprecated.
 
-- **End-to-End Testing:**
-    - Write end-to-end tests to verify the entire application flow.
-    - Use a testing framework like Detox or Appium.
+**❌ BAD:**
 
-- **Test Organization:**
-    - Organize tests into separate directories based on component or module.
-    - Use descriptive names for test files and test cases.
+```typescript
+import React, { Component } from 'react';
+class MyComponent extends Component { /* ... */ }
+```
 
-- **Mocking and Stubbing:**
-    - Use mocking and stubbing to isolate components and control their behavior during testing.
-    - Use a mocking library like Jest or Sinon.
+**✅ GOOD:**
 
-## 6. Common Pitfalls and Gotchas:
+```typescript
+import React, { useState, useEffect } from 'react';
+const MyComponent: React.FC = () => { /* ... */ };
+```
 
-- **Frequent Mistakes:**
-    - **Directly Mutating State:** Always use `setState` or a state management library to update state.
-    - **Ignoring Platform Differences:** Test your application on both iOS and Android devices.
-    - **Over-Optimizing:** Optimize only when necessary, as premature optimization can lead to complex code.
-    - **Not Using a Debugger:** Utilize the React Native debugger for efficient debugging.
+### 2.2. Custom Hooks for Reusable Logic
 
-- **Edge Cases:**
-    - **Handling Device Orientation Changes:** Implement logic to handle device orientation changes gracefully.
-    - **Handling Network Connectivity Issues:** Implement error handling for network connectivity issues.
-    - **Handling Different Screen Sizes and Densities:** Design your UI to adapt to different screen sizes and densities.
+Extract stateful logic into custom hooks for reusability and testability.
 
-- **Version-Specific Issues:**
-    - Be aware of breaking changes in React Native and its dependencies.
-    - Test your application with different versions of React Native.
+**❌ BAD:**
 
-- **Compatibility Concerns:**
-    - Ensure that your application is compatible with the target operating systems and devices.
-    - Use polyfills to support older browsers and devices.
+```typescript
+const MyComponent: React.FC = () => {
+  const [count, setCount] = useState(0);
+  useEffect(() => { /* complex logic */ }, [count]);
+  // ... duplicated in other components
+};
+```
 
-- **Debugging Strategies:**
-    - Use the React Native debugger to inspect the component tree and state.
-    - Use the console to log messages and debug code.
-    - Use a remote debugging tool to debug on a physical device.
+**✅ GOOD:**
 
-## 7. Tooling and Environment:
+```typescript
+// hooks/useCounter.ts
+import { useState, useEffect } from 'react';
+export const useCounter = (initialValue: number = 0) => {
+  const [count, setCount] = useState(initialValue);
+  useEffect(() => { /* complex logic */ }, [count]);
+  return { count, setCount };
+};
 
-- **Recommended Development Tools:**
-    - **VS Code:** Use VS Code with the React Native Tools extension for debugging and code completion.
-    - **React Native CLI:** Use the React Native CLI for creating and managing React Native projects.
-    - **Expo CLI:** Use the Expo CLI for developing and testing React Native applications without native code.
-    - **Android Studio:** Use Android Studio for building and debugging Android applications.
-    - **Xcode:** Use Xcode for building and debugging iOS applications.
+// MyComponent.tsx
+import { useCounter } from '@hooks/useCounter';
+const MyComponent: React.FC = () => {
+  const { count, setCount } = useCounter(10);
+  // ...
+};
+```
 
-- **Build Configuration:**
-    - Use a build system like Gradle (Android) or CocoaPods (iOS) to manage dependencies.
-    - Configure build variants for different environments (e.g., development, staging, production).
+### 2.3. Presentational vs. Container Components
 
-- **Linting and Formatting:**
-    - Use ESLint and Prettier to enforce code style and catch potential errors.
-    - Configure ESLint and Prettier to automatically format code on save.
+Separate UI rendering (presentational) from business logic and data fetching (container/screen).
 
-- **Deployment Best Practices:**
-    - Use a continuous integration and continuous deployment (CI/CD) pipeline to automate the deployment process.
-    - Use a service like App Center or Bitrise for building and deploying React Native applications.
+*   **Presentational Components:** Receive data via props, render UI, emit events. No direct state management beyond UI concerns.
+*   **Container/Screen Components:** Manage state, fetch data, handle business logic, pass data/callbacks to presentational components.
 
-- **CI/CD Integration:**
-    - Integrate your code repository with a CI/CD service like GitHub Actions or CircleCI.
-    - Configure the CI/CD pipeline to run tests and build the application on every commit.
+## 3. State Management
+
+Choose the right tool for the job.
+
+### 3.1. Local Component State
+
+Use `useState` and `useReducer` for state confined to a single component or a small, local subtree.
+
+### 3.2. Global Application State
+
+For complex, global state, use **Redux Toolkit**. For simpler global state needs, **Zustand** or **Jotai** are acceptable.
+
+**❌ BAD (for complex global state):**
+
+```typescript
+// Over-reliance on React Context for app-wide state
+// leading to re-renders and complex prop drilling.
+```
+
+**✅ GOOD (Redux Toolkit):**
+
+```typescript
+// store/authSlice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+interface AuthState { user: string | null; token: string | null; }
+const authSlice = createSlice({
+  name: 'auth',
+  initialState: { user: null, token: null } as AuthState,
+  reducers: {
+    setCredentials: (state, action: PayloadAction<AuthState>) => {
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+    },
+  },
+});
+export const { setCredentials } = authSlice.actions;
+export default authSlice.reducer;
+```
+
+## 4. Styling
+
+Use `StyleSheet.create` for performance and maintainability.
+
+### 4.1. Co-located `StyleSheet.create`
+
+Define styles in a separate `.styles.ts` file using `StyleSheet.create`.
+
+**❌ BAD:**
+
+```typescript
+// MyComponent.tsx
+const MyComponent: React.FC = () => {
+  return <View style={{ backgroundColor: 'red', padding: 10 }} />;
+};
+```
+
+**✅ GOOD:**
+
+```typescript
+// MyComponent.styles.ts
+import { StyleSheet } from 'react-native';
+export const styles = StyleSheet.create({
+  container: {
+    backgroundColor: 'red',
+    padding: 10,
+  },
+});
+
+// MyComponent.tsx
+import { styles } from './MyComponent.styles';
+const MyComponent: React.FC = () => {
+  return <View style={styles.container} />;
+};
+```
+
+### 4.2. Theming
+
+Centralize colors, fonts, and spacing in a theme file for consistent UI.
+
+## 5. Navigation
+
+Use **React Navigation** for all navigation needs.
+
+### 5.1. Dedicated Navigation Files
+
+Define navigators and screens in a `navigation/` directory.
+
+```typescript
+// navigation/AppNavigator.tsx
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { LoginScreen } from '@features/Auth/screens/LoginScreen/LoginScreen';
+import { HomeScreen } from '@features/Home/screens/HomeScreen/HomeScreen';
+
+const Stack = createNativeStackNavigator();
+
+export const AppNavigator: React.FC = () => (
+  <Stack.Navigator>
+    <Stack.Screen name="Login" component={LoginScreen} />
+    <Stack.Screen name="Home" component={HomeScreen} />
+  </Stack.Navigator>
+);
+```
+
+## 6. API Calls
+
+Centralize API logic in a service layer.
+
+### 6.1. Service Layer with `axios`
+
+Use `axios` for API requests and encapsulate logic in dedicated service files.
+
+```typescript
+// services/authService.ts
+import axios from 'axios';
+const API_URL = 'https://api.example.com/auth';
+
+export const authService = {
+  login: async (credentials: LoginCredentials) => {
+    const response = await axios.post(`${API_URL}/login`, credentials);
+    return response.data;
+  },
+  // ... other auth methods
+};
+```
+
+## 7. Performance Considerations
+
+Optimize for smooth user experience and efficient resource usage.
+
+### 7.1. Memoization
+
+Use `React.memo`, `useCallback`, and `useMemo` to prevent unnecessary re-renders.
+
+**❌ BAD:**
+
+```typescript
+const MyList: React.FC<{ items: Item[] }> = ({ items }) => {
+  const renderItem = ({ item }: { item: Item }) => <ListItem item={item} />;
+  return <FlatList data={items} renderItem={renderItem} />;
+};
+```
+
+**✅ GOOD:**
+
+```typescript
+const MyList: React.FC<{ items: Item[] }> = React.memo(({ items }) => {
+  const renderItem = useCallback(({ item }: { item: Item }) => <ListItem item={item} />, []);
+  return <FlatList data={items} renderItem={renderItem} />;
+});
+```
+
+### 7.2. Virtualized Lists
+
+Always use `FlatList` or `SectionList` for displaying large lists of data.
+
+### 7.3. Image Optimization
+
+Use optimized image formats (WebP), proper sizing, and caching libraries.
+
+## 8. Accessibility
+
+Build accessible UIs from the start.
+
+### 8.1. Semantic Props
+
+Use `accessibilityLabel`, `accessibilityRole`, and `accessibilityState` for all interactive elements.
+
+```typescript
+<TouchableOpacity
+  onPress={handlePress}
+  accessibilityLabel="Tap to submit form"
+  accessibilityRole="button"
+>
+  <Text>Submit</Text>
+</TouchableOpacity>
+```
+
+## 9. Testing Approaches
+
+Implement a robust testing strategy.
+
+### 9.1. Unit and Integration Testing
+
+Use **Jest** and **React Native Testing Library** for unit and integration tests. Co-locate tests with components (`.test.tsx`).
+
+```typescript
+// Button.test.tsx
+import React from 'react';
+import { render, fireEvent } from '@testing-library/react-native';
+import { Button } from './Button';
+
+describe('Button', () => {
+  it('renders correctly and calls onPress', () => {
+    const mockOnPress = jest.fn();
+    const { getByText } = render(<Button title="Press Me" onPress={mockOnPress} />);
+    fireEvent.press(getByText('Press Me'));
+    expect(mockOnPress).toHaveBeenCalledTimes(1);
+  });
+});
+```
+
+### 9.2. End-to-End Testing
+
+Use **Detox** for end-to-end tests to simulate user interactions across the entire application.
+
+## 10. Common Pitfalls and Gotchas
+
+Avoid common mistakes that lead to bugs and performance issues.
+
+### 10.1. Directly Mutating State
+
+Never directly modify state variables. Always use the state setter function.
+
+**❌ BAD:**
+
+```typescript
+const [user, setUser] = useState({ name: 'John' });
+user.name = 'Jane'; // Direct mutation!
+```
+
+**✅ GOOD:**
+
+```typescript
+const [user, setUser] = useState({ name: 'John' });
+setUser(prevUser => ({ ...prevUser, name: 'Jane' }));
+```
+
+### 10.2. Conditional Rendering with `&&`
+
+Avoid `&&` for conditional rendering in React Native, as it can render `0` or `false` as text, leading to `Invariant Violation` errors if not inside a `<Text>` component.
+
+**❌ BAD:**
+
+```typescript
+const MyComponent: React.FC<{ showMessage: boolean }> = ({ showMessage }) => {
+  return (
+    <View>
+      {showMessage && <Text>Hello!</Text>}
+      {/* If showMessage is false, it renders '0' */}
+    </View>
+  );
+};
+```
+
+**✅ GOOD:**
+
+```typescript
+const MyComponent: React.FC<{ showMessage: boolean }> = ({ showMessage }) => {
+  return (
+    <View>
+      {showMessage ? <Text>Hello!</Text> : null}
+    </View>
+  );
+};
+```
+
+### 10.3. Ignoring Platform Differences
+
+Always test on both iOS and Android. Use `Platform.select` for platform-specific code.
+
+```typescript
+import { Platform, StyleSheet } from 'react-native';
+
+const styles = StyleSheet.create({
+  container: {
+    paddingTop: Platform.select({
+      ios: 20,
+      android: 0,
+    }),
+  },
+});
+```

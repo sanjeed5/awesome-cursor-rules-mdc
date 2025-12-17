@@ -1,168 +1,426 @@
 ---
-description: Enforces Jetpack Compose best practices for code organization, performance, and maintainability. This rule provides guidelines for writing efficient and idiomatic Compose code.
-globs: *.kt
+description: Definitive guidelines for writing clean, performant, and maintainable Jetpack Compose UI code, emphasizing best practices for component design, state management, and modifier usage.
+globs: **/*
 ---
-- **Code Organization and Structure**
-  - **Directory Structure:**
-    - Organize composables by feature or screen. Each feature should have its own directory.
-    - Example:
-      
-      app/
-        src/
-          main/
-            java/
-              com/example/app/
-                feature_a/
-                  FeatureAScreen.kt
-                  FeatureAViewModel.kt
-                  components/
-                    FeatureAButton.kt
-                    FeatureATextField.kt
-                feature_b/
-                  ...
-      
-  - **File Naming Conventions:**
-    - Use PascalCase for composable function names (e.g., `MyComposable`).
-    - Use descriptive names that clearly indicate the composable's purpose.
-    - Name files after the primary composable they contain (e.g., `MyComposable.kt`).
-  - **Module Organization:**
-    - Separate UI code (composables) from business logic (ViewModels, repositories).  Use modules to enforce this separation.
-    - Consider using feature modules for large applications to improve build times and maintainability.
-  - **Component Architecture:**
-    - Design composables as small, reusable components.
-    - Follow the single responsibility principle: each composable should have a single, well-defined purpose.
-    - Use a hierarchical component structure to build complex UIs from smaller, simpler components.
-  - **Code Splitting Strategies:**
-    - Break down large composables into smaller, more manageable parts.
-    - Use inline functions judiciously.  Overuse can hurt performance.
-    - Consider using `derivedStateOf` to only recompose when necessary based on derived state.
+# Jetpack Compose Best Practices
 
-- **Common Patterns and Anti-patterns**
-  - **Design Patterns:**
-    - **State Hoisting:** Move state as high as possible in the composable tree to maximize reusability and testability.  Pass state down as parameters.
-    - **Unidirectional Data Flow:**  Data flows down the composable tree, and events flow up. This makes it easier to reason about the state of the UI.
-    - **Composition Local:** Use sparingly to provide implicit dependencies to composables.  Avoid overusing as it can make dependencies less explicit.
-    - **ViewModel:** Use a ViewModel to hold UI state and handle business logic. This separates the UI from the data layer and makes the UI easier to test.
-  - **Recommended Approaches:**
-    - Use `remember` to cache expensive calculations and avoid unnecessary recompositions.
-    - Use `mutableStateOf` or `rememberSaveable` to store UI state.
-    - Use `LaunchedEffect` or `rememberCoroutineScope` for side effects (e.g., network requests, database access).
-    - Use `animate*AsState` functions for smooth animations.
-  - **Anti-patterns and Code Smells:**
-    - **Reading State from Too High a Scope:** Avoid reading state too high in the composition tree, as this can cause unnecessary recompositions.
-    - **Mutable State in Composables without remember:** If you're not using remember, every recomposition will create a new state, leading to unexpected behavior.
-    - **Long Composable Functions:** Break large composables into smaller, more manageable parts.
-    - **Hardcoded Values:** Avoid hardcoding values directly in composables. Use resources or constants instead.
-    - **Unnecessary Recomposition:**  Profile your code to identify and eliminate unnecessary recompositions.  Tools like the Layout Inspector can help.
-  - **State Management Best Practices:**
-    - Choose the right state management solution for your needs (e.g., `remember`, `mutableStateOf`, `StateFlow`, `LiveData`).
-    - Keep state as immutable as possible.  Use `copy()` to create new state objects instead of modifying existing ones.
-    - Use `derivedStateOf` to derive state from other state objects.
-  - **Error Handling Patterns:**
-    - Use `try-catch` blocks to handle exceptions in composables.
-    - Display error messages to the user in a clear and informative way.
-    - Use a central error handling mechanism to log errors and prevent crashes.  Consider using a `Snackbar` or a dedicated error display composable.
+Jetpack Compose is the future of Android UI. Adhering to these guidelines ensures your composables are readable, maintainable, performant, and scalable. This is your definitive guide for building high-quality Compose applications.
 
-- **Performance Considerations**
-  - **Optimization Techniques:**
-    - **`remember`:** Cache expensive calculations and resources.
-    - **`derivedStateOf`:** Only recompose when derived state changes.
-    - **`SnapshotFlow`:** Collect data from mutable state without recomposing.
-    - **`CompositionLocalProvider`:** Provides an alternative way to pass data if recomposition is a bottleneck.  Use with caution as it can make dependencies implicit.
-    - **`Skippable Composable Functions`:** Compose Compiler performs the best optimization for functions that are skippable. To allow skipping, a composable must meet the following criteria:
-      - All parameters passed to the composable are stable.
-      - The composable's result is the same given the same parameters.
-    - **Inline Functions (with care):** Useful for small functions but can increase bytecode size if overused.
-  - **Memory Management:**
-    - Avoid creating large objects in composables.
-    - Release resources when they are no longer needed.
-    - Use `WeakReference` to avoid memory leaks.
-  - **Rendering Optimization:**
-    - Use `Modifier.drawBehind` and `Modifier.drawWithContent` for custom drawing.
-    - Avoid overdraw by using `Modifier.clip` and `Modifier.background`.
-    - Use `Spacer` to control layout instead of adding padding to multiple elements.
-  - **Bundle Size Optimization:**
-    - Use R8 to shrink and obfuscate your code.
-    - Remove unused resources.
-    - Use dynamic feature modules to deliver features on demand.
-  - **Lazy Loading Strategies:**
-    - Use `LazyColumn` and `LazyRow` to display large lists of data.
-    - Use `rememberLazyListState` to persist the scroll position of lazy lists.
+## 1. Code Organization & Naming
 
-- **Security Best Practices**
-  - **Common Vulnerabilities:**
-    - **Input Validation:**  Sanitize user input to prevent injection attacks.
-    - **Data Protection:**  Encrypt sensitive data at rest and in transit.
-    - **Secure API Communication:**  Use HTTPS to encrypt communication between the app and the server.
-  - **Input Validation:**
-    - Validate user input to prevent injection attacks and other security vulnerabilities.
-    - Use regular expressions or other validation techniques to ensure that input is in the expected format.
-  - **Authentication and Authorization Patterns:**
-    - Use a secure authentication and authorization mechanism to protect sensitive data and functionality.
-    - Use OAuth 2.0 or OpenID Connect for authentication.
-    - Use role-based access control (RBAC) for authorization.
-  - **Data Protection Strategies:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use a strong encryption algorithm.
-    - Store encryption keys securely.
-  - **Secure API Communication:**
-    - Use HTTPS to encrypt communication between the app and the server.
-    - Use certificate pinning to prevent man-in-the-middle attacks.
+### 1.1 Name Composables in PascalCase
+Composable functions that emit UI **must** start with an uppercase letter (PascalCase). This clearly distinguishes them from regular Kotlin functions.
 
-- **Testing Approaches**
-  - **Unit Testing Strategies:**
-    - Test composables in isolation using `ComposeTestRule`.
-    - Verify that composables render correctly and handle user input as expected.
-    - Use `composeTestRule.setContent { ... }` to set the content of the test.
-    - Use `composeTestRule.onNodeWithText("...").performClick()` to simulate user interactions.
-  - **Integration Testing:**
-    - Test the interaction between different composables and ViewModels.
-    - Use `Hilt` or `Koin` to inject dependencies into tests.
-  - **End-to-end Testing:**
-    - Test the entire application flow from the user's perspective.
-    - Use `UIAutomator` or `Espresso` for end-to-end testing.
-  - **Test Organization:**
-    - Organize tests by feature or screen.
-    - Create a separate test module for each feature module.
-  - **Mocking and Stubbing:**
-    - Use `Mockito` or `Mockk` to mock dependencies in unit tests.
-    - Use `Fake` implementations for integration tests.
+❌ **BAD**
+```kotlin
+@Composable
+fun myButton(text: String) { /* ... */ }
+```
 
-- **Common Pitfalls and Gotchas**
-  - **Frequent Mistakes:**
-    - Forgetting to use `remember` for state.
-    - Reading state from too high a scope.
-    - Not handling errors properly.
-    - Not optimizing performance.
-  - **Edge Cases:**
-    - Handling different screen sizes and orientations.
-    - Handling different locales and languages.
-    - Handling different accessibility requirements.
-  - **Version-Specific Issues:**
-    - Be aware of breaking changes in new versions of Jetpack Compose.
-    - Use the latest version of Jetpack Compose to take advantage of new features and bug fixes.
-  - **Compatibility Concerns:**
-    - Ensure that your app is compatible with different Android versions.
-    - Use Jetpack Compose libraries that are compatible with your target Android version.
-  - **Debugging Strategies:**
-    - Use the Android Studio debugger to step through your code and inspect variables.
-    - Use the Layout Inspector to inspect the composable tree and identify performance bottlenecks.
-    - Use the Profiler to measure the performance of your app.
+✅ **GOOD**
+```kotlin
+@Composable
+fun MyButton(text: String) { /* ... */ }
+```
 
-- **Tooling and Environment**
-  - **Recommended Development Tools:**
-    - Android Studio
-    - Kotlin Compiler
-    - Jetpack Compose Libraries
-  - **Build Configuration:**
-    - Use Gradle to manage dependencies and build your app.
-    - Configure the Kotlin compiler to use the latest version of Jetpack Compose.
-  - **Linting and Formatting:**
-    - Use `ktlint` or `detekt` to enforce code style guidelines.
-    - Use `Prettier` to format your code automatically.
-  - **Deployment Best Practices:**
-    - Use the Google Play Store to distribute your app.
-    - Use a staged rollout to gradually release your app to users.
-  - **CI/CD Integration:**
-    - Use a CI/CD system to automate the build, test, and deployment process.
-    - Use `GitHub Actions` or `CircleCI` for CI/CD.
+### 1.2 Standardize Parameter Order
+Always order parameters consistently. This improves readability and makes composable APIs predictable.
+
+1.  `modifier: Modifier = Modifier`
+2.  Required data parameters
+3.  Optional UI-related styling parameters (e.g., `color`, `shape`, `style`)
+4.  Callback lambdas (`onClick`, `onValueChange`)
+5.  Trailing `@Composable` content lambdas
+
+❌ **BAD**
+```kotlin
+@Composable
+fun UserProfile(
+    onClick: () -> Unit,
+    user: User,
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = MaterialTheme.colors.surface
+) { /* ... */ }
+```
+
+✅ **GOOD**
+```kotlin
+@Composable
+fun UserProfile(
+    user: User,
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = MaterialTheme.colors.surface,
+    onClick: () -> Unit
+) { /* ... */ }
+```
+
+### 1.3 Single Responsibility: Emit UI *or* Return a Value
+A composable function **must** either emit UI content into the composition or return a value, but never both. If a composable needs to expose control surfaces, provide them as parameters.
+
+❌ **BAD**
+```kotlin
+@Composable
+fun MyTextWithId(text: String): String {
+    Text(text)
+    return "text_id_123" // Emits UI AND returns a value
+}
+```
+
+✅ **GOOD**
+```kotlin
+@Composable
+fun MyText(text: String) {
+    Text(text)
+}
+
+fun generateTextId(text: String): String {
+    return "text_id_${text.hashCode()}" // Pure function, no UI emission
+}
+```
+
+### 1.4 Emit Single Layout Node
+A composable function **must** emit either 0 or 1 piece of layout. Avoid emitting multiple, disconnected layout nodes. This ensures composables are cohesive and behave predictably.
+
+❌ **BAD**
+```kotlin
+@Composable
+fun TwoTexts(text1: String, text2: String) {
+    Text(text1)
+    Text(text2) // Emits two root layout nodes
+}
+```
+
+✅ **GOOD**
+```kotlin
+@Composable
+fun TwoTexts(text1: String, text2: String) {
+    Column { // Single root layout node
+        Text(text1)
+        Text(text2)
+    }
+}
+```
+
+## 2. Modifiers: The Contract
+
+### 2.1 Accept and Respect a Single Modifier
+Every UI-emitting composable **must** accept a `modifier: Modifier = Modifier` as its first parameter. This parameter **must** be passed to the composable's root UI-emitting child.
+
+❌ **BAD**
+```kotlin
+@Composable
+fun MyCard(content: @Composable () -> Unit) {
+    Card { // No modifier parameter accepted
+        content()
+    }
+}
+```
+
+✅ **GOOD**
+```kotlin
+@Composable
+fun MyCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Card(modifier = modifier) { // Modifier passed to the root
+        content()
+    }
+}
+```
+
+### 2.2 Avoid Internal Layout Modifiers
+Composables **must not** apply layout-controlling modifiers (e.g., `padding()`, `fillMaxWidth()`, `width()`, `height()`, `size()`) to their root component internally. These **must** be provided by the caller via the `modifier` parameter to ensure reusability and flexibility.
+
+❌ **BAD**
+```kotlin
+@Composable
+fun ProfileImage(imageUrl: String) {
+    Image(
+        painter = rememberImagePainter(imageUrl),
+        contentDescription = "Profile picture",
+        modifier = Modifier.size(48.dp).padding(8.dp) // Layout modifiers applied internally
+    )
+}
+```
+
+✅ **GOOD**
+```kotlin
+@Composable
+fun ProfileImage(imageUrl: String, modifier: Modifier = Modifier) {
+    Image(
+        painter = rememberImagePainter(imageUrl),
+        contentDescription = "Profile picture",
+        modifier = modifier // Caller controls size and padding
+    )
+}
+
+// Usage:
+ProfileImage(imageUrl = "...", modifier = Modifier.size(48.dp).padding(8.dp))
+```
+
+### 2.3 Do Not Reuse Modifier Instances
+Each composable **must** receive its own `Modifier` instance. Reusing the same `Modifier` object across multiple composables or within a composable's internal hierarchy can lead to unpredictable behavior and unintended side effects.
+
+❌ **BAD**
+```kotlin
+@Composable
+fun ReusedModifierExample(modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text("Hello", modifier = modifier.padding(8.dp)) // Modifier reused
+        Text("World", modifier = modifier.padding(8.dp)) // Modifier reused
+    }
+}
+```
+
+✅ **GOOD**
+```kotlin
+@Composable
+fun ReusedModifierExample(modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text("Hello", modifier = Modifier.padding(8.dp)) // New modifier instance
+        Text("World", modifier = Modifier.padding(8.dp)) // New modifier instance
+    }
+}
+```
+
+## 3. State Management & Architecture
+
+### 3.1 Prefer Stateless & Controlled Composables
+Design composables to be stateless and controlled. They **must** accept external state as parameters and expose events (callbacks) for state changes. This enables unidirectional data flow and simplifies testing.
+
+❌ **BAD**
+```kotlin
+@Composable
+fun MyToggle() {
+    var isChecked by remember { mutableStateOf(false) } // State owned internally
+    Switch(checked = isChecked, onCheckedChange = { isChecked = it })
+}
+```
+
+✅ **GOOD**
+```kotlin
+@Composable
+fun MyToggle(
+    isChecked: Boolean, // State hoisted
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Switch(checked = isChecked, onCheckedChange = onCheckedChange, modifier = modifier)
+}
+```
+
+### 3.2 Hoist State Upwards
+State **must** be hoisted to the lowest common ancestor that needs to read or modify it. This keeps most composables stateless, improving reusability and testability.
+
+❌ **BAD**
+```kotlin
+@Composable
+fun MyScreen(viewModel: MyViewModel) { // Passing ViewModel down
+    val uiState = viewModel.uiState.collectAsState()
+    MyContent(uiState.value.data, viewModel::onEvent) // Passing ViewModel functions
+}
+```
+
+✅ **GOOD**
+```kotlin
+@Composable
+fun MyScreen(
+    uiState: MyUiState, // Pass immutable data
+    onAction: (MyAction) -> Unit // Pass specific event callbacks
+) {
+    MyContent(
+        data = uiState.data,
+        onItemClick = { item -> onAction(MyAction.ItemClicked(item)) }
+    )
+}
+```
+
+### 3.3 Build Small, Single-Purpose Composables
+Decompose your UI into small, focused composables. Start with low-level building blocks and compose them into higher-level sections. This promotes reusability and maintainability.
+
+❌ **BAD**
+```kotlin
+@Composable
+fun BigComplexScreen() {
+    Column {
+        // All UI logic for header, list, footer in one composable
+        Header()
+        LazyColumn { /* ... */ }
+        Footer()
+    }
+}
+```
+
+✅ **GOOD**
+```kotlin
+// Low-level building blocks
+@Composable fun AppIcon(painter: Painter, contentDescription: String?, modifier: Modifier = Modifier) { /* ... */ }
+@Composable fun BodyText(text: String, modifier: Modifier = Modifier) { /* ... */ }
+
+// Higher-level component
+@Composable
+fun IconTextButton(
+    title: String,
+    icon: Painter,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(modifier = modifier.clickable(onClick = onClick)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AppIcon(painter = icon, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            BodyText(text = title)
+        }
+    }
+}
+
+// Screen-level composition
+@Composable
+fun NavigationScreen(modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        IconTextButton(title = "Home", icon = painterResource(R.drawable.ic_home), onClick = { /* ... */ })
+        IconTextButton(title = "Settings", icon = painterResource(R.drawable.ic_settings), onClick = { /* ... */ })
+    }
+}
+```
+
+### 3.4 Leverage Immutability for Stability
+Define UI state using immutable data classes (`val` properties). This allows the Compose runtime to correctly identify changes and skip unnecessary recompositions, significantly improving performance.
+
+❌ **BAD**
+```kotlin
+data class UserProfileState(var name: String, var email: String) // `var` makes it unstable
+```
+
+✅ **GOOD**
+```kotlin
+data class UserProfileState(val name: String, val email: String) // `val` makes it stable
+```
+
+## 4. Performance Considerations
+
+### 4.1 Optimize Recomposition with `remember` and `derivedStateOf`
+Use `remember` to cache values that don't change frequently across recompositions. Use `derivedStateOf` when a state is derived from other states and you want to avoid recomposing consumers unless the *derived* state actually changes.
+
+❌ **BAD**
+```kotlin
+@Composable
+fun MyListScreen(items: List<String>) {
+    val filteredItems = items.filter { it.contains("A") } // Re-calculated on every recomposition
+    LazyColumn {
+        items(filteredItems) { Text(it) }
+    }
+}
+```
+
+✅ **GOOD**
+```kotlin
+@Composable
+fun MyListScreen(items: List<String>) {
+    val filteredItems by remember(items) { // Only re-calculate if `items` changes
+        derivedStateOf { items.filter { it.contains("A") } }
+    }
+    LazyColumn {
+        items(filteredItems) { Text(it) }
+    }
+}
+```
+
+### 4.2 Use Lazy Containers for Large Lists
+For lists with potentially many items, always use `LazyColumn`, `LazyRow`, or `LazyVerticalGrid`. These components only compose and lay out visible items, preventing performance bottlenecks.
+
+❌ **BAD**
+```kotlin
+@Composable
+fun MyScrollableList(items: List<String>) {
+    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        items.forEach { Text(it) } // All items composed, even if not visible
+    }
+}
+```
+
+✅ **GOOD**
+```kotlin
+@Composable
+fun MyScrollableList(items: List<String>) {
+    LazyColumn {
+        items(items) { Text(it) } // Only visible items composed
+    }
+}
+```
+
+## 5. Theming & Consistency
+
+### 5.1 Use MaterialTheme for Consistent Styling
+Always wrap your application's UI in a `MaterialTheme` (or `MaterialTheme` 3) to ensure consistent typography, colors, and shapes across all components. Avoid creating custom styling objects outside of the theme system.
+
+❌ **BAD**
+```kotlin
+@Composable
+fun CustomButton(text: String, style: CustomButtonStyle) { /* ... */ }
+```
+
+✅ **GOOD**
+```kotlin
+@Composable
+fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Button(onClick = onClick, modifier = modifier, colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.primary)) {
+        Text(text = text, style = MaterialTheme.typography.button)
+    }
+}
+```
+
+### 5.2 Respect Scaffold Padding
+When using `Scaffold`, always apply the provided `PaddingValues` to your main content. This ensures proper layout and avoids overlapping with top bars, bottom bars, or floating action buttons.
+
+❌ **BAD**
+```kotlin
+@Composable
+fun MyScreenContent() {
+    Scaffold(topBar = { TopAppBar(title = { Text("Title") }) }) {
+        Column { Text("Content") } // Ignores Scaffold padding
+    }
+}
+```
+
+✅ **GOOD**
+```kotlin
+@Composable
+fun MyScreenContent() {
+    Scaffold(topBar = { TopAppBar(title = { Text("Title") }) }) { paddingValues ->
+        Column(modifier = Modifier.padding(paddingValues)) { // Applies Scaffold padding
+            Text("Content")
+        }
+    }
+}
+```
+
+## 6. Testing Approaches
+
+### 6.1 Embrace Test-Driven Development (TDD)
+Write UI tests for your composables *before* writing the implementation. This ensures components are well-defined, testable, and robust. Decompose your UI into small, testable units.
+
+```kotlin
+class FavoriteButtonTest {
+    @get:Rule
+    val composeTestRule = createComposeRule()
+
+    @Test
+    fun whenFavoriteIsTrueThenFilledHeartIconIsDisplayed() {
+        composeTestRule.setContent {
+            MyTheme {
+                FavoriteButton(isFavorite = true, onClick = {})
+            }
+        }
+        composeTestRule.onNodeWithContentDescription("Filled heart icon").assertIsDisplayed()
+    }
+
+    @Test
+    fun whenFavoriteIsFalseThenEmptyHeartIconIsDisplayed() {
+        composeTestRule.setContent {
+            MyTheme {
+                FavoriteButton(isFavorite = false, onClick = {})
+            }
+        }
+        composeTestRule.onNodeWithContentDescription("Empty heart icon").assertIsDisplayed()
+    }
+}
+```

@@ -1,180 +1,273 @@
 ---
-description: This rule outlines best practices for coding standards, observability, and effective use of the Datadog library in Python projects. It covers coding style, metric/tag naming, dashboard design, security, and performance optimization.
-globs: *.py
+description: Enforce Datadog best practices for structured logging, consistent tagging, metric governance, and CI/CD integration to ensure reliable and actionable observability across all services.
+globs: **/*
 ---
-- **Coding Standards**
-  - Use `black` for code formatting to ensure consistent style.
-  - Use `isort` to sort imports lexicographically.
-  - Employ `flake8` for style checks and to maintain code quality.
-  - Utilize `bugbear` plugin for `flake8` to identify potential bugs and design issues. Enable the following checks:
-    - `B001`: Avoid bare `except:` clauses; prefer `except Exception:`. Catches unexpected events.
-    - `B003`: Avoid direct assignment to `os.environ`. Use `os.environ.clear()` or `env=` argument to `Popen`.
-    - `B006`: Do not use mutable data structures for argument defaults.
-    - `B007`: Loop control variable should be used within the loop body.
-    - `B301`: Use Python 3 `.iter*` methods on dictionaries.
-    - `B305`: Use `next()` builtin instead of `.next()`.
-    - `B306`: Use `str(e)` or `e.args` to access exception messages.
-    - `B902`: Use `self` for instance methods, and `cls` for class methods.
-  - Enforce consistent logging format with `logging-format` `flake8` plugin. Enable the following checks:
-    - `G001`: Logging statements should not use `string.format()`.
-    - `G002`: Logging statements should not use `%` formatting.
-    - `G003`: Logging statements should not use `+` concatenation.
-    - `G004`: Logging statements should not use f-strings (Python 3.6+).
-    - `G010`: Logging statements should not use `warn`; use `warning` instead.
-    - `G100`: Logging statements should not use extra arguments unless whitelisted.
-    - `G201`: Logging statements should not use `error(..., exc_info=True)`; use `exception(...)` instead.
-    - `G202`: Logging statements should not use redundant `exc_info=True` in `exception`.
-  - Use type checking with `mypy` for improved code quality. Configure `mypy` in `hatch.toml`:
-    toml
-    [env.collectors.datadog-checks]
-    check-types: true
-    mypy-args = [
-    "--py2",
-    "--install-types",
-    "--non-interactive",
-    "datadog_checks/",
-    "tests/",
-    ]
-mypy-deps = [
-    "types-mock==0.1.5",
-    ]
-    
-  - Consider using flags like `--check-untyped-defs` and `--disallow-untyped-defs` for stricter type checking. Configure the files to be checked with mypy.ini file.
+# Datadog Best Practices
 
-- **Metric and Tag Naming Conventions**
-  - Use descriptive and meaningful names for metrics and tags.
-  - Avoid abbreviations that might have multiple meanings.
-  - Maintain consistency in naming across all teams, apps, and services.
-  - Avoid reserved keywords.
-  - Prefix metrics with a namespace depicting the application or service generating the data (e.g., `http.nginx.response_time`).
-  - Metric names must start with a letter.
-  - Metric names can only contain ASCII alphanumerics, underscores, and periods. Other characters are converted to underscores.
-  - Metric names should not exceed 200 characters (preferably less than 100).
-  - Tag names must start with a letter.
-  - Tag names may contain alphanumerics, underscores, minuses, colons, periods, and slashes. Other characters are converted to underscores.
-  - Tags can be up to 200 characters long (including both key and value) and support Unicode, but are converted to lowercase.
-  - Use the `key:value` syntax for tags for optimal functionality. Commonly used metric tag keys are `instance`, `name`, and `role`.
-  - Implement unified service tagging using `env`, `service`, and `version` tags.
+This guide outlines our team's definitive standards for integrating Datadog into our applications and infrastructure. Adhering to these rules ensures consistent, high-quality observability data, enabling faster debugging, better monitoring, and unified insights across our stack.
 
-- **Effective Dashboard Design**
-  - Design dashboards carefully for effective visualization and correlation.
-  - Utilize out-of-the-box dashboards provided by Datadog.
-  - Contribute to community-curated dashboards to enhance visibility and correlation of observability data.
-  - Follow integration dashboard best practices when contributing.
-  - Consult the "Effective Dashboards" repository for dashboard design guidelines.
+---
 
-- **Code Organization and Structure**
-  - **Directory Structure:**
-    - Organize code into modules based on functionality (e.g., `metrics`, `logs`, `tracing`).
-    - Use a `common` directory for shared utilities and helper functions.
-  - **File Naming Conventions:**
-    - Use descriptive file names that reflect the module's purpose (e.g., `metrics_collector.py`, `log_processor.py`).
-  - **Module Organization:**
-    - Keep modules small and focused on a single responsibility.
-    - Use `__init__.py` files to define package structure and expose necessary functionality.
-  - **Component Architecture:**
-    - Design components with clear interfaces and separation of concerns.
-    - Use dependency injection to manage dependencies between components.
-  - **Code Splitting:**
-    - Consider splitting large modules into smaller files to improve maintainability.
-    - Use lazy loading for infrequently used modules.
+## 1. Unified Service Tagging (UST) is Non-Negotiable
 
-- **Common Patterns and Anti-patterns**
-  - **Design Patterns:**
-    - Use the Observer pattern for subscribing to Datadog events.
-    - Implement the Decorator pattern for adding custom functionality to Datadog integrations.
-  - **Recommended Approaches:**
-    - Use Datadog's API client libraries for interacting with the Datadog API.
-    - Implement custom checks using Datadog's check framework.
-  - **Anti-patterns:**
-    - Avoid hardcoding API keys or other sensitive information in the code.
-    - Avoid excessive logging, which can impact performance.
-  - **State Management:**
-    - Use appropriate data structures for storing state (e.g., dictionaries, lists).
-    - Consider using a dedicated state management library for complex state management needs.
-  - **Error Handling:**
-    - Implement robust error handling to prevent application crashes.
-    - Use try-except blocks to catch and handle exceptions.
-    - Log errors to Datadog for monitoring and analysis.
+Every single piece of telemetry (metrics, logs, traces, events) **must** include the `service`, `env`, and `version` tags. This is fundamental for correlating data across Datadog products and achieving true end-to-end observability. Without these, your data is effectively siloed and useless for holistic analysis.
 
-- **Performance Considerations**
-  - **Optimization Techniques:**
-    - Use efficient data structures and algorithms.
-    - Minimize network requests to the Datadog API.
-    - Use caching to reduce database load.
-  - **Memory Management:**
-    - Avoid memory leaks by properly releasing resources.
-    - Use garbage collection to clean up unused objects.
-  - **Bundle Size Optimization:**
-    - Remove unused dependencies from the project.
-    - Use code minification to reduce bundle size.
-  - **Lazy Loading:**
-    - Load infrequently used modules or components on demand.
+### Configuration Management
 
-- **Security Best Practices**
-  - **Vulnerabilities:**
-    - Prevent injection attacks by validating user inputs.
-    - Protect against cross-site scripting (XSS) attacks by encoding outputs.
-  - **Input Validation:**
-    - Validate all user inputs to prevent malicious data from entering the system.
-    - Use regular expressions or other validation techniques to enforce input constraints.
-  - **Authentication and Authorization:**
-    - Use strong authentication mechanisms to verify user identities.
-    - Implement authorization policies to control access to resources.
-  - **Data Protection:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use secure communication protocols (e.g., HTTPS) for API communication.
-  - **Secure API Communication:**
-    - Use TLS/SSL for secure communication with the Datadog API.
-    - Store API keys securely and do not expose them in the code.
+**Always** set these as environment variables in your deployment pipeline. This ensures consistency and reduces boilerplate.
 
-- **Testing Approaches**
-  - **Unit Testing:**
-    - Write unit tests for individual components to verify their functionality.
-    - Use mocking to isolate components from external dependencies.
-  - **Integration Testing:**
-    - Write integration tests to verify interactions between components.
-    - Use a testing framework like pytest for writing and running tests.
-  - **End-to-end Testing:**
-    - Write end-to-end tests to verify the entire application workflow.
-    - Use a tool like Selenium or Cypress for automating browser tests.
-  - **Test Organization:**
-    - Organize tests into separate directories based on component or functionality.
-    - Use descriptive test names to clearly indicate the purpose of each test.
-  - **Mocking and Stubbing:**
-    - Use mocking to simulate external dependencies during testing.
-    - Use stubbing to replace complex components with simplified versions.
+❌ BAD: Ad-hoc tagging or missing core tags
+```python
+# Inconsistent or incomplete tagging
+import datadog.dogstatsd as dogstatsd
+import logging
 
-- **Common Pitfalls and Gotchas**
-  - **Frequent Mistakes:**
-    - Incorrectly configuring Datadog integrations.
-    - Not properly handling errors or exceptions.
-    - Overusing logging, which can impact performance.
-  - **Edge Cases:**
-    - Handling large volumes of data.
-    - Dealing with intermittent network connectivity issues.
-  - **Version-specific Issues:**
-    - Be aware of compatibility issues between different versions of Datadog and its dependencies.
-  - **Compatibility Concerns:**
-    - Ensure compatibility between Datadog and other technologies used in the project.
-  - **Debugging Strategies:**
-    - Use Datadog's monitoring tools to track down performance bottlenecks and errors.
-    - Use logging to trace the execution flow of the application.
+# Metric without service/env/version
+dogstatsd.DogStatsd(host='localhost', port=8125).increment('my_app.requests.total')
 
-- **Tooling and Environment**
-  - **Recommended Tools:**
-    - Use an IDE like VS Code or PyCharm for development.
-    - Use a version control system like Git for managing code.
-    - Use a build tool like Make or Poetry for building and deploying the application.
-  - **Build Configuration:**
-    - Use a build tool to automate the build process.
-    - Configure the build tool to generate optimized bundles.
-  - **Linting and Formatting:**
-    - Use a linter like Flake8 to enforce coding standards.
-    - Use a formatter like Black to automatically format code.
-  - **Deployment:**
-    - Use a deployment tool like Docker or Kubernetes for deploying the application.
-    - Use a CI/CD pipeline to automate the deployment process.
-  - **CI/CD Integration:**
-    - Integrate Datadog into the CI/CD pipeline to automatically monitor and analyze application performance.
-    - Use Datadog's API to create custom dashboards and alerts.
+# Log without service/env/version context
+logging.info("User logged in successfully", extra={"user_id": "123"})
+```
+
+✅ GOOD: Centralized environment variables and automatic tag injection
+```bash
+# Set these in your deployment environment (e.g., Kubernetes, Docker, CI/CD)
+export DD_SERVICE="my-api-service"
+export DD_ENV="production"
+export DD_VERSION="1.0.0"
+export DD_AGENT_HOST="datadog-agent.monitoring.svc.cluster.local" # Or your specific agent host
+```
+```python
+# Python example using ddtrace and standard logging
+import logging
+from ddtrace import tracer, config
+from ddtrace.contrib.logging.logging import DatadogLogHandler
+import datadog.dogstatsd as dogstatsd
+
+# Configure ddtrace to pick up env vars automatically.
+# Ensure ddtrace is initialized early in your application lifecycle.
+# For auto-instrumentation, run your app with `ddtrace-run python your_app.py`.
+# If not using ddtrace-run, explicitly configure:
+tracer.configure(
+    hostname=config.agent.hostname,
+    port=config.agent.port,
+    service=config.service, # Picks up DD_SERVICE env var
+    env=config.env,         # Picks up DD_ENV env var
+    version=config.version  # Picks up DD_VERSION env var
+)
+
+# Configure logging to send to Datadog agent and inject trace IDs
+# DatadogLogHandler automatically adds service, env, version, trace_id, span_id
+handler = DatadogLogHandler(host=config.agent.hostname, port=10518) # Default log intake port
+logging.basicConfig(level=logging.INFO, handlers=[handler])
+logger = logging.getLogger(__name__)
+
+# Initialize DogStatsd client once, using agent host from ddtrace config
+statsd = dogstatsd.DogStatsd(host=config.agent.hostname, port=config.agent.port)
+
+@tracer.wrap()
+def process_request(request_id):
+    # Metrics automatically inherit service/env/version from ddtrace config when using ddtrace-run
+    # Or ensure you pass them as tags if not using auto-instrumentation for metrics.
+    tracer.current_span().set_tag('request.id', request_id)
+    logger.info("Processing request", extra={"request_id": request_id, "user_agent": "Mozilla/5.0"})
+    statsd.increment('my_api.requests.processed', tags=[f'request_id:{request_id}'])
+
+# Example usage
+process_request("req-abc-123")
+```
+
+## 2. Structured Logging is Mandatory
+
+**Always** emit logs in a structured (JSON) format. This makes logs parseable, searchable, and correlatable in Datadog. Unstructured logs are a last resort for debugging and should never be used for production telemetry.
+
+❌ BAD: Unstructured log messages
+```python
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger.info(f"User {user_id} failed to authenticate because of invalid credentials.")
+```
+
+✅ GOOD: Structured logging with context and automatic trace correlation
+```python
+import logging
+from ddtrace.contrib.logging.logging import DatadogLogHandler
+from ddtrace import tracer, config
+
+# Ensure ddtrace is configured as above
+handler = DatadogLogHandler(host=config.agent.hostname, port=10518)
+logging.basicConfig(level=logging.INFO, handlers=[handler])
+logger = logging.getLogger(__name__)
+
+@tracer.wrap()
+def authenticate_user(user_id, password_hash):
+    if password_hash != "expected_hash":
+        # Log structured data; trace_id and span_id are injected automatically by DatadogLogHandler
+        logger.error(
+            "Authentication failed",
+            extra={
+                "event": "user.authentication_failed",
+                "user.id": user_id,
+                "reason": "invalid_credentials",
+                "http.status_code": 401
+            }
+        )
+        return False
+    logger.info(
+        "Authentication successful",
+        extra={
+            "event": "user.authentication_successful",
+            "user.id": user_id,
+            "http.status_code": 200
+        }
+    )
+    return True
+
+authenticate_user("test_user", "wrong_password")
+```
+
+## 3. Metric Governance: Avoid Sprawl
+
+Custom metrics are powerful but can quickly lead to "metric sprawl" and increased costs if not managed. **Always** define a clear naming convention and lifecycle for custom metrics.
+
+### Naming Convention
+
+Use `service_name.component.metric_name.unit` (e.g., `my_api.database.query_duration.seconds`).
+
+❌ BAD: Inconsistent or overly granular metric names
+```python
+# Too generic, hard to filter
+dogstatsd.DogStatsd(host='localhost', port=8125).increment('requests.total')
+dogstatsd.DogStatsd(host='localhost', port=8125).gauge('db_latency', 150)
+
+# Overly specific, creates too many unique metrics
+dogstatsd.DogStatsd(host='localhost', port=8125).increment(f'user.{user_id}.login_attempts')
+```
+
+✅ GOOD: Structured, consistent, and tagged metrics
+```python
+import datadog.dogstatsd as dogstatsd
+from ddtrace import config
+
+# Initialize DogStatsd client once, using agent host from ddtrace config
+statsd = dogstatsd.DogStatsd(host=config.agent.hostname, port=config.agent.port)
+
+def record_api_request(endpoint, status_code):
+    # Tags are crucial for slicing and dicing data without creating new metrics
+    statsd.increment('my_api.requests.total', tags=[f'endpoint:{endpoint}', f'status_code:{status_code}'])
+    statsd.histogram('my_api.request_duration_ms', 120, tags=[f'endpoint:{endpoint}'])
+
+# Record a user login attempt, using tags for user_id instead of embedding in metric name
+def record_login_attempt(user_id, success):
+    statsd.increment('my_api.auth.login_attempts', tags=[f'user_id:{user_id}', f'success:{success}'])
+
+record_api_request("/users", 200)
+record_login_attempt("user-456", True)
+```
+
+## 4. Tracing: Context Propagation
+
+**Always** ensure trace context is propagated across service boundaries. This is critical for end-to-end distributed tracing. Datadog's APM libraries handle this automatically for most common frameworks, but be aware of custom integrations.
+
+❌ BAD: Breaking trace context across service calls
+```python
+# Service A
+import requests
+from ddtrace import tracer
+
+@tracer.wrap()
+def call_service_b():
+    # No trace headers propagated
+    response = requests.get("http://service-b/data")
+    return response.json()
+```
+
+✅ GOOD: Automatic trace context propagation (requires `ddtrace-run` or explicit instrumentation)
+```python
+# Service A (using requests with ddtrace auto-instrumentation)
+import requests
+from ddtrace import tracer
+
+# Run your application with `ddtrace-run python your_app.py`
+# Or explicitly patch requests:
+# from ddtrace import patch; patch(requests=True)
+
+@tracer.wrap()
+def call_service_b():
+    # ddtrace automatically injects trace headers into outgoing requests
+    response = requests.get("http://service-b/data")
+    return response.json()
+
+# Service B (with ddtrace auto-instrumentation)
+# ddtrace automatically extracts trace headers from incoming requests
+# and continues the trace.
+```
+
+## 5. CI/CD Integration for Observability
+
+**Always** integrate Datadog CI Visibility into your build and deployment pipelines. This links code changes directly to their operational impact, closing the feedback loop from code to production.
+
+### Key Practices:
+
+*   **Store API Keys Securely**: Use secrets management (e.g., Azure Key Vault, AWS Secrets Manager, HashiCorp Vault) for `DD_API_KEY` and `DD_APP_KEY`.
+*   **Tag Releases**: Inject commit hashes, branch names, and ticket IDs as tags on deployments and CI Visibility data.
+*   **Monitor Build Metrics**: Track build duration, test failures, and deployment success rates.
+
+❌ BAD: Disconnected CI/CD and observability
+```yaml
+# azure-pipelines.yml (no Datadog integration)
+- script: |
+    python -m pytest
+  displayName: 'Run Tests'
+```
+
+✅ GOOD: Integrated CI Visibility and deployment tagging
+```yaml
+# azure-pipelines.yml (example for Python, adapt for your language/framework)
+variables:
+  DD_API_KEY: $(DD_API_KEY) # Stored securely in Key Vault
+  DD_APP_KEY: $(DD_APP_KEY) # Stored securely in Key Vault
+  DD_SITE: "datadoghq.com" # Or your specific Datadog site
+  DD_ENV: "staging" # Or production, based on environment
+  DD_SERVICE: "my-api-service"
+  DD_VERSION: "$(Build.BuildId)" # Use build ID or commit hash for version
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.x'
+    addToPath: true
+
+- script: |
+    pip install ddtrace pytest
+  displayName: 'Install Dependencies'
+
+- script: |
+    # Run tests with Datadog CI Visibility
+    # DD_GIT_COMMIT_SHA, DD_GIT_REPOSITORY_URL, DD_GIT_BRANCH are often auto-detected by ddtrace-run.
+    # For manual tagging, you can set them explicitly.
+    ddtrace-run pytest --ddtrace
+  displayName: 'Run Tests with Datadog CI Visibility'
+  env:
+    DD_API_KEY: $(DD_API_KEY)
+    DD_APP_KEY: $(DD_APP_KEY)
+    DD_SITE: $(DD_SITE)
+    DD_ENV: $(DD_ENV)
+    DD_SERVICE: $(DD_SERVICE)
+    DD_VERSION: $(DD_VERSION)
+    DD_CIVISIBILITY_ENABLED: "true"
+    DD_TAGS: "team:backend,project:my-app,build_id:$(Build.BuildId),commit:$(Build.SourceVersion)"
+
+- script: |
+    # Example: Notifying Datadog of a deployment event
+    # Using curl for simplicity; in real-world use a dedicated Datadog API client or integration.
+    curl -X POST -H "Content-Type: application/json" \
+         -H "DD-API-KEY: $(DD_API_KEY)" \
+         -H "DD-APPLICATION-KEY: $(DD_APP_KEY)" \
+         "https://api.$(DD_SITE)/api/v1/events" \
+         -d '{
+               "title": "Deployment to $(DD_ENV) for $(DD_SERVICE)",
+               "text": "Version $(DD_VERSION) deployed by $(Build.RequestedFor)",
+               "tags": ["deployment", "env:$(DD_ENV)", "service:$(DD_SERVICE)", "version:$(DD_VERSION)", "commit:$(Build

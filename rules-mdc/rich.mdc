@@ -1,160 +1,225 @@
 ---
-description: Comprehensive best practices and coding standards for the Rich library, focusing on code quality, performance, and maintainability within Python terminal applications.
-globs: *.py
+description: Definitive guidelines for building robust, maintainable, and visually appealing Python CLI applications using the rich library.
+globs: **/*.py
 ---
-- **General Guidelines**
-  - Adhere to PEP 8 coding style guidelines for Python code, emphasizing readability and consistency.
-  - Limit lines to a maximum of 79 characters to enhance readability across different environments.
-  - Prioritize code clarity and simplicity, making it easy to understand and maintain.
-  - Use UTF-8 encoding for source files to ensure compatibility with a wide range of characters.
+# rich Best Practices
 
-- **Installation and Environment**
-  - Use `uv` for installing dependencies to improve speed and reliability, if appropriate.
-  - Specify Python 3.12 or later to leverage the latest language features and performance improvements.  (If applicable for the specific features of rich you are using)
+`rich` transforms plain terminal output into engaging, readable interfaces. These rules ensure your `rich` applications are performant, testable, and follow modern Python best practices.
 
-- **Code Organization and Structure**
+## 1. Code Organization: Centralize `Console` Management
 
-  - **Directory Structure:** Follow a logical directory structure.
-    
-    project_root/
-    ├── src/
-    │   ├── main.py        # Entry point of the application
-    │   ├── utils/
-    │   │   ├── __init__.py
-    │   │   ├── helper_functions.py
-    │   ├── modules/
-    │   │   ├── __init__.py
-    │   │   ├── module_a.py  # Rich-related components
-    │   │   ├── module_b.py
-    ├── tests/
-    │   ├── __init__.py
-    │   ├── test_main.py
-    │   ├── test_module_a.py
-    ├── README.md
-    ├── pyproject.toml  # Or requirements.txt
-    
-  - **File Naming:** Use descriptive lowercase names with underscores (e.g., `console_output.py`).
-  - **Module Organization:** Group related functionalities into separate modules (e.g., `rich_display.py`, `data_formatting.py`).
-  - **Component Architecture:** Design modular components with clear interfaces for reusability and maintainability.
-  - **Code Splitting:**  Break down large files into smaller, more manageable pieces based on functionality. Consider lazy loading of less-frequently used modules.
+Instantiate `Console` once per application run. Avoid creating new `Console` objects in every function or module, as this leads to inconsistent styling, performance overhead, and potential issues with interactive elements. Pass the `Console` instance explicitly or use a global singleton pattern for CLI applications.
 
-- **Coding Style and Best Practices**
+❌ BAD: Repeated `Console` instantiation
+```python
+# module_a.py
+from rich.console import Console
+def do_something():
+    console = Console() # New console every time
+    console.print("Doing something...")
 
-  - **Indentation:** Use 4 spaces for indentation.
-  - **Blank Lines:** Separate top-level functions and classes with two blank lines, and methods within a class with one blank line.
-  - **Imports:**
-    - Group imports in the following order:
-      1. Standard library imports
-      2. Third-party library imports (including Rich)
-      3. Local application imports
-    - Use absolute imports for clarity, unless relative imports significantly improve readability within a package.
-    - Avoid wildcard imports (`from module import *`).
-  - **Naming Conventions:**
-    - Use lowercase with underscores for function and variable names (`my_variable`, `my_function`).
-    - Use CapWords for class names (`MyClass`).
-    - Use UPPER_CASE_WITH_UNDERSCORES for constants (`MAX_VALUE`).
-  - **String Quotes:** Use double quotes consistently for strings, especially for docstrings.
+# module_b.py
+from rich.console import Console
+def do_another_thing():
+    console = Console() # Another new console
+    console.print("Doing another thing...")
+```
 
-- **Rich Library Specific Best Practices**
+✅ GOOD: Single `Console` instance
+```python
+# main.py
+from rich.console import Console
+from .module_a import do_something
+from .module_b import do_another_thing
 
-  - **Console Instantiation:** Create a single `Console` instance for your application and reuse it throughout.
-    python
-    from rich.console import Console
+console = Console() # Instantiate once at the top-level
 
-    console = Console()
+def main():
+    console.print("[bold green]Starting application...[/bold green]")
+    do_something(console)
+    do_another_thing(console)
+    console.print("[bold green]Application finished.[/bold green]")
 
-    def my_function():
-        console.print("Hello, [bold red]World![/bold red]")
-    
-  - **Styling:** Use Rich's markup system for styling text.  Refer to the Rich documentation for available styles and their usage.
-    python
-    console.print("[link=https://example.com]Click here[/link] to visit example.com")
-    
-  - **Tables:** Utilize the `Table` class for structured data display.  Configure columns and rows appropriately.
-    python
+if __name__ == "__main__":
+    main()
+
+# module_a.py
+from rich.console import Console
+def do_something(console: Console): # Pass console explicitly
+    console.print("Doing something...")
+
+# module_b.py
+from rich.console import Console
+def do_another_thing(console: Console): # Pass console explicitly
+    console.print("Doing another thing...")
+```
+
+## 2. Output: Always Use `console.print()`
+
+For any output intended to be styled or managed by `rich`, use `console.print()`. Mixing `print()` with `console.print()` can lead to unpredictable output order and styling issues, especially with interactive elements like progress bars or live displays.
+
+❌ BAD: Mixing `print()` and `console.print()`
+```python
+from rich.console import Console
+console = Console()
+print("This line might appear out of order or unstyled.")
+console.print("[red]This is styled.[/red]")
+```
+
+✅ GOOD: Consistent `console.print()` usage
+```python
+from rich.console import Console
+console = Console()
+console.print("This line is managed by rich.")
+console.print("[red]This is styled.[/red]")
+```
+
+## 3. Interactive Elements: Use `with` Statements
+
+For `rich.progress.Progress` and `rich.live.Live`, always use a `with` statement. This ensures proper resource management, graceful shutdown, and correct rendering behavior, even if errors occur. Failing to use `with` can leave artifacts in the terminal or prevent proper cleanup.
+
+❌ BAD: Manual start/stop (prone to errors)
+```python
+from rich.progress import Progress
+progress = Progress()
+progress.start()
+# ... do work ...
+progress.stop() # Easy to forget or miss on error
+```
+
+✅ GOOD: `with` statement for automatic management
+```python
+from rich.progress import Progress
+from rich.console import Console
+import time
+
+console = Console()
+with Progress(console=console) as progress:
+    task = progress.add_task("[green]Processing...", total=100)
+    for _ in range(100):
+        time.sleep(0.01)
+        progress.update(task, advance=1)
+```
+
+## 4. Logging: Integrate `RichHandler`
+
+Leverage `rich.logging.RichHandler` for beautiful, readable, and structured logs directly in your terminal. Configure it once at application startup to enhance all standard Python logging output.
+
+```python
+import logging
+from rich.console import Console
+from rich.logging import RichHandler
+
+console = Console()
+logging.basicConfig(
+    level="INFO",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(console=console, show_time=True, show_level=True, show_path=False)]
+)
+log = logging.getLogger("rich")
+
+def process_data():
+    log.info("Starting data processing...")
+    # ... some work ...
+    log.warning("Potential issue detected during processing.")
+    # ... more work ...
+    log.error("Failed to save results!")
+
+if __name__ == "__main__":
+    process_data()
+```
+
+## 5. Type Hints: Embrace `rich` Types
+
+`rich` provides excellent type annotations. Use them in your function signatures and variable declarations to improve code readability, enable static analysis with Mypy, and catch type-related errors early.
+
+❌ BAD: Untyped `rich` usage
+```python
+def display_table(data):
     from rich.table import Table
+    table = Table("Name", "Value")
+    for row in data:
+        table.add_row(row[0], str(row[1]))
+    # ...
+```
 
-    table = Table(title="My Data")
-    table.add_column("Name", style="cyan", no_wrap=True)
-    table.add_column("Age", style="magenta")
-    table.add_row("Alice", "30")
-    table.add_row("Bob", "25")
+✅ GOOD: Type-hinted `rich` usage
+```python
+from typing import List, Tuple, Any
+from rich.console import Console
+from rich.table import Table
+
+def display_table(console: Console, data: List[Tuple[str, Any]]):
+    table = Table("Name", "Value")
+    for row_name, row_value in data:
+        table.add_row(row_name, str(row_value))
     console.print(table)
-    
-  - **Progress Bars:** Employ the `Progress` class for tracking long-running tasks.  Configure the progress bar to accurately reflect the task's progress.
-    python
-    from rich.progress import Progress
-    import time
 
-    with Progress() as progress:
-        task1 = progress.add_task("[red]Downloading...", total=1000)
-        task2 = progress.add_task("[green]Processing...", total=100)
+if __name__ == "__main__":
+    console = Console()
+    sample_data = [("Item A", 100), ("Item B", "Hello")]
+    display_table(console, sample_data)
+```
 
-        while not progress.finished:
-            progress.update(task1, advance=0.5)
-            progress.update(task2, advance=0.1)
-            time.sleep(0.01) #Simulate some work
-    
-  - **Inspect:** Use `console.inspect()` for debugging and understanding objects.  This is invaluable for exploring Rich's own classes and objects, or any object in your application.
-    python
-    from rich.panel import Panel
+## 6. Testing: Capture `rich` Output
 
-    panel = Panel("Hello, World!")
-    console.inspect(panel, methods=True)
-    
+When testing `rich` applications with `pytest`, capture `stdout` to assert the content and styling. For more granular control, direct `Console` output to a `StringIO` object, allowing you to inspect the raw `rich` markup.
 
-- **Common Patterns and Anti-patterns**
-  - **Design Patterns:**  Employ appropriate design patterns such as Factory Pattern for creating Rich objects or Strategy Pattern for different output styles.
-  - **Recommended Approaches:**  Use Rich's features for displaying data structures (lists, dictionaries) in a human-readable format.
-  - **Anti-patterns:**  Avoid directly printing to the console using `print()` when you should be using `console.print()` to take advantage of Rich's features. Avoid excessive nesting of Rich markup, which can reduce readability.
-  - **State Management:** Manage the state of Rich components appropriately, especially when creating dynamic displays.  Avoid mutating objects directly without updating the console output.
-  - **Error Handling:** Handle exceptions gracefully and use Rich's features to display error messages to the user in a clear and informative way.
-    python
-    try:
-        result = 1 / 0
-    except Exception as e:
-        console.print_exception(show_locals=True)
-    
+```python
+# my_cli_app.py
+from rich.console import Console
+def greet(console: Console, name: str):
+    console.print(f"Hello, [bold blue]{name}[/bold blue]!")
 
-- **Performance Considerations**
-  - **Optimization Techniques:** Use Rich's built-in caching mechanisms to avoid re-rendering the same content repeatedly.  Minimize the use of computationally expensive Rich features when performance is critical.
-  - **Memory Management:** Be mindful of memory usage when displaying large amounts of data with Rich. Consider using generators or iterators to process data in chunks.
-  - **Rendering Optimization:** If applicable, profile your Rich-based application to identify rendering bottlenecks. Optimize the rendering of complex Rich elements by simplifying the markup or reducing the number of elements.
-  - **Bundle Size Optimization:** Not directly applicable since rich is primarily server-side for terminal apps but for web integrated terminals, ensure only necessary Rich dependencies are bundled.
-  - **Lazy Loading:** Not directly applicable, but relevant for other parts of your application that might interact with Rich.
+# test_my_cli_app.py
+from io import StringIO
+from rich.console import Console
+from my_cli_app import greet
 
-- **Security Best Practices**
-  - **Vulnerabilities:** Be aware of potential vulnerabilities related to untrusted input. Sanitize any user-provided text before displaying it with Rich to prevent markup injection attacks.
-  - **Input Validation:** Validate any input before using it in Rich's markup to prevent unexpected behavior or security issues.
-  - **Authentication and Authorization:** Not directly applicable to Rich, but ensure proper authentication and authorization mechanisms are in place for any data displayed by Rich.
-  - **Data Protection:** Protect sensitive data by masking or redacting it before displaying it with Rich.  Utilize Rich's styling options to emphasize sensitive data that requires special attention.
+def test_greet_output_stringio():
+    # Direct console output to a StringIO object for precise capture
+    output_buffer = StringIO()
+    console = Console(file=output_buffer, force_terminal=True) # force_terminal for consistent output
+    greet(console, "World")
+    captured = output_buffer.getvalue()
+    assert "Hello, World!" in captured
+    assert "[bold blue]World[/bold blue]" in captured # Assert rich markup
 
-- **Testing Approaches**
-  - **Unit Testing:** Write unit tests for individual Rich components to ensure they function correctly.  Mock the `Console` object to isolate the component under test.
-  - **Integration Testing:** Test the integration of Rich components with other parts of your application to ensure they work together seamlessly.
-  - **End-to-end Testing:** Verify the overall behavior of your Rich-based application by simulating user interactions and validating the output displayed on the console.
-  - **Test Organization:** Organize your tests into logical modules that correspond to the structure of your application.
-  - **Mocking and Stubbing:** Use mocking and stubbing techniques to isolate components and simulate dependencies during testing.  The `unittest.mock` module provides tools for creating mock objects.
+def test_greet_output_capsys(capsys): # pytest fixture to capture stdout/stderr
+    # Use default console which writes to stdout, then capture with capsys
+    console = Console(force_terminal=True)
+    greet(console, "Test")
+    captured_capsys = capsys.readouterr()
+    assert "Hello, Test!" in captured_capsys.stdout
+```
 
-- **Common Pitfalls and Gotchas**
-  - **Frequent Mistakes:** Forgetting to import the `Console` class or using `print()` instead of `console.print()`.  Overcomplicating Rich markup, leading to unreadable code.
-  - **Edge Cases:** Handling Unicode characters correctly.  Dealing with terminals that have limited color support. Handling very large data sets, which can cause memory issues or performance problems.
-  - **Version-Specific Issues:** Being aware of breaking changes or new features in different versions of Rich. Consult the Rich changelog for details.
-  - **Compatibility Concerns:** Ensuring compatibility between Rich and other terminal libraries or frameworks you are using.
-  - **Debugging:** Using `console.inspect()` to explore objects and identify issues.  Setting breakpoints and stepping through the code to understand the flow of execution.
+## 7. Virtual Environments & Packaging
 
-- **Tooling and Environment**
-  - **Recommended Tools:** VS Code with the Python extension, PyCharm, or any other IDE that supports Python development. Consider using a Rich-specific plugin if available.
-  - **Build Configuration:** Use `pyproject.toml` (preferred) or `requirements.txt` to manage project dependencies, including Rich.
-  - **Linting and Formatting:** Use Pylint, Flake8, and Black to enforce code style guidelines and catch potential errors.
-  - **Deployment:** Ensure the target environment has Python and Rich installed. Consider using a virtual environment to isolate dependencies.
-  - **CI/CD Integration:** Integrate Rich-based applications into your CI/CD pipeline to automate testing and deployment.  Use tools like Jenkins, GitLab CI, or GitHub Actions.
+Always use a virtual environment (`venv` or `pipenv`) for `rich` projects. Define `rich` as a dependency in `pyproject.toml` and use `pip install -e .` for editable installs during development. This ensures consistent environments and proper packaging for your CLI tool, making it easily distributable.
 
-- **Additional Notes**
-  - Consult the official Rich documentation (https://rich.readthedocs.io) for the most up-to-date information and examples.
-  - Explore Rich's examples and demonstrations to learn more about its capabilities.
-  - Contribute to the Rich community by reporting bugs, suggesting features, or submitting pull requests.
+```toml
+# pyproject.toml
+[project]
+name = "my-rich-cli"
+version = "0.1.0"
+dependencies = [
+    "rich>=13.0.0",
+    # other dependencies
+]
 
-- **References**
-  - PEP 8: Style Guide for Python Code (https://peps.python.org/pep-0008/)
-  - Rich Documentation: (https://rich.readthedocs.io)
+[project.scripts]
+my-cli = "my_rich_cli.main:main" # Define entry point for your CLI
+
+# Example: my_rich_cli/main.py
+from rich.console import Console
+def main():
+    console = Console()
+    console.print("[green]Welcome to My Rich CLI![/green]")
+
+# To set up and run your CLI:
+# 1. python -m venv .venv
+# 2. source .venv/bin/activate  (or .venv\Scripts\activate on Windows)
+# 3. pip install -e .
+# 4. my-cli
+```

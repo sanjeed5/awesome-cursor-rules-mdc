@@ -1,139 +1,371 @@
 ---
-description: This rule provides guidelines for writing clean, maintainable, and effective tests using Jest. It covers code organization, performance, common pitfalls, and best practices for testing JavaScript and TypeScript projects.
-globs: *.js,*.jsx,*.ts,*.tsx,*.mjs,*.cjs,*.mts,*.cts
+description: Definitive guidelines for writing robust, maintainable, and performant Jest tests in JavaScript and TypeScript projects.
+globs: **/*.{js,ts,jsx,tsx}
 ---
-- **Organize tests by feature or module:**
-  - Group tests into files or directories that correspond to the features or modules they are testing. This makes it easier to locate and maintain tests.
-  - Create a `__tests__` directory alongside your source code files. This is a common convention that Jest recognizes.
+# jest Best Practices
 
-- **Use descriptive test names:**
-  - Write test names that clearly describe what the test is verifying. This makes it easier to understand the purpose of each test and to diagnose failures.
-  - Use the `describe` and `it` blocks to structure your tests and provide context.
-  - Example: `describe('User authentication', () => { it('should log in a user with valid credentials', () => { /* ... */ }); });`
+This guide outlines our team's definitive Jest best practices. Adhere to these rules for consistent, reliable, and efficient testing.
 
-- **Keep tests isolated and independent:**
-  - Each test should be independent of other tests. Avoid sharing state or dependencies between tests.
-  - Use `beforeEach` and `afterEach` hooks to set up and tear down the environment for each test.
+## 1. Configuration (`jest.config.ts`)
 
-- **Avoid testing implementation details:**
-  - Focus on testing the public API of your code, rather than the internal implementation details.
-  - This makes your tests more resilient to changes in the implementation.
-  - Test the "what", not the "how".
+Always use a `jest.config.ts` file for type safety and explicit configuration.
 
-- **Use setup and teardown methods:**
-  - Use `beforeAll`, `afterAll`, `beforeEach`, and `afterEach` hooks to set up and tear down the environment for your tests.
-  - `beforeAll` and `afterAll` run once before and after all tests in a `describe` block.
-  - `beforeEach` and `afterEach` run before and after each test in a `describe` block.
+```typescript
+// jest.config.ts
+import type { Config } from 'jest';
+import { defaults } from 'jest-config';
 
-- **Mock external dependencies:**
-  - Use mocking to isolate your code from external dependencies, such as network requests or database connections.
-  - Jest provides built-in mocking capabilities with `jest.mock` and `jest.spyOn`.
-  - Consider using a library like `axios-mock-adapter` for mocking HTTP requests.
+const config: Config = {
+  // Use ts-jest for TypeScript files
+  preset: 'ts-jest',
+  // Automatically clear mock calls and instances between tests
+  clearMocks: true,
+  // Reset mocks between tests to prevent state leakage
+  resetMocks: true,
+  // Detailed test output
+  verbose: true,
+  // Collect coverage from specific files, exclude common boilerplate
+  collectCoverageFrom: [
+    'src/**/*.{js,jsx,ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/index.tsx', // Exclude entry points
+    '!src/reportWebVitals.ts',
+  ],
+  // Ignore coverage for specific paths
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    'src/setupTests.ts',
+  ],
+  // Setup file for global test environment configurations (e.g., @testing-library/jest-dom)
+  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
+  // Map module paths for aliases or specific packages
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1', // Example: for absolute imports
+  },
+  // Test environment for browser-like DOM APIs
+  testEnvironment: 'jsdom',
+  // Match test files ending with .test.ts(x) or .spec.ts(x)
+  testMatch: [...defaults.testMatch, '**/?(*.)+(spec|test).[tj]s?(x)'],
+};
 
-- **Write tests that are easy to read and maintain:**
-  - Keep your tests concise and focused.
-  - Use clear and consistent formatting.
-  - Add comments to explain complex logic.
-  - Refactor your tests regularly to keep them up to date.
+export default config;
+```
 
-- **Aim for high test coverage, but prioritize meaningful tests over quantity:**
-  - Aim for high test coverage to ensure that your code is well-tested.
-  - However, prioritize writing meaningful tests that verify the core functionality of your code.
-  - Don't just aim for 100% coverage without considering the value of each test.
+## 2. Test Organization
 
-- **Use Jest's built-in matchers effectively:**
-  - Jest provides a rich set of matchers for asserting different conditions.
-  - Use matchers like `toBe`, `toEqual`, `toBeGreaterThan`, `toContain`, `toHaveBeenCalled`, etc.
-  - Explore the Jest documentation for the full list of matchers.
+Colocate test files with the code they test. This improves discoverability and maintainability.
 
-- **Handle asynchronous code correctly:**
-  - Use `async/await` or Promises to handle asynchronous code in your tests.
-  - Use the `resolves` and `rejects` matchers to assert that a Promise resolves or rejects.
-  - Example: `expect(myAsyncFunction()).resolves.toBe(expectedValue);`
+❌ BAD: Separate `tests/` directory
+```
+src/
+  components/
+    Button.tsx
+tests/
+  components/
+    Button.test.tsx
+```
 
-- **Test error handling:**
-  - Write tests to verify that your code handles errors correctly.
-  - Use the `toThrow` matcher to assert that a function throws an error.
-  - Example: `expect(() => myDangerousFunction()).toThrow(Error);`
+✅ GOOD: Colocated `__tests__/` or `.test.ts`
+```
+src/
+  components/
+    Button/
+      index.tsx
+      __tests__/
+        Button.test.tsx
+  utils/
+    formatDate.ts
+    formatDate.test.ts
+```
 
-- **Use snapshots sparingly:**
-  - Snapshots can be useful for verifying the output of a component or function.
-  - However, they can also be brittle and difficult to maintain if used excessively.
-  - Use snapshots strategically and review them carefully when they change.
+## 3. Core Principles
 
-- **Configure Jest correctly:**
-  - Configure Jest using the `jest.config.js` or `jest.config.ts` file.
-  - Configure settings such as test environment, module file extensions, and coverage thresholds.
-  - Consider using presets like `ts-jest` or `babel-jest` for TypeScript or Babel support.
+### Test Behavior, Not Implementation
 
-- **Leverage code coverage reports:**
-  - Use Jest's code coverage reports to identify areas of your code that are not well-tested.
-  - Aim to increase coverage in critical areas of your codebase.
-  - Use the `--coverage` flag to generate coverage reports.
+Focus on the public API and expected outcomes. Refactoring internal logic should not break tests.
 
-- **Keep test data separate from test logic:**
-  - Externalize test data to improve readability and maintainability.
-  - Use fixtures or factories to generate test data.
-  - Avoid hardcoding data directly in your tests.
+❌ BAD: Testing internal state or private methods
+```typescript
+class UserService {
+  private _users: User[] = []; // Internal state
 
-- **Consider using test-driven development (TDD):**
-  - Write tests before you write code to drive the development process.
-  - This can help you write more testable and well-designed code.
+  constructor() { /* ... */ }
+  async fetchUsers() { /* ... */ }
+}
 
-- **Run tests frequently:**
-  - Run your tests frequently to catch errors early.
-  - Use Jest's watch mode to automatically run tests when files change.
-  - Integrate tests into your CI/CD pipeline.
+test('UserService should have empty _users array initially', () => {
+  const service = new UserService();
+  expect(service._users).toHaveLength(0); // Accessing private property
+});
+```
 
-- **Document your tests:**
-  - Add comments to explain the purpose of each test and the expected behavior.
-  - This will make it easier for others to understand and maintain your tests.
+✅ GOOD: Testing public behavior
+```typescript
+class UserService {
+  private _users: User[] = [];
 
-- **Code Organization and Structure:**
-  - **Directory structure best practices:** Organize test files alongside the component/module they test (e.g., `src/components/MyComponent/MyComponent.test.js`)
-  - **File naming conventions:** Use `.test.js` or `.spec.js` suffixes for test files (e.g., `MyComponent.test.js`, `MyModule.spec.ts`).
-  - **Module organization:** Keep test files close to the modules they are testing. Use a consistent naming convention for test files.
-  - **Component architecture:** Test components in isolation, mocking dependencies where necessary.
-  - **Code splitting strategies:** Ensure tests cover all code paths in dynamically imported modules.
+  constructor() { /* ... */ }
+  async fetchUsers() { /* ... */ return this._users; }
+}
 
-- **Common Patterns and Anti-patterns:**
-  - **Design patterns specific to Jest:** Use Page Object Model (POM) for UI tests, Factory pattern for test data generation.
-  - **Recommended approaches for common tasks:** Use `jest.mock` for mocking modules, `jest.spyOn` for spying on methods, and `fakeTimers` for controlling time-dependent behavior.
-  - **Anti-patterns and code smells to avoid:** Avoid testing implementation details, relying on global state, and creating brittle snapshots.
-  - **State management best practices:** Mock external state dependencies and verify state changes using `expect` assertions.
-  - **Error handling patterns:** Test for specific error messages and ensure error boundaries are properly tested.
+test('UserService should return an empty array of users initially', async () => {
+  const service = new UserService();
+  const users = await service.fetchUsers();
+  expect(users).toHaveLength(0); // Testing public method output
+});
+```
 
-- **Performance Considerations:**
-  - **Optimization techniques:** Use `jest.clearAllMocks` and `jest.resetAllMocks` in `beforeEach` blocks to prevent state leakage and improve test performance.
-  - **Memory management:** Avoid creating large data structures in tests that are not necessary. Manually trigger garbage collection in tests where large objects are created and released.
-  - **Rendering optimization:** Mock expensive rendering logic to speed up tests that involve React components.
-  - **Bundle size optimization:** Not applicable, as Jest primarily tests individual modules or components.
-  - **Lazy loading strategies:** Ensure tests cover all code paths in dynamically imported modules.
+### Descriptive Test Names
 
-- **Security Best Practices:**
-  - **Common vulnerabilities and how to prevent them:** Avoid using sensitive data in test snapshots. Sanitize test data to prevent potential injection attacks.
-  - **Input validation:** Test input validation logic and ensure that invalid inputs are handled correctly.
-  - **Authentication and authorization patterns:** Mock authentication and authorization logic to test different user roles and permissions.
-  - **Data protection strategies:** Not directly applicable, as Jest primarily focuses on functional testing.
-  - **Secure API communication:** Mock API calls and verify that data is transmitted securely.
+Use clear, concise names that explain *what* is being tested and *what* the expected outcome is.
 
-- **Testing Approaches:**
-  - **Unit testing strategies:** Test individual functions, classes, or components in isolation.
-  - **Integration testing:** Test interactions between different modules or components.
-  - **End-to-end testing:** Use tools like Cypress or Playwright for end-to-end tests.
-  - **Test organization:** Group tests into logical suites based on functionality or module.
-  - **Mocking and stubbing:** Use `jest.mock` and `jest.spyOn` to create mocks and stubs for dependencies.
+❌ BAD: Vague names
+```typescript
+test('adds', () => { /* ... */ });
+it('should work', () => { /* ... */ });
+```
 
-- **Common Pitfalls and Gotchas:**
-  - **Frequent mistakes developers make:** Forgetting to mock dependencies, testing implementation details, and creating brittle snapshots.
-  - **Edge cases to be aware of:** Testing asynchronous code correctly, handling errors, and testing different input types.
-  - **Version-specific issues:** Be aware of breaking changes in Jest updates and update your tests accordingly.
-  - **Compatibility concerns:** Ensure tests are compatible with different browsers or environments.
-  - **Debugging strategies:** Use `console.log` statements, debuggers, or Jest's interactive mode to debug tests.
+✅ GOOD: Specific and expressive names
+```typescript
+describe('sum function', () => {
+  test('should correctly add two positive numbers', () => { /* ... */ });
+  test('should return zero when adding zero to a number', () => { /* ... */ });
+});
+```
 
-- **Tooling and Environment:**
-  - **Recommended development tools:** VS Code, WebStorm, Jest Runner extension.
-  - **Build configuration:** Configure Jest using `jest.config.js` or `package.json`.
-  - **Linting and formatting:** Use ESLint and Prettier to enforce code style and prevent errors.
-  - **Deployment best practices:** Integrate tests into your CI/CD pipeline to ensure code quality.
-  - **CI/CD integration:** Use tools like GitHub Actions, Jenkins, or CircleCI to automate testing and deployment.
+### Keep Tests Isolated
+
+Each test should run independently without relying on the state or side effects of other tests. Use `beforeEach` and `afterEach` for setup/teardown.
+
+```typescript
+let mockData: any[];
+
+beforeEach(() => {
+  mockData = [{ id: 1, name: 'Alice' }];
+});
+
+afterEach(() => {
+  // Clean up any global mocks or side effects if not handled by config.resetMocks
+  jest.clearAllMocks();
+});
+
+test('should add a new item to mockData', () => {
+  mockData.push({ id: 2, name: 'Bob' });
+  expect(mockData).toHaveLength(2);
+});
+
+test('should retrieve the initial mockData', () => {
+  expect(mockData).toHaveLength(1); // mockData is reset by beforeEach
+});
+```
+
+## 4. Asynchronous Testing
+
+Always use `async/await` for asynchronous code.
+
+❌ BAD: Using `.then()` or forgetting `await`
+```typescript
+test('should fetch user data', () => {
+  fetchUser(1).then(user => {
+    expect(user.id).toBe(1);
+  });
+});
+
+test('should not fetch user data (missing await)', () => {
+  const user = fetchUser(1); // Test finishes before promise resolves
+  expect(user).toBeDefined(); // This will pass, but user is a Promise
+});
+```
+
+✅ GOOD: Using `async/await`
+```typescript
+test('should fetch user data correctly', async () => {
+  const user = await fetchUser(1);
+  expect(user.id).toBe(1);
+});
+
+test('should handle fetch error', async () => {
+  await expect(fetchUser(999)).rejects.toThrow('User not found');
+});
+```
+
+## 5. Mocking Strategies
+
+Mock external dependencies to isolate the unit under test and ensure deterministic, fast tests.
+
+### Automatic Mocks (`jest.mock`)
+
+Use `jest.mock` for entire modules.
+
+```typescript
+// api.ts
+export const fetchData = async () => { /* ... */ };
+
+// service.ts
+import { fetchData } from './api';
+export const getServiceData = async () => fetchData();
+
+// service.test.ts
+import { getServiceData } from './service';
+import { fetchData } from './api';
+
+jest.mock('./api'); // Mocks the entire module
+
+test('getServiceData should call fetchData', async () => {
+  (fetchData as jest.Mock).mockResolvedValue('mocked data'); // Cast to jest.Mock
+  const data = await getServiceData();
+  expect(data).toBe('mocked data');
+  expect(fetchData).toHaveBeenCalledTimes(1);
+});
+```
+
+### Spying on Functions (`jest.spyOn`)
+
+Use `jest.spyOn` to observe calls to existing functions without replacing their original implementation (unless you explicitly mock it).
+
+```typescript
+// calculator.ts
+export const add = (a: number, b: number) => a + b;
+export const calculate = (a: number, b: number) => add(a, b) * 2;
+
+// calculator.test.ts
+import * as calculator from './calculator';
+
+test('calculate should call add', () => {
+  const addSpy = jest.spyOn(calculator, 'add');
+  calculator.calculate(1, 2);
+  expect(addSpy).toHaveBeenCalledWith(1, 2);
+  addSpy.mockRestore(); // Clean up the spy
+});
+
+test('calculate should return mocked value if add is mocked', () => {
+  const addSpy = jest.spyOn(calculator, 'add').mockReturnValue(100);
+  const result = calculator.calculate(1, 2);
+  expect(result).toBe(200); // 100 * 2
+  addSpy.mockRestore();
+});
+```
+
+### Fake Timers (`jest.useFakeTimers`)
+
+Control `setTimeout`, `setInterval`, `Date` for predictable tests involving time.
+
+```typescript
+// timer.ts
+export const runAfterDelay = (cb: () => void) => setTimeout(cb, 1000);
+
+// timer.test.ts
+import { runAfterDelay } from './timer';
+
+jest.useFakeTimers();
+
+test('runAfterDelay calls the callback after 1 second', () => {
+  const callback = jest.fn();
+  runAfterDelay(callback);
+
+  expect(callback).not.toHaveBeenCalled();
+  jest.advanceTimersByTime(500); // Advance by 500ms
+  expect(callback).not.toHaveBeenCalled();
+  jest.advanceTimersByTime(500); // Advance by another 500ms (total 1000ms)
+  expect(callback).toHaveBeenCalledTimes(1);
+});
+
+jest.useRealTimers(); // Restore real timers after tests
+```
+
+### Avoid Over-Mocking
+
+Mock only what's necessary. Over-mocking can lead to brittle tests that don't reflect real-world behavior.
+
+## 6. UI Component Testing (with React Testing Library)
+
+For React components, use React Testing Library with `@testing-library/jest-dom` matchers.
+
+```typescript
+// src/setupTests.ts (referenced in jest.config.ts)
+import '@testing-library/jest-dom';
+
+// src/components/Button/index.tsx
+type ButtonProps = { onClick: () => void; children: React.ReactNode; };
+export const Button = ({ onClick, children }: ButtonProps) => (
+  <button onClick={onClick}>{children}</button>
+);
+
+// src/components/Button/__tests__/Button.test.tsx
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { Button } from '../';
+
+test('Button renders children and handles click', async () => {
+  const user = userEvent.setup();
+  const handleClick = jest.fn();
+  render(<Button onClick={handleClick}>Click Me</Button>);
+
+  const button = screen.getByRole('button', { name: /click me/i });
+  expect(button).toBeInTheDocument();
+
+  await user.click(button);
+  expect(handleClick).toHaveBeenCalledTimes(1);
+});
+```
+
+### Avoid `screen.debug()` in Committed Code
+
+`screen.debug()` is for debugging during development, not for production tests.
+
+❌ BAD:
+```typescript
+test('renders component', () => {
+  render(<MyComponent />);
+  screen.debug(); // Should not be committed
+  expect(screen.getByText('Hello')).toBeInTheDocument();
+});
+```
+
+✅ GOOD:
+```typescript
+test('renders component', () => {
+  render(<MyComponent />);
+  expect(screen.getByText('Hello')).toBeInTheDocument();
+});
+```
+
+## 7. Snapshot Testing
+
+Use snapshot tests for UI components or schema stability, but review them carefully.
+
+```typescript
+// src/components/Card/__tests__/Card.test.tsx
+import { render } from '@testing-library/react';
+import { Card } from '../';
+
+test('Card component matches snapshot', () => {
+  const { asFragment } = render(<Card title="Test" content="Hello World" />);
+  expect(asFragment()).toMatchSnapshot();
+});
+
+// For GraphQL schema stability (requires jest-serializer-graphql-schema)
+import { buildSchema } from 'graphql';
+import { lexicographicSortSchema } from 'graphql/utilities';
+
+test('GraphQL schema is stable', () => {
+  const schema = buildSchema(/* ... */);
+  expect(lexicographicSortSchema(schema)).toMatchSnapshot();
+});
+```
+
+## 8. Avoid Focused Tests in Committed Code
+
+Never commit `.only` or `.skip` to the codebase. These are for local development only.
+
+❌ BAD:
+```typescript
+describe.only('My Feature', () => { /* ... */ });
+test.skip('should not run this test', () => { /* ... */ });
+```
+
+✅ GOOD:
+```typescript
+describe('My Feature', () => { /* ... */ });
+test('should run this test', () => { /* ... */ });
+```

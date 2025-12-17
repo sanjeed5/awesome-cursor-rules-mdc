@@ -1,168 +1,279 @@
 ---
-description: This rule outlines best practices for developing and maintaining applications within the ELK (Elasticsearch, Logstash, Kibana) stack, including coding standards, configuration, performance, security, and testing.
-globs: *.conf, *.yml, *.json, *.log
+description: Definitive guidelines for emitting, structuring, and managing logs within the ELK stack, ensuring robust observability and efficient troubleshooting.
+globs: **/*
 ---
-## ELK Stack Best Practices
+# elk-stack Best Practices
 
-This document provides comprehensive best practices for working with the ELK (Elasticsearch, Logstash, Kibana) stack, covering various aspects from code organization to security and testing.
+The ELK (Elasticsearch-Logstash-Kibana) stack is our standard for centralized logging and observability. Adhering to these guidelines ensures our logs are consistent, actionable, and efficient, enabling rapid troubleshooting and deep insights.
 
-### 1. Code Organization and Structure
+## Code Organization and Structure
 
-- **Directory Structure Best Practices:**
-    - Organize configurations (Logstash pipelines, Kibana dashboards) in separate directories, such as `logstash/pipelines`, `kibana/dashboards`, and `elasticsearch/config`.
-    - Maintain a dedicated directory for custom scripts or plugins used within the ELK stack.
-    - Use a version control-friendly structure, where each configuration file is self-contained and easily traceable.
+### 1. Standardize on Structured Logging
 
-- **File Naming Conventions:**
-    - Use descriptive and consistent naming conventions for configuration files, such as `application-name-pipeline.conf` for Logstash pipelines or `dashboard-name.json` for Kibana dashboards.
-    - Employ prefixes or suffixes to denote the purpose or environment of a configuration (e.g., `dev-`, `prod-`).
+Always emit logs as structured JSON to `stdout`. This is the **only** acceptable method for application logging. Avoid writing to local files.
 
-- **Module Organization:**
-    - If using custom scripts or plugins, organize them into modules with clear interfaces and documentation.
-    - For Logstash pipelines, consider breaking down complex configurations into smaller, reusable modules using the `include` directive.
+**Rationale**: `stdout` is the standard stream for containerized applications, easily captured by Elastic Agent or Filebeat. Structured JSON ensures logs are machine-readable and parsable without complex regex, making them immediately queryable in Elasticsearch.
 
-- **Component Architecture:**
-    - Design a modular architecture where each component (e.g., data ingestion, processing, visualization) is loosely coupled and can be independently scaled or updated.
-    - Follow a layered approach, separating concerns such as data collection, transformation, storage, and presentation.
+**✅ GOOD: Python with `structlog`**
 
-- **Code Splitting Strategies:**
-    - For Logstash pipelines, split configurations into smaller files based on functionality (e.g., input, filter, output) to improve readability and maintainability.
-    - Use conditional logic (e.g., `if/else` statements) within Logstash pipelines to handle different data sources or processing requirements.
+```python
+# app/logging_config.py
+import sys
+import structlog
+import os
 
-### 2. Common Patterns and Anti-patterns
+def configure_logging():
+    # Define canonical fields and processors
+    shared_processors = [
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.merge_extra_context,
+        # Enforce canonical fields: service_name, trace_id, span_id
+        lambda logger, method_name, event_dict: event_dict.update(
+            service_name=os.getenv("SERVICE_NAME", "unknown-service"),
+            trace_id=os.getenv("X_B3_TRACEID", "no-trace-id"), # Example for B3 propagation
+            span_id=os.getenv("X_B3_SPANID", "no-span-id"),
+        ),
+    ]
 
-- **Design Patterns:**
-    - **Pipeline Pattern:** Design data ingestion pipelines using Logstash or Beats to process and transform data before indexing it in Elasticsearch.
-    - **Dashboard Pattern:** Create reusable Kibana dashboards and visualizations to monitor key metrics and identify trends.
-    - **Alerting Pattern:** Implement alerting rules in Kibana or use external tools to trigger notifications based on specific events or thresholds.
+    if os.getenv("APP_ENV", "development") == "production":
+        # Production: JSON output for log aggregators
+        processors = shared_processors + [
+            structlog.processors.dict_tracebacks, # Structured tracebacks
+            structlog.processors.JSONRenderer(),
+        ]
+    else:
+        # Development: Pretty printing for local readability
+        processors = shared_processors + [
+            structlog.dev.ConsoleRenderer(),
+        ]
 
-- **Recommended Approaches:**
-    - Use structured logging formats (e.g., JSON) to simplify data parsing and analysis.
-    - Implement data enrichment techniques (e.g., GeoIP lookup, user agent parsing) to add context to log data.
-    - Use Index Lifecycle Management (ILM) to automate index rotation, deletion, and optimization.
+    structlog.configure(
+        processors=processors,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
 
-- **Anti-patterns:**
-    - Avoid using overly complex Logstash pipelines that are difficult to understand and maintain.
-    - Do not store sensitive data (e.g., passwords, API keys) in plain text within configuration files.
-    - Avoid excessive use of wildcard queries in Elasticsearch, which can negatively impact performance.
+    # Optionally, redirect standard Python logging to structlog
+    # import logging
+    # logging.basicConfig(handlers=[structlog.stdlib.ProcessorFormatter.wrap_for_formatter], level=os.getenv("LOG_LEVEL", "INFO").upper())
+    # structlog.stdlib.ProcessorFormatter.remove_processors_from_logger(logging.getLogger())
 
-- **State Management:**
-    - For Logstash pipelines, use persistent queues to ensure data durability and prevent data loss during outages.
-    - Utilize Elasticsearch's snapshot and restore API to back up and restore data in case of disaster.
+# In your application entry point:
+# from app.logging_config import configure_logging
+# configure_logging()
+# log = structlog.get_logger(__name__)
+```
 
-- **Error Handling:**
-    - Implement error handling in Logstash pipelines to gracefully handle unexpected data formats or processing errors.
-    - Use dead-letter queues to capture failed events and allow for later reprocessing.
-    - Monitor the health of ELK stack components and set up alerts for critical errors.
+### 2. Enforce a Canonical Log Line Schema
 
-### 3. Performance Considerations
+Every log entry **must** conform to a shared schema. This enables consistent parsing, filtering, and dashboarding across all services.
 
-- **Optimization Techniques:**
-    - Tune Elasticsearch settings such as shard allocation, refresh interval, and bulk indexing size to optimize indexing and search performance.
-    - Use appropriate data types and mappings in Elasticsearch to minimize storage space and improve query performance.
-    - Optimize Logstash pipelines by using efficient filters, reducing the number of operations, and avoiding unnecessary data transformations.
+**Required Fields**:
+-   `@timestamp` (ISO 8601 format)
+-   `log.level` (e.g., `info`, `warn`, `error`, `debug`)
+-   `message` (human-readable string)
+-   `service.name` (unique identifier for the service)
+-   `trace.id` (correlation ID for distributed tracing)
+-   `span.id` (specific operation within a trace)
+-   Additional context-specific key-value pairs (e.g., `user_id`, `request.method`, `http.status_code`).
 
-- **Memory Management:**
-    - Configure JVM heap size for Elasticsearch and Logstash based on available memory and data volume.
-    - Monitor memory usage of ELK stack components and adjust settings as needed to prevent memory leaks or out-of-memory errors.
+**Rationale**: A consistent schema is crucial for automated parsing and correlation in Kibana. It reduces noise and makes logs immediately useful.
 
-- **Bundle Size Optimization:**
-    - N/A - ELK stack does not use bundles in the traditional web development sense, but optimize configurations and data structures.
+## Common Patterns and Anti-patterns
 
-- **Lazy Loading Strategies:**
-    - N/A - ELK stack components load configurations on startup, but optimize data ingestion and indexing to improve overall performance.
+### 1. Emit Structured JSON to `stdout`
 
-### 4. Security Best Practices
+**✅ GOOD: Logging structured data to `stdout`**
 
-- **Common Vulnerabilities:**
-    - Protect against Elasticsearch injection attacks by validating user inputs and sanitizing data before indexing it.
-    - Prevent unauthorized access to ELK stack components by enabling authentication and authorization.
-    - Secure communication between ELK stack components by enabling TLS encryption.
+```python
+# Using the configured structlog logger
+from app.logging_config import log # Assuming log is configured as above
 
-- **Input Validation:**
-    - Validate data ingested into Logstash pipelines to prevent malicious or malformed data from being indexed in Elasticsearch.
-    - Sanitize user inputs in Kibana dashboards to prevent cross-site scripting (XSS) attacks.
+log.info("user_registered", user_id="abc-123", email="user@example.com", source="web_app")
+log.error("database_connection_failed", db_host="db.prod.internal", port=5432, retry_count=3, exc_info=True)
+```
 
-- **Authentication and Authorization:**
-    - Enable authentication in Elasticsearch and Kibana to restrict access to authorized users only.
-    - Use role-based access control (RBAC) to grant different levels of permissions to different users or groups.
+**❌ BAD: Writing to local files or unstructured logs**
 
-- **Data Protection:**
-    - Encrypt sensitive data at rest in Elasticsearch using encryption at rest features or external encryption tools.
-    - Implement data masking or anonymization techniques to protect sensitive data in Kibana dashboards.
+```python
+# Avoid this at all costs
+import logging
+logging.basicConfig(filename='app.log', level=logging.INFO)
+logging.info(f"User abc-123 registered from web_app with email user@example.com")
 
-- **Secure API Communication:**
-    - Use HTTPS for all API communication with ELK stack components.
-    - Implement API rate limiting to prevent denial-of-service (DoS) attacks.
+# Also bad: unstructured print statements
+print("ERROR: Database connection failed!")
+```
 
-### 5. Testing Approaches
+### 2. Inject Correlation IDs for Distributed Tracing
 
-- **Unit Testing:**
-    - Write unit tests for custom scripts or plugins used within the ELK stack.
-    - Mock external dependencies to isolate components during testing.
+Always inject `trace.id` and `span.id` into your logs, typically from incoming request headers (e.g., OpenTelemetry B3 headers). This links all log entries related to a single request across microservices.
 
-- **Integration Testing:**
-    - Test the integration between ELK stack components by simulating data ingestion, processing, and visualization scenarios.
-    - Verify that data is correctly indexed in Elasticsearch and displayed in Kibana dashboards.
+**Rationale**: Essential for debugging distributed systems and understanding end-to-end request flows.
 
-- **End-to-End Testing:**
-    - Perform end-to-end tests to ensure that the entire ELK stack is functioning correctly and meeting performance requirements.
-    - Simulate real-world scenarios to validate data flow and system behavior.
+**✅ GOOD: Automatic context injection (e.g., using middleware)**
 
-- **Test Organization:**
-    - Organize tests into separate directories based on component or functionality.
-    - Use a consistent naming convention for test files and test cases.
+```python
+# Example for a Python web framework (e.g., Flask/FastAPI middleware)
+from contextvars import ContextVar
+import structlog
 
-- **Mocking and Stubbing:**
-    - Use mocking frameworks to create mock objects for external dependencies during unit testing.
-    - Stub out API calls or database queries to isolate components during integration testing.
+request_context = ContextVar("request_context", default={})
 
-### 6. Common Pitfalls and Gotchas
+def trace_middleware(request):
+    trace_id = request.headers.get("X-B3-TraceId", "no-trace-id")
+    span_id = request.headers.get("X-B3-SpanId", "no-span-id")
+    request_context.set({"trace_id": trace_id, "span_id": span_id})
+    # Bind context to structlog for this request
+    structlog.contextvars.bind_contextvars(trace_id=trace_id, span_id=span_id)
+    # ... process request ...
+    structlog.contextvars.clear_contextvars() # Clean up after request
 
-- **Frequent Mistakes:**
-    - Not configuring sufficient resources (CPU, memory, disk space) for ELK stack components.
-    - Over-indexing data and creating unnecessarily large indices.
-    - Using inefficient queries or aggregations in Elasticsearch.
+# In your application code, simply log:
+log = structlog.get_logger(__name__)
+log.info("request_received", path=request.path, method=request.method)
+# trace_id and span_id will be automatically added by structlog's contextvars processor
+```
 
-- **Edge Cases:**
-    - Handling large volumes of data or high query loads.
-    - Dealing with complex data formats or unstructured log data.
-    - Recovering from node failures or data corruption.
+**❌ BAD: Manually passing IDs or omitting them**
 
-- **Version-Specific Issues:**
-    - Incompatibilities between different versions of ELK stack components.
-    - Deprecated features or APIs in newer versions of Elasticsearch, Logstash, and Kibana.
+```python
+# This is error-prone and leads to missing correlation
+def process_order(order_id):
+    # No trace_id here, difficult to correlate
+    log.info("processing_order", order_id=order_id)
+```
 
-- **Compatibility Concerns:**
-    - Ensuring compatibility between ELK stack components and other technologies in your environment.
-    - Addressing dependencies and conflicts between different plugins or libraries.
+### 3. Use Consistent Log Levels
 
-- **Debugging Strategies:**
-    - Use Elasticsearch's explain API to analyze query performance and identify bottlenecks.
-    - Enable debug logging in Logstash pipelines to troubleshoot data processing issues.
-    - Monitor system logs and metrics to identify resource constraints or errors.
+Adhere to standard log levels and their intended use.
 
-### 7. Tooling and Environment
+-   **`DEBUG`**: Detailed diagnostic information, useful only during development or deep troubleshooting. **Never enable in production.**
+-   **`INFO`**: General operational messages, indicating normal application flow.
+-   **`WARN`**: Potentially harmful situations, unexpected but recoverable events. Requires attention.
+-   **`ERROR`**: Runtime errors or unexpected conditions that prevent normal operation. Requires immediate attention.
+-   **`CRITICAL`**: Severe errors leading to application shutdown or data loss.
 
-- **Recommended Development Tools:**
-    - IDEs with support for YAML, JSON, and Groovy.
-    - Command-line tools for interacting with Elasticsearch, Logstash, and Kibana.
-    - Monitoring tools for tracking the health and performance of ELK stack components.
+**Rationale**: Proper log levels enable effective filtering and alerting.
 
-- **Build Configuration:**
-    - Use configuration management tools (e.g., Ansible, Chef) to automate the deployment and configuration of ELK stack components.
-    - Store configuration files in version control to track changes and facilitate collaboration.
+**✅ GOOD: Appropriate log level usage**
 
-- **Linting and Formatting:**
-    - Use linters and formatters to enforce coding standards and improve code quality.
-    - Configure IDEs to automatically format code on save.
+```python
+log.info("user_authenticated", user_id="user-456")
+if cache_miss:
+    log.warn("cache_miss", key="product_data", reason="expired")
+try:
+    # ... risky operation ...
+except Exception as e:
+    log.error("failed_to_process_payment", order_id="ord-789", error=str(e), exc_info=True)
+```
 
-- **Deployment Best Practices:**
-    - Deploy ELK stack components on separate servers or virtual machines to isolate workloads and improve scalability.
-    - Use a load balancer to distribute traffic across multiple Elasticsearch nodes.
+**❌ BAD: Inconsistent or arbitrary level usage**
 
-- **CI/CD Integration:**
-    - Integrate ELK stack deployments into your CI/CD pipeline to automate testing and deployment processes.
-    - Use infrastructure-as-code (IaC) tools to provision and manage ELK stack environments.
+```python
+# Using INFO for an error condition
+log.info("Failed to connect to external API, retrying...") # Should be WARN or ERROR
+```
 
-By following these best practices, you can build and maintain a robust, scalable, and secure ELK stack environment that meets your logging and analytics needs.
+## Performance Considerations
+
+### 1. Offload Heavy Processing to Ingest Pipelines
+
+Your application should only emit raw, structured logs. All complex parsing, enrichment (e.g., adding host/container info), and routing **must** happen in Logstash or Elasticsearch Ingest Pipelines.
+
+**Rationale**: Keeps application lightweight, focused on business logic, and prevents logging from becoming a performance bottleneck.
+
+### 2. Avoid Excessive Logging in Production
+
+Set log levels appropriately for production environments (`INFO` or `WARN`). `DEBUG` logs are for development only.
+
+**Rationale**: High volume logging increases I/O, network traffic, storage costs, and Elasticsearch indexing load.
+
+## Common Pitfalls and Gotchas
+
+### 1. Schema Drift
+
+Inconsistent field names or data types across services will break Kibana dashboards and search queries.
+
+**Solution**: Define a strict logging schema and enforce it via code reviews and CI/CD checks. Use shared logging libraries.
+
+### 2. Logging Sensitive Data
+
+Never log Personally Identifiable Information (PII), credentials, API keys, or other sensitive data.
+
+**Solution**: Implement data masking or redaction at the application level **before** logs are emitted.
+
+### 3. Neglecting Index Lifecycle Management (ILM)
+
+Without ILM, Elasticsearch indices will grow indefinitely, leading to performance degradation and high storage costs.
+
+**Solution**: Configure ILM policies in Elasticsearch to automatically roll over, shrink, and delete old indices based on age or size.
+
+### 4. Relying on Ad-hoc Log Files
+
+Writing logs to files on disk in containerized environments is a critical anti-pattern. These files are often ephemeral, hard to access, and not centrally managed.
+
+**Solution**: Always log to `stdout` (and `stderr` for errors). Let the container runtime and Elastic Agent/Filebeat handle collection.
+
+## Testing Approaches
+
+### 1. Unit Test Log Output
+
+Verify that your application emits logs with the correct structure, content, and required fields.
+
+**✅ GOOD: Unit test example (Python `pytest`)**
+
+```python
+# test_app.py
+import pytest
+import json
+from unittest.mock import patch
+from io import StringIO
+import sys
+
+# Assume configure_logging() is called in test setup
+from app.logging_config import configure_logging
+configure_logging() # Ensure structlog is configured for JSON output in tests
+log = structlog.get_logger("test_logger")
+
+def test_user_registration_log():
+    with patch('sys.stdout', new=StringIO()) as fake_stdout:
+        log.info("user_registered", user_id="test-user", email="test@example.com")
+        log_output = fake_stdout.getvalue().strip()
+        
+        assert log_output
+        parsed_log = json.loads(log_output)
+        
+        assert parsed_log['message'] == "user_registered"
+        assert parsed_log['log.level'] == "info"
+        assert parsed_log['user_id'] == "test-user"
+        assert parsed_log['email'] == "test@example.com"
+        assert 'service.name' in parsed_log
+        assert '@timestamp' in parsed_log
+```
+
+### 2. Integration Test Log Flow
+
+Deploy your application and verify that logs are correctly ingested, parsed, and appear in Kibana with the expected fields.
+
+**Solution**: Use a dedicated test environment with a minimal ELK setup. Send synthetic traffic and query Kibana or Elasticsearch directly to confirm log presence and structure.
+
+### 3. Validate Logstash/Ingest Pipelines
+
+Test your Logstash configurations or Elasticsearch Ingest Pipelines with synthetic log data to ensure they correctly parse, enrich, and transform logs before indexing.
+
+**Solution**: Use tools like `logstash -f config.conf --config.test_and_exit` or Elasticsearch's `_simulate` API for ingest pipelines.
+
+### 4. CI/CD Gates for Logging Standards
+
+Integrate automated checks into your CI/CD pipeline to enforce logging best practices, such as:
+-   Linting for common anti-patterns (e.g., `print()` statements).
+-   Schema validation of generated logs.
+-   Ensuring `DEBUG` level is not enabled in production builds.
+
+**Rationale**: Catch logging regressions early, before they impact production observability.

@@ -1,336 +1,376 @@
 ---
-description: A comprehensive guide to best practices for developing REST APIs using Django REST Framework (DRF), covering code structure, design patterns, security, performance, and testing.
-globs: *.py
----
+description: Enforces modern, secure, and performant `django-rest-framework` best practices for API development, focusing on maintainability and scalability.
+globs: **/*.py
 ---
 # django-rest-framework Best Practices
 
-This document provides a comprehensive guide to best practices for developing robust, scalable, and maintainable REST APIs using the Django REST Framework (DRF). It covers various aspects of DRF development, including code organization, design patterns, security considerations, performance optimization, testing strategies, and common pitfalls.
+This guide outlines our definitive standards for building APIs with Django REST Framework (DRF). Adhere to these rules to ensure consistency, security, and performance across all projects.
 
 ## 1. Code Organization and Structure
 
-### 1.1. Directory Structure
-
-A well-structured project layout is crucial for maintainability and scalability. Here's a recommended directory structure:
-
-
-myproject/
-  manage.py
-  myproject/
-    __init__.py
-    settings/
-      __init__.py
-      base.py       # Base settings for all environments
-      development.py  # Settings for development environment
-      production.py   # Settings for production environment
-    urls.py         # Root URL configuration
-    asgi.py
-    wsgi.py
-  api/            # Top-level for all apps interacting via REST API
-    __init__.py
-    app1/
-      __init__.py
-      models.py     # Database models
-      serializers.py# DRF serializers
-      views.py        # DRF viewsets and API views
-      urls.py         # App-specific URL configuration
-      permissions.py  # Custom permissions
-      filters.py      # Custom filters
-      tasks.py        # Celery tasks (if applicable)
-      tests.py        # Unit and integration tests
-    app2/...
-  core/            # Core app for user management, etc.
-  utils/          # General utility functions and modules
-  docs/           # API documentation (e.g., OpenAPI specification)
-
-
-### 1.2. File Naming Conventions
-
-*   `models.py`: Contains database models.
-*   `serializers.py`: Contains DRF serializers.
-*   `views.py`: Contains DRF viewsets and API views.
-*   `urls.py`: Contains app-specific URL configurations.
-*   `permissions.py`: Contains custom permissions.
-*   `filters.py`: Contains custom filters.
-*   `tasks.py`: Contains Celery tasks (if applicable).
-*   `tests.py`: Contains unit and integration tests.
-*   Descriptive names for custom serializers, views, permissions, and filters (e.g., `UserSerializer`, `ProductListView`, `IsAdminOrReadOnly`, `ProductFilter`).
-
-### 1.3. Module Organization
-
-*   **Keep apps focused:** Each app should represent a distinct feature or domain within your API.
-*   **Abstract common logic:** Move reusable code into utility modules within each app or in a shared `utils` directory.
-*   **Separate concerns:** Ensure that models, serializers, views, and other components are logically separated within their respective modules.
-
-### 1.4. Component Architecture
-
-*   **Models:** Define the data structure and relationships using Django's ORM.
-*   **Serializers:** Convert model instances to JSON and vice versa, handling data validation.
-*   **Viewsets:** Group related API endpoints (CRUD operations) for a model. Use Generic Views for simpler endpoints.
-*   **Permissions:** Control access to API endpoints based on user roles or other criteria.
-*   **Filters:** Allow clients to filter and sort data.
-*   **Pagination:** Manage large datasets by returning results in pages.
-
-### 1.5. Code Splitting
-
-*   **Break down large viewsets:** Decompose complex viewsets into smaller, more manageable classes or functions.
-*   **Use mixins:** Employ DRF's mixins to reuse common viewset logic.
-*   **Custom methods for complex logic:** Move complex logic out of views and into helper functions or service classes.
-
-## 2. Common Patterns and Anti-patterns
-
-### 2.1. Design Patterns
-
-*   **Serializer Pattern:** Encapsulates the conversion of model instances to and from JSON.  Enforces data validation rules.
-*   **Service Layer Pattern:** Encapsulates business logic and data access. Decouples views from models.
-*   **Repository Pattern:** An abstraction layer between data access logic and the rest of the application. (Less common in Django, but can be helpful for complex scenarios)
-*   **Factory Pattern:** Creates objects in a centralized location. Simplifies object creation logic.
-*   **Decorator Pattern:** Adds behavior to existing functions or classes. Enhances functionality without modifying core code.
-
-### 2.2. Recommended Approaches
-
-*   **CRUD operations:** Use DRF's ModelViewSet for standard CRUD operations on a model.
-*   **Custom API endpoints:** Create custom views using `APIView` or generic views for specialized functionality.
-*   **Data validation:** Leverage DRF's serializers for robust data validation.
-*   **Authentication:** Use token authentication, session authentication, or OAuth for secure access.
-*   **Authorization:** Implement permission classes to control access to resources.
-*   **Filtering and sorting:** Use DRF's filtering and ordering capabilities.
-*   **Pagination:** Implement pagination for list endpoints with large datasets.
-*   **Versioning:** Implement API versioning to support evolving APIs.
-
-### 2.3. Anti-patterns and Code Smells
-
-*   **Fat models:** Avoid putting business logic directly into models.
-*   **Fat views:** Keep views thin and delegate business logic to service classes.
-*   **Inconsistent naming:** Use consistent naming conventions throughout the project.
-*   **Lack of documentation:** Document all API endpoints and code components.
-*   **Ignoring errors:** Handle errors gracefully and provide meaningful error messages.
-*   **Over-engineering:** Don't overcomplicate solutions for simple problems.
-*   **Duplicated code:** Identify and refactor duplicated code into reusable functions or components.
-*   **Hardcoded values:** Avoid hardcoding configuration values in the code.
-
-### 2.4. State Management
-
-*   **Stateless API:**  DRF is inherently stateless, relying on tokens, sessions, or other mechanisms for authentication rather than server-side state. Each request should contain all the necessary information for processing.
-*   **Client-side state:** State management should primarily be handled on the client-side using libraries like Redux, Vuex, or React Context.
-*   **Avoid server-side sessions for API state:** Server-side sessions are less scalable and can introduce complexity.
-
-### 2.5. Error Handling
-
-*   **Use DRF's exception handling:** DRF provides built-in exception handling that returns appropriate HTTP status codes and error messages.
-*   **Custom exception handling:**  Extend DRF's exception handling to customize error responses.
-*   **Logging:** Log errors and warnings for debugging and monitoring.
-*   **Meaningful error messages:**  Provide clear and helpful error messages to clients.
-*   **Centralized error handling:**  Create middleware to catch exceptions and log/report.
-
-## 3. Performance Considerations
-
-### 3.1. Optimization Techniques
-
-*   **Database query optimization:**  Use Django's ORM efficiently, using `select_related` and `prefetch_related` to reduce database queries. Analyze queries with Django Debug Toolbar.
-*   **Caching:**  Implement caching (using Django's caching framework or Redis) for frequently accessed data.
-*   **Pagination:** Use pagination for list endpoints with large datasets.
-*   **Filtering:**  Implement efficient filtering mechanisms to reduce the amount of data processed.
-*   **Gzip compression:** Enable Gzip compression to reduce the size of API responses.
-*   **Throttling:**  Implement API throttling to prevent abuse.
-*   **Use `defer()` and `only()`:** Retrieve only the necessary fields from the database.
-*   **Raw SQL Queries:** For very specific and highly optimized queries where the ORM becomes inefficient, consider using raw SQL queries.
-*   **Asynchronous tasks:** Use Celery to offload long-running tasks to background workers.
-*   **Read-only serializers:** Use `read_only=True` for fields that should not be updated by clients.
-*   **Caching Serialized Data:** Cache the results of serializers when appropriate.
-
-### 3.2. Memory Management
-
-*   **Avoid loading large datasets into memory:** Use iterators or generators to process data in chunks.
-*   **Close database connections:** Ensure that database connections are closed properly after use.
-*   **Garbage collection:** Understand Python's garbage collection mechanisms and avoid creating circular references.
-
-### 3.3. Rendering Optimization
-
-*   **Use DRF's built-in renderers:** DRF provides renderers for JSON, XML, and other formats.  Use the appropriate renderer for your API.
-*   **Custom renderers:**  Create custom renderers for specialized output formats.
-*   **Streaming responses:** Use streaming responses for large datasets.
-
-### 3.4. Bundle Size Optimization (If applicable - primarily for client-side rendering)
-
-*   **Tree shaking:**  Remove unused code from JavaScript bundles.
-*   **Code splitting:**  Split JavaScript bundles into smaller chunks that can be loaded on demand.
-*   **Minification:**  Minify JavaScript and CSS files to reduce their size.
-
-### 3.5. Lazy Loading
-
-*   **Lazy load related data:**  Load related data only when it is needed.
-*   **Use DRF's `depth` option:**  Control the depth of nested serialization.
-
-## 4. Security Best Practices
-
-### 4.1. Common Vulnerabilities
-
-*   **SQL injection:** Prevent SQL injection by using Django's ORM and parameterized queries.
-*   **Cross-site scripting (XSS):**  Sanitize user input to prevent XSS attacks (more relevant for templates, but consider it for any user-provided data).
-*   **Cross-site request forgery (CSRF):**  Protect against CSRF attacks by using Django's CSRF protection mechanisms.
-*   **Authentication bypass:**  Ensure that authentication is properly enforced for all API endpoints.
-*   **Authorization flaws:**  Implement fine-grained authorization to restrict access to resources.
-*   **Data leakage:**  Avoid exposing sensitive data in API responses.
-*   **Denial of Service (DoS):**  Implement rate limiting and other measures to prevent DoS attacks.
-
-### 4.2. Input Validation
-
-*   **Use DRF's serializers for input validation:** Serializers provide a convenient way to validate incoming data.
-*   **Validate data types:**  Ensure that data types match the expected types.
-*   **Validate data ranges:**  Ensure that data values fall within the allowed ranges.
-*   **Sanitize user input:**  Sanitize user input to prevent XSS attacks.
-*   **Escape output:** Escape data when rendering it in templates to prevent XSS attacks.
-*   **Custom Validation:** Implement custom validation logic in serializers to enforce complex business rules.
-
-### 4.3. Authentication and Authorization
-
-*   **Choose the appropriate authentication scheme:** Use token authentication, session authentication, or OAuth based on your requirements.
-*   **Implement permission classes:**  Use permission classes to control access to resources based on user roles or other criteria.
-*   **Use JWT (JSON Web Tokens) for stateless authentication:** JWTs are a popular choice for stateless authentication in REST APIs.
-*   **Role-Based Access Control (RBAC):** Implement RBAC to manage user permissions based on roles.
-*   **Principle of Least Privilege:** Grant users only the minimum necessary permissions.
-*   **Multi-Factor Authentication (MFA):** Implement MFA for enhanced security.
-*   **Regularly rotate API keys:** Rotate API keys regularly to reduce the risk of compromise.
-
-### 4.4. Data Protection
-
-*   **Encrypt sensitive data:** Encrypt sensitive data at rest and in transit.
-*   **Use HTTPS:**  Use HTTPS for all API communication.
-*   **Store passwords securely:**  Use Django's password hashing mechanisms to store passwords securely.
-*   **Data masking:** Mask sensitive data when displaying it to users.
-*   **Data retention policies:** Implement data retention policies to ensure that data is not stored longer than necessary.
-*   **Audit logging:** Implement audit logging to track access to sensitive data.
-
-### 4.5. Secure API Communication
-
-*   **Use HTTPS:**  Use HTTPS for all API communication.
-*   **Implement CORS:**  Configure CORS (Cross-Origin Resource Sharing) to allow requests from specific domains.
-*   **Rate limiting:** Implement API throttling to prevent abuse.
-*   **Input Validation:** Implement robust data validation and sanitization.
-*   **Secure Headers:** Use secure HTTP headers like `X-Content-Type-Options`, `Strict-Transport-Security`, and `X-Frame-Options`.
-
-## 5. Testing Approaches
-
-### 5.1. Unit Testing
-
-*   **Test serializers:**  Test that serializers correctly serialize and deserialize data, and that validation rules are enforced.
-*   **Test views:**  Test that views return the expected responses for different requests, and that permissions are enforced.
-*   **Test models:** Test model methods and data integrity.
-*   **Isolate units of code:**  Use mocking and stubbing to isolate units of code during testing.
-*   **Follow Arrange-Act-Assert pattern:** Arrange test data, act on the code, and assert the expected result.
-
-### 5.2. Integration Testing
-
-*   **Test API endpoints:**  Test that API endpoints work correctly when integrated with other components.
-*   **Test database interactions:**  Test that database interactions are performed correctly.
-*   **Test authentication and authorization:**  Test that authentication and authorization mechanisms work as expected.
-*   **Use Django's test client:** Use Django's test client to send HTTP requests to API endpoints.
-*   **Test with real database:** Use a separate test database for integration tests.
-
-### 5.3. End-to-End Testing
-
-*   **Test the entire API workflow:**  Test the entire API workflow from end to end.
-*   **Use tools like Selenium or Cypress:**  Use tools like Selenium or Cypress to automate end-to-end tests.
-*   **Test with a production-like environment:** Test with a production-like environment to ensure that the API works correctly in a real-world setting.
-
-### 5.4. Test Organization
-
-*   **Create a separate `tests.py` file for each app:** This promotes modularity and makes it easier to find tests for a specific app.
-*   **Organize tests within `tests.py` by component:** Group tests for serializers, views, models, and other components.
-*   **Use descriptive test names:** Use descriptive test names that clearly indicate what each test is testing.
-*   **Follow a consistent naming convention:** Use a consistent naming convention for test functions and classes.
-
-### 5.5. Mocking and Stubbing
-
-*   **Use mocking to isolate units of code:** Mock external dependencies to isolate units of code during testing.
-*   **Use stubbing to provide controlled responses:** Stub external dependencies to provide controlled responses during testing.
-*   **Use libraries like `unittest.mock`:**  Use libraries like `unittest.mock` for mocking and stubbing.
-*   **Avoid over-mocking:** Only mock the necessary dependencies to keep tests realistic.
-
-## 6. Common Pitfalls and Gotchas
-
-### 6.1. Frequent Mistakes
-
-*   **Not using serializers for validation:**  Skipping serializer validation can lead to data integrity issues and security vulnerabilities.
-*   **Incorrectly configuring permissions:** Misconfigured permissions can expose resources to unauthorized users.
-*   **Over-fetching data:**  Fetching more data than necessary can impact performance.
-*   **Ignoring database query optimization:** Inefficient database queries can lead to slow API responses.
-*   **Not handling errors gracefully:** Unhandled exceptions can cause the API to crash or return unhelpful error messages.
-*   **Using `CharField` without `max_length`**: Can lead to unexpected database errors or vulnerabilities.
-
-### 6.2. Edge Cases
-
-*   **Handling null values:**  Ensure that null values are handled correctly in serializers and views.
-*   **Handling empty lists:**  Ensure that empty lists are handled correctly in serializers and views.
-*   **Handling unicode characters:**  Ensure that unicode characters are handled correctly in serializers and views.
-*   **Concurrency issues:** Be aware of potential concurrency issues when handling data updates.
-*   **Timezones:** Be aware of timezone issues and use timezone-aware datetime objects.
-
-### 6.3. Version-Specific Issues
-
-*   **Consult DRF's release notes:** Refer to DRF's release notes for information on version-specific issues and breaking changes.
-*   **Test with different DRF versions:** Test your API with different DRF versions to ensure compatibility.
-
-### 6.4. Compatibility Concerns
-
-*   **Django version compatibility:**  Ensure that your DRF version is compatible with your Django version.
-*   **Python version compatibility:**  Ensure that your DRF version is compatible with your Python version.
-*   **Third-party library compatibility:**  Ensure that your DRF version is compatible with any third-party libraries that you are using.
-
-### 6.5. Debugging Strategies
-
-*   **Use Django Debug Toolbar:** Use Django Debug Toolbar to inspect database queries, template rendering, and other performance metrics.
-*   **Use logging:**  Use logging to track the flow of execution and identify errors.
-*   **Use a debugger:** Use a debugger to step through code and inspect variables.
-*   **Test API endpoints with a tool like Postman:** Use Postman or a similar tool to test API endpoints and inspect responses.
-*   **Read traceback carefully**: Python tracebacks are extremely helpful in locating the origin of an error.
-
-## 7. Tooling and Environment
-
-### 7.1. Recommended Tools
-
-*   **Virtual environment:** Use a virtual environment to isolate project dependencies.
-*   **Pip:** Use pip to manage Python packages.
-*   **Django:**  Use Django as the web framework.
-*   **Django REST Framework:**  Use DRF for building REST APIs.
-*   **Django Debug Toolbar:** Use Django Debug Toolbar for debugging and performance analysis.
-*   **Postman or Insomnia:** Use Postman or Insomnia to test API endpoints.
-*   **Git:** Use Git for version control.
-*   **EditorConfig:** Use EditorConfig to maintain consistent coding styles across different editors.
-*   **Black, isort, flake8**: For code formatting and linting
-*   **drf-yasg or Spectacular OpenAPI:** For automatic OpenAPI schema generation.
-
-### 7.2. Build Configuration
-
-*   **Use a `requirements.txt` file:**  Use a `requirements.txt` file to specify project dependencies.
-*   **Use a `setup.py` file:**  Use a `setup.py` file to package and distribute your API.
-*   **Use environment variables:**  Use environment variables to store configuration values.
-*   **Use Docker:**  Use Docker to containerize your API for consistent deployment.
-
-### 7.3. Linting and Formatting
-
-*   **Use PEP 8:** Follow PEP 8 guidelines for Python code.
-*   **Use Black:** Use Black for code formatting.
-*   **Use flake8:**  Use flake8 for code linting.
-*   **Use isort:** Use isort for import sorting.
-*   **Configure pre-commit hooks:** Set up pre-commit hooks to automatically format and lint code before committing.
-
-### 7.4. Deployment
-
-*   **Use a production-ready web server:** Use a production-ready web server like Gunicorn or uWSGI.
-*   **Use a load balancer:** Use a load balancer to distribute traffic across multiple servers.
-*   **Use a database server:**  Use a database server like PostgreSQL or MySQL.
-*   **Use a caching server:** Use a caching server like Redis or Memcached.
-*   **Use a content delivery network (CDN):** Use a CDN to serve static assets.
-*   **Monitor API performance:**  Monitor API performance to identify and address performance issues.
-
-### 7.5. CI/CD Integration
-
-*   **Use a CI/CD pipeline:**  Use a CI/CD pipeline to automate the build, test, and deployment process.
-*   **Use a CI/CD tool like Jenkins, GitLab CI, or CircleCI:** Use a CI/CD tool to manage your CI/CD pipeline.
-*   **Automate testing:**  Automate unit, integration, and end-to-end tests as part of the CI/CD pipeline.
-*   **Automate code formatting and linting:** Automate code formatting and linting as part of the CI/CD pipeline.
-*   **Automate deployment:** Automate deployment to production as part of the CI/CD pipeline.
-
-By following these best practices, you can create robust, scalable, maintainable, and secure REST APIs using the Django REST Framework.
+Always structure your API within a dedicated Django app, typically named `api`. Centralize DRF-specific settings and use `DefaultRouter` for URL management.
+
+- **Dedicated `api/` app**: Isolate API logic.
+- **`api_settings.py`**: Store all DRF global settings here, then import into `settings.py`.
+- **`urls.py` with `DefaultRouter`**: Automate URL patterns for ViewSets.
+
+```python
+# project_root/api/apps.py
+from django.apps import AppConfig
+
+class ApiConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'api'
+
+# project_root/api/settings.py
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 25,
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema', # For OpenAPI
+}
+
+# project_root/settings.py
+from .api.settings import REST_FRAMEWORK as API_REST_FRAMEWORK
+REST_FRAMEWORK = API_REST_FRAMEWORK
+INSTALLED_APPS = [
+    # ...
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'django_filters',
+    'drf_spectacular', # For OpenAPI
+    'api',
+]
+
+# project_root/api/urls.py
+from rest_framework.routers import DefaultRouter
+from .views import UserViewSet, ProductViewSet
+from django.urls import path, include
+
+router = DefaultRouter()
+router.register(r'users', UserViewSet, basename='user')
+router.register(r'products', ProductViewSet, basename='product')
+
+urlpatterns = [
+    path('', include(router.urls)),
+]
+
+# project_root/project_name/urls.py
+from django.contrib import admin
+from django.urls import path, include
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/v1/', include('api.urls')), # Versioned API namespace
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+]
+```
+
+## 2. Serializers: Efficiency and Validation
+
+Prioritize `ModelSerializer` for CRUD operations. Use custom `Serializer` classes only for complex, non-model-backed data or advanced validation. Always use `select_related`/`prefetch_related` to prevent N+1 queries.
+
+```python
+from rest_framework import serializers
+from django.db.models import QuerySet
+from typing import Any
+
+from .models import Product, Category, Review, User
+
+# ❌ BAD: N+1 queries for related objects, exposing all fields
+class BadProductSerializer(serializers.ModelSerializer):
+    category = serializers.CharField(source='category.name')
+    reviews = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'price', 'category', 'reviews']
+
+    def get_reviews(self, obj: Product) -> list[dict[str, Any]]:
+        return [{'text': r.text, 'rating': r.rating} for r in obj.reviews.all()]
+
+# ✅ GOOD: Optimized queries, controlled field exposure, explicit types
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'name']
+
+class ReviewSerializer(serializers.ModelSerializer):
+    user = serializers.SlugRelatedField(slug_field='username', read_only=True)
+
+    class Meta:
+        model = Review
+        fields = ['id', 'user', 'text', 'rating', 'created_at']
+        read_only_fields = ['user', 'created_at']
+
+class ProductSerializer(serializers.ModelSerializer):
+    category: CategorySerializer = CategorySerializer(read_only=True) # Type hint for nested serializer
+    reviews: ReviewSerializer = ReviewSerializer(many=True, read_only=True) # Type hint for nested list
+
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'price', 'category', 'reviews', 'stock_count']
+        read_only_fields = ['stock_count'] # Fields that should not be updated via API
+
+    def create(self, validated_data: dict[str, Any]) -> Product:
+        # Custom logic if needed, e.g., setting owner
+        validated_data['owner'] = self.context['request'].user
+        return super().create(validated_data)
+
+# ✅ GOOD: Custom serializer for non-model data or specific input validation
+class UserRegistrationSerializer(serializers.Serializer):
+    username: str = serializers.CharField(max_length=150)
+    email: str = serializers.EmailField()
+    password: str = serializers.CharField(write_only=True)
+    password_confirm: str = serializers.CharField(write_only=True)
+
+    def validate(self, data: dict[str, Any]) -> dict[str, Any]:
+        if data['password'] != data['password_confirm']:
+            raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
+        return data
+
+    def create(self, validated_data: dict[str, Any]) -> User:
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=validated_data['password']
+        )
+        return user
+```
+
+## 3. ViewSets & Routers: Streamlining Endpoints
+
+Always use `ModelViewSet` for standard CRUD operations. For read-only resources, use `ReadOnlyModelViewSet`. Leverage `DefaultRouter` to automatically generate URLs.
+
+```python
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from django.db.models import QuerySet
+from typing import Any
+
+from .models import Product, Category, User
+from .serializers import ProductSerializer, CategorySerializer, UserRegistrationSerializer, ReviewSerializer
+
+# ❌ BAD: Manual URL routing, repetitive logic for each HTTP method
+# class ProductList(APIView):
+#     def get(self, request): ...
+#     def post(self, request): ...
+
+# ✅ GOOD: ModelViewSet for full CRUD, optimized queryset, explicit permissions
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset: QuerySet[Product] = Product.objects.select_related('category').prefetch_related('reviews__user').all()
+    serializer_class: type[ProductSerializer] = ProductSerializer
+    permission_classes: list[type[IsAuthenticated | IsAdminUser]] = [IsAuthenticated, IsAdminUser] # Example: Admin can manage products
+
+    def get_queryset(self) -> QuerySet[Product]:
+        # Optimize queryset for specific actions if needed
+        if self.action == 'list':
+            return self.queryset.filter(is_active=True)
+        return self.queryset
+
+    def perform_create(self, serializer: ProductSerializer) -> None:
+        serializer.save(owner=self.request.user) # Automatically assign owner
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def add_review(self, request: Any, pk: int | None = None) -> Response:
+        product = self.get_object()
+        serializer = ReviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(product=product, user=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+# ✅ GOOD: ReadOnlyModelViewSet for read-only resources
+class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset: QuerySet[Category] = Category.objects.all()
+    serializer_class: type[CategorySerializer] = CategorySerializer
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
+
+# ✅ GOOD: Custom ViewSet for non-model operations (e.g., user registration)
+class UserViewSet(viewsets.ViewSet):
+    permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated] # Adjust as needed for registration
+
+    @action(detail=False, methods=['post'], permission_classes=[]) # No auth for registration
+    def register(self, request: Any) -> Response:
+        serializer = UserRegistrationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response({"message": "User registered successfully."}, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'])
+    def me(self, request: Any) -> Response:
+        serializer = ProductSerializer(request.user) # Example: reuse ProductSerializer for user details
+        return Response(serializer.data)
+```
+
+## 4. Authentication & Permissions: Secure Access
+
+Always use token-based authentication (JWT or DRF's `TokenAuthentication`) for stateless APIs. Implement granular permissions using DRF's built-in classes or custom ones. Never use `AllowAny` unless the endpoint is truly public.
+
+```python
+from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.request import Request
+from typing import Any
+
+# ✅ GOOD: Custom object-level permission
+class IsOwnerOrReadOnly(BasePermission):
+    """
+    Object-level permission to allow only owners of an object to edit it.
+    Assumes the model instance has an `owner` attribute.
+    """
+    def has_object_permission(self, request: Request, view: Any, obj: Any) -> bool:
+        if request.method in SAFE_METHODS:
+            return True
+        return obj.owner == request.user
+
+# Apply to ViewSet:
+# class ProductViewSet(viewsets.ModelViewSet):
+#     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+```
+
+## 5. Pagination, Filtering & Versioning
+
+Enable `PageNumberPagination` (default) or `CursorPagination` for large datasets. Use `django-filter` for query parameter filtering. Implement URL versioning (`/api/v1/`) for clear API evolution.
+
+```python
+# project_root/api/filters.py
+import django_filters
+from .models import Product
+
+class ProductFilter(django_filters.FilterSet):
+    min_price = django_filters.NumberFilter(field_name="price", lookup_expr='gte')
+    max_price = django_filters.NumberFilter(field_name="price", lookup_expr='lte')
+    category_name = django_filters.CharFilter(field_name="category__name", lookup_expr='icontains')
+
+    class Meta:
+        model = Product
+        fields = ['category', 'is_active']
+
+# Apply to ViewSet:
+# class ProductViewSet(viewsets.ModelViewSet):
+#     filterset_class = ProductFilter
+```
+
+## 6. Performance Considerations
+
+Prevent N+1 queries by using `select_related` and `prefetch_related` in your `get_queryset` method.
+
+```python
+# ✅ GOOD: Optimized queryset in ViewSet
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+    def get_queryset(self) -> QuerySet[Product]:
+        # Always optimize for common list/retrieve actions
+        return self.queryset.select_related('category').prefetch_related('reviews__user')
+```
+
+## 7. Error Handling
+
+Leverage DRF's built-in exception handling. For custom errors, define a custom exception handler that returns consistent, machine-readable responses.
+
+```python
+# project_root/api/utils.py
+from rest_framework.views import exception_handler
+from rest_framework.response import Response
+from rest_framework import status
+from typing import Any
+
+def custom_exception_handler(exc: Exception, context: dict[str, Any]) -> Response | None:
+    # Call DRF's default exception handler first
+    response = exception_handler(exc, context)
+
+    if response is not None:
+        # Example: Customize validation error messages
+        if response.status_code == status.HTTP_400_BAD_REQUEST and 'detail' not in response.data:
+            response.data = {'errors': response.data}
+        return response
+
+    # Handle unhandled exceptions gracefully
+    return Response(
+        {'detail': 'An unexpected error occurred.'},
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+    )
+
+# project_root/api/settings.py
+REST_FRAMEWORK = {
+    # ...
+    'EXCEPTION_HANDLER': 'api.utils.custom_exception_handler',
+}
+```
+
+## 8. Type Hints
+
+Mandate type hints for all DRF components: serializers, views, viewsets, and custom permissions. This improves code readability, maintainability, and enables static analysis.
+
+```python
+# All examples above demonstrate mandatory type hints.
+# Example:
+# class ProductSerializer(serializers.ModelSerializer):
+#     category: CategorySerializer = CategorySerializer(read_only=True)
+#     def create(self, validated_data: dict[str, Any]) -> Product: ...
+```
+
+## 9. Rate Limiting
+
+Implement DRF's throttling classes to protect your API from abuse.
+
+```python
+# project_root/api/settings.py
+REST_FRAMEWORK = {
+    # ...
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/day',
+        'user': '1000/day',
+        'burst': '60/min', # Custom throttle rate
+    }
+}
+
+# Apply to ViewSet for custom throttling:
+# class ProductViewSet(viewsets.ModelViewSet):
+#     throttle_classes = [UserRateThrottle, AnonRateThrottle] # Or custom throttle
+#     throttle_scope = 'burst' # Use the 'burst' rate defined in settings
+```
+
+## 10. Async Support
+
+For high-throughput endpoints, isolate async code within `async def` views or specific `ViewSet` actions. Run your project with an ASGI server (Uvicorn/Daphne). DRF's native async support is evolving; consider `adrf` for full async ViewSets if truly necessary, but be aware it's still experimental.
+
+```python
+from rest_framework.views import APIView
+from rest_framework.response import Response
+import asyncio
+import httpx # For async HTTP requests
+from typing import Any
+
+# ✅ GOOD: Isolate async logic to specific views/actions
+class AsyncDataView(APIView):
+    async def get(self, request: Any, *args: Any, **kwargs: Any) -> Response:
+        # Simulate an async operation, e.g., calling an external async service
+        async with httpx.AsyncClient() as client:
+            response = await client.get("https://api.example.com/external-data")
+            response.raise_for_status()
+            data = response.json()
+        return Response({"message": "Data fetched asynchronously", "data": data})
+
+# project_root/api/urls.py
+# from .views import AsyncDataView
+# urlpatterns = [
+#     path('async-data/', AsyncDataView.as_view()),
+#     # ...
+# ]
+```

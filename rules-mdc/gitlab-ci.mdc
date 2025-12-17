@@ -1,239 +1,640 @@
 ---
-description: Enforces best practices for GitLab CI/CD configurations, promoting efficient, maintainable, and secure pipelines. This rule covers aspects from code organization to security and testing strategies.
-globs: .gitlab-ci.yml
+description: This guide provides opinionated, actionable best practices for structuring, optimizing, and securing GitLab CI/CD pipelines, focusing on modern patterns and avoiding common pitfalls.
+globs: **/*
 ---
-# GitLab CI Best Practices
+# gitlab-ci Best Practices
 
-This document outlines the best practices for configuring GitLab CI/CD pipelines to ensure efficient, maintainable, and secure software development workflows.
+GitLab CI/CD is the backbone of modern DevOps. This guide ensures your `.gitlab-ci.yml` files are robust, maintainable, performant, and secure. Follow these rules rigorously.
 
 ## 1. Code Organization and Structure
 
-A well-structured project enhances maintainability and collaboration. While GitLab CI primarily focuses on automation, the underlying code it builds significantly impacts pipeline performance and success.
+Your `.gitlab-ci.yml` is code. Treat it with the same discipline as application code.
 
-### Directory Structure Best Practices
+### 1.1. Modularize with `include`
 
-While not directly enforced by GitLab CI, consider structuring your repository to support efficient dependency management and modular builds.
+Break down large pipelines into smaller, focused YAML files. This improves readability, reusability, and reduces merge conflicts. Keep the root `.gitlab-ci.yml` as an orchestrator.
 
-*   **Monorepo vs. Polyrepo:**  Choose a strategy that suits your team's size and project complexity. Monorepos can simplify dependency management but may lead to larger CI execution times if not properly configured.  Polyrepos offer better isolation but increase complexity.
-*   **Component-based structure:** Organize your code into logical components or modules. This allows for selective building and testing of individual components, reducing overall pipeline execution time.
-*   **`ci/` or `.gitlab/` directory:**  Dedicate a directory (e.g., `ci/`, `.gitlab/`) to store CI-related scripts, templates, and configurations. This keeps the root directory clean and organized.
+❌ **BAD: Monolithic `.gitlab-ci.yml`**
+```yaml
+# .gitlab-ci.yml (too long, hard to navigate)
+stages:
+  - build
+  - test
+  - deploy
 
-### File Naming Conventions
+build_frontend:
+  stage: build
+  script:
+    - npm install
+    - npm run build
 
-*   `.gitlab-ci.yml` **(required):**  The primary configuration file for GitLab CI/CD. It **must** be placed in the root directory of your project.
-*   `*.gitlab-ci.yml` **(optional):** Use include statements to reference additional configurations in subdirectories. Name them according to their purpose (e.g., `deploy.gitlab-ci.yml`, `test.gitlab-ci.yml`).
-*   `*.sh`, `*.py`, etc.: Scripts referenced by `.gitlab-ci.yml` should have descriptive names (e.g., `run_tests.sh`, `deploy_to_staging.py`).
+test_frontend:
+  stage: test
+  script:
+    - npm run test:unit
 
-### Module Organization
+build_backend:
+  stage: build
+  script:
+    - pip install -r requirements.txt
+    - python setup.py build
 
-*   **Define dependencies:** Explicitly declare dependencies between modules or components. This enables GitLab CI to build and test them in the correct order.
-*   **Separate CI configurations:** For large projects, consider creating separate `.gitlab-ci.yml` files for each module.  Use `include:` to chain them into a larger workflow.
+test_backend:
+  stage: test
+  script:
+    - pytest
 
-### Component Architecture Recommendations
+deploy_staging:
+  stage: deploy
+  script:
+    - deploy-script --env staging
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+```
 
-*   **Microservices:** If using a microservices architecture, each service should have its own GitLab CI configuration and pipeline.
-*   **Modular monolith:** For a monolithic architecture, break down the build process into stages that build and test individual components or modules.
+✅ **GOOD: Modularized with `include`**
+```yaml
+# .gitlab-ci.yml (root orchestrator)
+include:
+  - local: '.gitlab/ci/stages.yml'
+  - local: '.gitlab/ci/frontend.yml'
+  - local: '.gitlab/ci/backend.yml'
+  - local: '.gitlab/ci/deploy.yml'
 
-### Code Splitting Strategies
+# .gitlab/ci/stages.yml
+stages:
+  - build
+  - test
+  - security
+  - deploy
 
-*   **Feature flags:**  Use feature flags to enable or disable code sections without redeploying.  GitLab offers feature flag management.
-*   **Dynamic imports:** (Applicable for some languages like Javascript) Dynamically load modules only when needed to decrease initial loading times and build size.
+# .gitlab/ci/frontend.yml
+.frontend_template: &frontend_template
+  image: node:20-alpine
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-node-modules
+    paths:
+      - frontend/node_modules/
+    policy: pull-push
+  before_script:
+    - cd frontend
+
+build_frontend:
+  <<: *frontend_template
+  stage: build
+  script:
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 day
+
+test_frontend:
+  <<: *frontend_template
+  stage: test
+  script:
+    - npm run test:unit
+
+# .gitlab/ci/backend.yml
+.backend_template: &backend_template
+  image: python:3.11-slim-buster
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-pip-cache
+    paths:
+      - backend/.venv/
+    policy: pull-push
+  before_script:
+    - cd backend
+    - python -m venv .venv
+    - source .venv/bin/activate
+
+build_backend:
+  <<: *backend_template
+  stage: build
+  script:
+    - pip install -r requirements.txt
+    - python setup.py build
+  artifacts:
+    paths:
+      - backend/dist/
+    expire_in: 1 day
+
+test_backend:
+  <<: *backend_template
+  stage: test
+  script:
+    - pytest
+
+# .gitlab/ci/deploy.yml
+deploy_staging:
+  stage: deploy
+  image: alpine/git:latest
+  script:
+    - echo "Deploying to staging..."
+    - ./scripts/deploy.sh staging
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+  environment:
+    name: staging
+    url: https://staging.example.com
+```
+
+### 1.2. Use `extends` and YAML Anchors for Reusability
+
+Avoid repetition. Define common configurations once and reuse them across jobs. `extends` is preferred for job-level inheritance, while YAML anchors (`&` and `*`) are excellent for smaller, inline reusable blocks.
+
+❌ **BAD: Repetitive job definitions**
+```yaml
+build_job_a:
+  image: node:20-alpine
+  script:
+    - npm install
+    - npm run build
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-node-modules
+    paths:
+      - node_modules/
+
+build_job_b:
+  image: node:20-alpine
+  script:
+    - npm install
+    - npm run build:prod
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-node-modules
+    paths:
+      - node_modules/
+```
+
+✅ **GOOD: Reusable with `extends` and anchors**
+```yaml
+.node_base: &node_base_config
+  image: node:20-alpine
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-node-modules
+    paths:
+      - node_modules/
+    policy: pull-push
+
+.build_template:
+  extends: .node_base
+  stage: build
+  script:
+    - npm install
+    - npm run build
+
+build_job_a:
+  extends: .build_template
+
+build_job_b:
+  extends: .build_template
+  script:
+    - npm install # Overrides script from .build_template
+    - npm run build:prod
+```
+
+### 1.3. Consistent Indentation
+
+Always use **2 spaces** for indentation. Never use tabs. Inconsistent indentation is a leading cause of YAML parsing errors.
+
+❌ **BAD: Mixed indentation or incorrect spacing**
+```yaml
+job_name:
+  stage: build
+    script: # 4 spaces, inconsistent
+      - echo "Hello"
+```
+
+✅ **GOOD: Consistent 2-space indentation**
+```yaml
+job_name:
+  stage: build
+  script:
+    - echo "Hello"
+```
 
 ## 2. Common Patterns and Anti-patterns
 
-Adhering to proven patterns and avoiding anti-patterns contributes to pipeline reliability and maintainability.
+Adopt modern GitLab CI/CD features for robust and efficient pipelines.
 
-### Design Patterns
+### 2.1. Use `rules` for Conditional Job Execution
 
-*   **Pipeline as Code:** Treat your `.gitlab-ci.yml` as code. Version control it, review it, and test it.
-*   **Infrastructure as Code (IaC):** Use IaC tools (e.g., Terraform, Ansible) to manage the infrastructure used by your pipelines. This ensures consistency and reproducibility.
-*   **Secrets Management:** Use GitLab's built-in secrets management to store sensitive information (e.g., API keys, passwords) securely. Never hardcode secrets in your `.gitlab-ci.yml` file.
-*   **Idempotent Scripts:** Ensure your scripts are idempotent, meaning they can be run multiple times without causing unintended side effects.
-*   **Fail Fast:** Design your pipelines to fail as early as possible to avoid wasting resources on builds that are likely to fail.
-*   **Artifact Caching:** Cache frequently used dependencies and build artifacts to reduce build times.
+The `rules` keyword is the definitive way to control when jobs run. It replaces the deprecated `only/except` syntax, offering far greater flexibility and clarity.
 
-### Recommended Approaches for Common Tasks
+❌ **BAD: Deprecated `only/except`**
+```yaml
+deploy_prod:
+  stage: deploy
+  script:
+    - deploy-to-prod.sh
+  only:
+    - main
+  except:
+    - branches@feature/*
+```
 
-*   **Dependency Management:** Use appropriate package managers (e.g., npm, pip, Maven) to manage dependencies.
-*   **Testing:** Implement a comprehensive testing strategy, including unit tests, integration tests, and end-to-end tests.
-*   **Deployment:** Use a robust deployment strategy, such as blue/green deployment or rolling deployment.
-*   **Notifications:** Configure notifications to alert team members of pipeline failures or successes.
+✅ **GOOD: Modern `rules` syntax**
+```yaml
+deploy_prod:
+  stage: deploy
+  script:
+    - deploy-to-prod.sh
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"
+      when: manual # Requires manual approval for production pushes
+    - if: $CI_COMMIT_TAG # Run on tags automatically
+      when: on_success
+    - when: never # Do not run otherwise
+```
 
-### Anti-patterns and Code Smells
+### 2.2. Leverage `needs` for Explicit Job Dependencies
 
-*   **Hardcoding secrets:** Never hardcode secrets in your `.gitlab-ci.yml` file.  Use GitLab's secret variables.
-*   **Ignoring failures:** Always address pipeline failures promptly.  Ignoring failures can lead to more serious problems down the line.
-*   **Overly complex pipelines:** Keep your pipelines as simple as possible. Break down complex tasks into smaller, more manageable stages.
-*   **Lack of testing:** Insufficient testing can lead to bugs in production.  Implement a comprehensive testing strategy.
-*   **Manual deployments:** Automate deployments as much as possible.  Manual deployments are error-prone and time-consuming.
-*   **Long-running branches:** Avoid long-running feature branches.  Merge frequently to the main branch to reduce merge conflicts.
+Use `needs` to define explicit dependencies between jobs. This allows jobs to run in parallel across stages, significantly speeding up pipelines by avoiding strict stage-based ordering.
 
-### State Management Best Practices
+❌ **BAD: Implicit stage-based dependencies**
+```yaml
+stages:
+  - build
+  - test
+  - deploy
 
-*   **GitLab CI Variables:** Use CI/CD variables for configurations that change between environments or pipeline runs.
-*   **External Databases/Key-Value Stores:** For more complex state, consider using an external database or key-value store (e.g., Redis, etcd).
+build_app:
+  stage: build
+  script:
+    - make build
+  artifacts:
+    paths:
+      - build/
 
-### Error Handling Patterns
+test_app: # Waits for all 'build' jobs to complete
+  stage: test
+  script:
+    - make test
+```
 
-*   **`allow_failure: true`:** Use with caution. Only use `allow_failure: true` for jobs that are not critical to the overall success of the pipeline.
-*   **`retry:`:** Use `retry:` to automatically retry failed jobs. This can be useful for jobs that are prone to transient errors.
-*   **Error Reporting:** Implement error reporting to capture and track pipeline failures.  Integrate with tools like Sentry or Rollbar.
+✅ **GOOD: Explicit `needs` for parallel execution**
+```yaml
+stages:
+  - build
+  - test
+  - deploy
+
+build_frontend:
+  stage: build
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/dist/
+
+build_backend:
+  stage: build
+  script:
+    - make build
+  artifacts:
+    paths:
+      - backend/dist/
+
+test_frontend:
+  stage: test
+  needs: ["build_frontend"] # Only waits for build_frontend
+  script:
+    - npm run test:unit
+
+test_backend:
+  stage: test
+  needs: ["build_backend"] # Only waits for build_backend
+  script:
+    - make test
+```
+In this example, `test_frontend` and `test_backend` can run as soon as their respective build jobs are done, potentially in parallel, even if they are in different stages according to the `stages` definition.
+
+### 2.3. Name Jobs and Stages Clearly
+
+Use descriptive, consistent naming conventions. This makes pipelines easier to understand and debug. A good pattern is `stage_name:job_description`.
+
+❌ **BAD: Generic or unclear names**
+```yaml
+stages:
+  - first
+  - second
+  - third
+
+job1:
+  stage: first
+  script:
+    - echo "..."
+
+deploy:
+  stage: third
+  script:
+    - deploy.sh
+```
+
+✅ **GOOD: Descriptive names**
+```yaml
+stages:
+  - build
+  - test
+  - security
+  - deploy
+
+build:frontend:
+  stage: build
+  script:
+    - npm run build
+
+test:unit:backend:
+  stage: test
+  script:
+    - pytest
+
+security:sast:
+  stage: security
+  script:
+    - /analyzer/sast run
+
+deploy:production:
+  stage: deploy
+  script:
+    - deploy-to-prod.sh
+```
 
 ## 3. Performance Considerations
 
-Optimizing pipeline performance reduces build times and improves developer productivity.
+Optimize your pipelines for speed to provide fast feedback loops.
 
-### Optimization Techniques
+### 3.1. Implement Strategic Caching
 
-*   **Parallelization:** Run jobs in parallel to reduce overall pipeline execution time. Use matrix builds for tasks that can be run independently with different configurations.
-*   **Caching:** Cache frequently used dependencies and build artifacts to avoid downloading them repeatedly.
-*   **Optimize Docker images:** Use small, optimized Docker images to reduce image pull times.
-*   **Efficient Scripting:** Write efficient scripts that avoid unnecessary operations.
-*   **Selective Builds:** Trigger builds only when necessary by using `only:` and `except:` rules. For example, trigger builds only on changes to specific files or branches.
-*   **Interruptible jobs:**  Mark jobs as interruptible so they can be cancelled if a newer build is triggered. Avoid using this on critical steps that could leave the system in an inconsistent state.
+Cache dependencies (`node_modules`, `vendor/`, `pip` caches) and build artifacts that are expensive to regenerate. Use dynamic cache keys to prevent conflicts between branches.
 
-### Memory Management
+❌ **BAD: No caching or static cache keys**
+```yaml
+build_job:
+  image: node:20-alpine
+  script:
+    - npm install # Downloads dependencies every time
+    - npm run build
+```
 
-*   **Resource Limits:** Set memory limits for jobs to prevent them from consuming excessive resources.
-*   **Garbage Collection:** Ensure your scripts properly clean up temporary files and release memory.
+✅ **GOOD: Dynamic caching**
+```yaml
+build_job:
+  image: node:20-alpine
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-node-modules # Cache per branch/tag
+    paths:
+      - node_modules/
+    policy: pull-push # Pull existing cache, push new one
+  script:
+    - npm install
+    - npm run build
+```
 
-### Rendering Optimization (If Applicable)
+### 3.2. Use Small, Specific Docker Images
 
-*   (N/A - Primarily relevant for UI-based projects, less applicable to CI configuration files).
+Minimize image size to reduce download times for runners. Use specific versions to ensure reproducibility.
 
-### Bundle Size Optimization (If Applicable)
+❌ **BAD: Large or generic images**
+```yaml
+build_job:
+  image: ubuntu:latest # Very large, contains many unnecessary tools
+  script:
+    - apt-get update && apt-get install -y nodejs npm
+    - npm install
+```
 
-*   (N/A - Primarily relevant for front-end projects, less applicable to CI configuration files themselves, but important for the code being built by the CI pipeline).
+✅ **GOOD: Small, specific images**
+```yaml
+build_job:
+  image: node:20-alpine # Alpine is much smaller than Debian/Ubuntu
+  script:
+    - npm install
+    - npm run build
+```
 
-### Lazy Loading (If Applicable)
+### 3.3. Parallelize Independent Jobs
 
-* (N/A - Primarily relevant for front-end projects, less applicable to CI configuration files themselves, but important for the code being built by the CI pipeline).
+Identify jobs that don't depend on each other and run them in parallel using `needs` or the `parallel` keyword for matrix builds.
 
-## 4. Security Best Practices
+```yaml
+# Using 'parallel' for matrix builds
+test:
+  stage: test
+  image: python:3.11-slim-buster
+  script:
+    - pip install -r requirements.txt
+    - pytest
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.9", "3.10", "3.11"]
+        OS: ["debian", "alpine"]
+```
 
-Securing your pipelines protects your code, infrastructure, and data.
+## 4. Common Pitfalls and Gotchas
 
-### Common Vulnerabilities and Prevention
+Avoid these common mistakes to prevent pipeline failures and security vulnerabilities.
 
-*   **Secret Exposure:** Prevent secrets from being exposed in logs or environment variables.  Use GitLab's secret variables and avoid printing them to the console.
-*   **Dependency Vulnerabilities:** Regularly scan your dependencies for vulnerabilities using tools like Snyk or GitLab's Dependency Scanning.
-*   **Code Injection:** Prevent code injection vulnerabilities by validating user inputs and sanitizing data.
-*   **Unauthorized Access:** Restrict access to your pipelines to authorized users only.
+### 4.1. Never Hardcode Secrets
 
-### Input Validation
+Secrets (API keys, passwords, tokens) must never be committed to your `.gitlab-ci.yml` or repository. Use GitLab CI/CD variables.
 
-*   **Sanitize inputs:** Sanitize inputs from external sources (e.g., environment variables, user inputs) to prevent code injection.
+❌ **BAD: Hardcoded secret**
+```yaml
+deploy_prod:
+  stage: deploy
+  script:
+    - export AWS_ACCESS_KEY_ID="AKIAxxxxxxxxxxxxxx" # DANGER!
+    - aws s3 sync build/ s3://my-bucket
+```
 
-### Authentication and Authorization
+✅ **GOOD: Use GitLab CI/CD variables**
+```yaml
+deploy_prod:
+  stage: deploy
+  script:
+    - aws s3 sync build/ s3://my-bucket
+  variables:
+    AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID # Defined in GitLab UI as protected/masked
+    AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY # Defined in GitLab UI as protected/masked
+```
+**Action**: Define `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` as **Protected** and **Masked** variables in your project's `Settings > CI/CD > Variables`.
 
-*   **Use GitLab's authentication:** Use GitLab's built-in authentication mechanisms to protect your pipelines.
-*   **Limit access:** Limit access to your pipelines to authorized users only.
+### 4.2. Scope Variables Appropriately
 
-### Data Protection
+Define variables at the narrowest scope possible (job-level, then global, then project/group/instance). This improves clarity and reduces unintended side effects.
 
-*   **Encrypt sensitive data:** Encrypt sensitive data at rest and in transit.
-*   **Use secure protocols:** Use secure protocols (e.g., HTTPS, SSH) to communicate with external services.
+❌ **BAD: Over-scoped variables**
+```yaml
+variables:
+  DEPLOY_ENV: production # This applies to ALL jobs, even build/test
 
-### Secure API Communication
+build_job:
+  stage: build
+  script:
+    - echo "Building for ${DEPLOY_ENV}" # Misleading
+```
 
-*   **Use API tokens:** Use API tokens to authenticate with external services.
-*   **Validate responses:** Validate responses from external services to prevent data tampering.
+✅ **GOOD: Job-scoped variables**
+```yaml
+variables:
+  DEFAULT_IMAGE: alpine/git:latest # Global default, sensible
 
-## 5. Testing Approaches
+build_job:
+  stage: build
+  image: node:20-alpine # Overrides default
+  script:
+    - echo "Building..."
 
-Thorough testing ensures the quality and reliability of your code.
+deploy_staging:
+  stage: deploy
+  script:
+    - deploy.sh $DEPLOY_ENV
+  variables:
+    DEPLOY_ENV: staging # Specific to this job
+```
 
-### Unit Testing
+### 4.3. Validate Your YAML
 
-*   **Test individual components:** Unit tests should test individual components in isolation.
-*   **Use mocking and stubbing:** Use mocking and stubbing to isolate components from their dependencies.
+Use GitLab's built-in CI Lint tool (available in the CI/CD editor or `https://gitlab.com/<your-group>/<your-project>/-/ci/lint`) to validate your `.gitlab-ci.yml` before committing.
 
-### Integration Testing
+## 5. Configuration Management
 
-*   **Test interactions between components:** Integration tests should test the interactions between different components.
-*   **Use real dependencies:** Use real dependencies or mock dependencies that closely resemble the real ones.
+Manage your pipeline configuration systematically.
 
-### End-to-End Testing
+### 5.1. Use CI/CD Components
 
-*   **Test the entire application:** End-to-end tests should test the entire application, from the user interface to the database.
-*   **Use automated testing tools:** Use automated testing tools like Selenium or Cypress.
+For highly reusable and shareable pipeline logic across multiple projects, publish CI/CD Components to the CI/CD Catalog. This is the ultimate form of reusability.
 
-### Test Organization
+```yaml
+# .gitlab-ci.yml
+include:
+  - component: gitlab.com/my-group/my-ci-components/docker-build@1.0.0
+    inputs:
+      image_name: my-app
+      dockerfile_path: ./Dockerfile
+```
+**Action**: Explore the CI/CD Catalog for existing components or create your own for common tasks.
 
-*   **Organize tests by component:** Organize tests by component to make them easier to find and maintain.
-*   **Use a consistent naming convention:** Use a consistent naming convention for tests to make them easier to identify.
+## 6. Environment Variables
 
-### Mocking and Stubbing
+Beyond secrets, environment variables are crucial for dynamic pipeline behavior.
 
-*   **Use mocking libraries:** Use mocking libraries to create mock objects for testing.
-*   **Stub external dependencies:** Stub external dependencies to isolate components from the outside world.
+### 6.1. Leverage Predefined CI/CD Variables
 
-## 6. Common Pitfalls and Gotchas
+GitLab provides many predefined variables (e.g., `$CI_COMMIT_BRANCH`, `$CI_COMMIT_SHORT_SHA`, `$CI_JOB_ID`). Use these for dynamic logic and naming.
 
-Understanding common pitfalls helps avoid errors and wasted time.
+```yaml
+build_docker_image:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t my-app:$CI_COMMIT_SHORT_SHA .
+    - docker push my-app:$CI_COMMIT_SHORT_SHA
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+```
 
-### Frequent Mistakes
+## 7. Logging
 
-*   **Incorrect syntax:** Using incorrect YAML syntax in `.gitlab-ci.yml`.
-*   **Missing dependencies:** Forgetting to declare dependencies in your pipeline.
-*   **Overly complex pipelines:** Creating overly complex pipelines that are difficult to understand and maintain.
-*   **Not using caching:** Failing to cache dependencies and build artifacts.
-*   **Exposing secrets:** Exposing secrets in logs or environment variables.
+Clear and secure logging is essential for debugging and auditing.
 
-### Edge Cases
+### 7.1. Keep Logs Concise and Masked
 
-*   **Large repositories:** Large repositories can take a long time to clone and build.
-*   **Complex dependencies:** Complex dependencies can be difficult to manage.
-*   **Unstable infrastructure:** Unstable infrastructure can cause pipeline failures.
+Ensure sensitive information is masked in job logs. Avoid excessive output that clutters logs.
 
-### Version-Specific Issues
+❌ **BAD: Verbose, unmasked output**
+```bash
+# In your script.sh
+echo "AWS_SECRET_ACCESS_KEY is: $AWS_SECRET_ACCESS_KEY" # Exposes secret!
+npm install --verbose # Too much noise
+```
 
-*   Consult the GitLab documentation for version-specific issues.
-*   Keep your GitLab Runner up to date.
+✅ **GOOD: Masked and concise output**
+```bash
+# In your script.sh
+# Ensure AWS_SECRET_ACCESS_KEY is configured as a masked variable in GitLab
+echo "Starting deployment..."
+npm install --loglevel error # Only show errors
+```
 
-### Compatibility Concerns
+## 8. Testing Approaches
 
-*   Ensure compatibility between GitLab CI and other technologies used in your project (e.g., Docker, Kubernetes).
+Integrate comprehensive testing into your pipeline.
 
-### Debugging Strategies
+### 8.1. Implement Dedicated Test Stages
 
-*   **Review pipeline logs:** Review pipeline logs to identify errors.
-*   **Use debugging tools:** Use debugging tools to step through your code and identify problems.
-*   **Simplify the pipeline:** Simplify the pipeline to isolate the problem.
-*   **Reproduce the problem locally:** Try to reproduce the problem locally to make it easier to debug.
+Always include stages for unit, integration, and end-to-end tests. Make these jobs mandatory for successful pipelines.
 
-## 7. Tooling and Environment
+```yaml
+stages:
+  - build
+  - test
+  - security
+  - deploy
 
-Selecting the right tools and configuring the environment correctly is crucial for efficient CI/CD.
+test:unit:
+  stage: test
+  script:
+    - npm run test:unit
+  allow_failure: false # Must pass
 
-### Recommended Development Tools
+test:integration:
+  stage: test
+  script:
+    - npm run test:integration
+  allow_failure: false # Must pass
+```
 
-*   **Git:** A version control system.
-*   **Docker:** A containerization platform.
-*   **GitLab Runner:** A CI/CD runner.
-*   **IDE:** An integrated development environment (e.g., VS Code, IntelliJ).
+### 8.2. Integrate Security Scans
 
-### Build Configuration Best Practices
+Embed Static Application Security Testing (SAST), Dependency Scanning, and Container Scanning into your pipeline. These should run early to catch issues quickly.
 
-*   **Use a Docker image:** Use a Docker image as the base for your build environment.
-*   **Install dependencies:** Install dependencies using a package manager (e.g., npm, pip, Maven).
-*   **Run tests:** Run tests to ensure the quality of your code.
-*   **Build artifacts:** Build artifacts that can be deployed to production.
+```yaml
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+  - template: Security/Container-Scanning.gitlab-ci.yml
 
-### Linting and Formatting
+sast:
+  stage: security
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_MERGE_REQUEST_IID
+  allow_failure: true # Initially allow failure, enforce later
 
-*   **Use linters:** Use linters to enforce code style and identify potential errors.
-*   **Use formatters:** Use formatters to automatically format your code.
+dependency_scanning:
+  stage: security
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_MERGE_REQUEST_IID
+  allow_failure: true # Initially allow failure, enforce later
 
-### Deployment Best Practices
+container_scanning:
+  stage: security
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_MERGE_REQUEST_IID
+  allow_failure: true # Initially allow failure, enforce later
+```
+**Action**: Start with `allow_failure: true` for security scans, then switch to `false` once your team is ready to address findings proactively.
 
-*   **Use a deployment strategy:** Use a deployment strategy such as blue/green deployment or rolling deployment.
-*   **Automate deployments:** Automate deployments as much as possible.
-*   **Monitor deployments:** Monitor deployments to ensure they are successful.
+### 8.3. Lint Shell Scripts
 
-### CI/CD Integration Strategies
+If your pipeline uses shell scripts, lint them with `shellcheck` and format with `shfmt`.
 
-*   **Use GitLab CI/CD:** Use GitLab CI/CD to automate your build, test, and deployment processes.
-*   **Integrate with other tools:** Integrate GitLab CI/CD with other tools in your development workflow (e.g., Slack, Jira).
+```yaml
+shellcheck:
+  image: koalaman/shellcheck-alpine:stable
+  stage: test
+  script:
+    - shellcheck scripts/**/*.sh
 
-By adhering to these best practices, you can create GitLab CI/CD pipelines that are efficient, maintainable, and secure, enabling you to deliver high-quality software faster and more reliably.
+shfmt:
+  image: mvdan/shfmt:v3.2.0-alpine
+  stage: test
+  script:
+    - shfmt -i 2 -ci -d scripts # Check formatting, -d for diff only
+```

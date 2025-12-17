@@ -1,311 +1,299 @@
 ---
-description: This rule enforces best practices and coding standards for projects using the Ant Design (antd) UI library within React applications. It covers code organization, performance, security, testing, and common pitfalls to ensure maintainable and efficient applications.
-globs: *.js,*.jsx,*.ts,*.tsx
+description: Definitive guidelines for building consistent, performant, and maintainable UIs with Ant Design v6.x, focusing on design tokens, layout, and component usage.
+globs: **/*
 ---
-# Ant Design (antd) Best Practices and Coding Standards
+# ant-design Best Practices
 
-This document outlines the recommended best practices for developing React applications using the Ant Design (antd) UI library. Following these guidelines will lead to more maintainable, performant, and secure applications.
+This guide outlines the definitive best practices for using Ant Design v6.x in our projects. Adhering to these standards ensures consistency, accessibility, and maintainability across our codebase.
 
-## 1. Code Organization and Structure
+## 1. Theming: Design Token Driven
 
-### 1.1. Directory Structure
+Always customize Ant Design's appearance using its design token system via `ConfigProvider`. Avoid direct CSS overrides for visual properties that can be controlled by tokens.
 
--   **`src/components/`**: Contains reusable React components, including those utilizing antd components.
--   **`src/pages/`**: Contains components representing different application routes or pages.
--   **`src/layouts/`**: Contains layout components that provide a consistent structure across pages.
--   **`src/services/`**: Contains modules for interacting with APIs and handling data fetching.
--   **`src/utils/`**: Contains utility functions and helper modules.
--   **`src/styles/`**: Contains global styles, theme customizations, and component-specific stylesheets.
--   **`src/assets/`**: Contains static assets such as images, fonts, and icons.
--   **`src/context/`**: (Optional) If using context API, store all context definition files here.
+### ✅ GOOD: Centralized Token Customization
 
-Example:
+Create a `theme.ts` file to export your theme configuration and apply it at the root of your application. Prefer `seedToken` adjustments for global changes and `componentToken` for specific component overrides. Utilize preset algorithms for light/dark mode.
 
+```typescript
+// src/theme.ts
+import { theme } from 'antd';
+import type { ThemeConfig } from 'antd';
 
-my-app/
-├── src/
-│   ├── components/
-│   │   ├── Button.jsx
-│   │   ├── Input.jsx
-│   │   └── ...
-│   ├── pages/
-│   │   ├── HomePage.jsx
-│   │   ├── LoginPage.jsx
-│   │   └── ...
-│   ├── layouts/
-│   │   ├── MainLayout.jsx
-│   │   └── ...
-│   ├── services/
-│   │   ├── api.js
-│   │   └── ...
-│   ├── utils/
-│   │   ├── date-formatter.js
-│   │   └── ...
-│   ├── styles/
-│   │   ├── global.css
-│   │   ├── theme.js
-│   │   └── ...
-│   ├── App.jsx
-│   └── index.js
-└── ...
+export const appTheme: ThemeConfig = {
+  algorithm: theme.defaultAlgorithm, // Or theme.darkAlgorithm, [theme.defaultAlgorithm, theme.darkAlgorithm]
+  token: {
+    colorPrimary: '#0050B3', // Our primary brand color
+    colorSuccess: '#52C41A',
+    fontSize: 14,
+    borderRadius: 4,
+    // Disable motion globally for accessibility/performance
+    motion: false,
+  },
+  components: {
+    Button: {
+      colorPrimary: '#1890FF', // Override primary button color
+      algorithm: true, // Enable algorithm for component token derivation
+    },
+    Layout: {
+      headerBg: '#001529',
+      footerBg: '#F0F2F5',
+    },
+  },
+};
+```
 
+```tsx
+// src/App.tsx (or root layout)
+import React from 'react';
+import { ConfigProvider, App as AntdApp } from 'antd';
+import { appTheme } from './theme';
+import HomePage from './pages/HomePage';
 
-### 1.2. File Naming Conventions
-
--   **Components**: Use PascalCase for component file names (e.g., `MyComponent.jsx`, `UserProfile.tsx`).
--   **Styles**: Use kebab-case for style file names (e.g., `my-component.css`, `user-profile.module.scss`).
--   **Modules**: Use camelCase for module file names (e.g., `api.js`, `dateFormatter.ts`).
-
-### 1.3. Module Organization
-
--   Group related components, styles, and assets within the same directory.
--   Create separate modules for API interactions, data transformations, and utility functions.
-
-### 1.4. Component Architecture
-
--   **Presentational Components**: Focus on rendering UI elements and receiving data via props.
--   **Container Components**: Handle data fetching, state management, and logic, passing data to presentational components.
--   Use functional components with hooks whenever possible for simplicity and reusability.
-
-### 1.5. Code Splitting
-
--   Utilize React.lazy and Suspense to load components on demand, improving initial load time.
--   Split routes into separate chunks to minimize the initial bundle size.
--   Consider using dynamic imports for less frequently used components or modules.
-
-Example:
-
-jsx
-import React, { Suspense } from 'react';
-
-const MyComponent = React.lazy(() => import('./MyComponent'));
-
-function MyPage() {
+const App: React.FC = () => {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <MyComponent />
-    </Suspense>
+    <ConfigProvider theme={appTheme}>
+      {/* Use AntdApp for context-aware static methods (message, Modal, notification) */}
+      <AntdApp>
+        <HomePage />
+      </AntdApp>
+    </ConfigProvider>
   );
+};
+
+export default App;
+```
+
+### ❌ BAD: Direct CSS Overrides
+
+Avoid overriding Ant Design component styles with custom CSS classes or inline styles for properties that are themeable. This leads to inconsistent UIs and breaks theme updates.
+
+```css
+/* ❌ BAD: Avoid this for themeable properties */
+.ant-btn-primary {
+  background-color: #f00 !important; /* Breaks theme */
+  border-color: #f00 !important;
 }
+```
+
+## 2. Layout: Unified Grid System
+
+Adhere to Ant Design's 8-pixel grid unit and the unified 1440px canvas width. Use `Row` and `Col` components for structural layout, leveraging their `span` and `gutter` props.
+
+### ✅ GOOD: Responsive Layout with Grid
+
+```tsx
+import React from 'react';
+import { Layout, Row, Col } from 'antd';
+
+const { Header, Content, Footer } = Layout;
+
+const MyLayout: React.FC = () => (
+  <Layout style={{ minHeight: '100vh' }}>
+    <Header style={{ backgroundColor: '#001529' }}>
+      {/* Header content */}
+    </Header>
+    <Content style={{ padding: '0 50px', maxWidth: 1440, margin: '16px auto' }}>
+      <Row gutter={[16, 16]}> {/* 16px horizontal and vertical gutter */}
+        <Col span={24}>
+          <h1>Welcome to our Application</h1>
+        </Col>
+        <Col xs={24} sm={12} md={8}> {/* Responsive columns */}
+          <div style={{ background: '#fff', padding: 24, minHeight: 120 }}>
+            Card 1
+          </div>
+        </Col>
+        <Col xs={24} sm={12} md={8}>
+          <div style={{ background: '#fff', padding: 24, minHeight: 120 }}>
+            Card 2
+          </div>
+        </Col>
+        <Col xs={24} sm={24} md={8}>
+          <div style={{ background: '#fff', padding: 24, minHeight: 120 }}>
+            Card 3
+          </div>
+        </Col>
+      </Row>
+    </Content>
+    <Footer style={{ textAlign: 'center' }}>
+      Ant Design ©{new Date().getFullYear()} Created by Ant UED
+    </Footer>
+  </Layout>
+);
+
+export default MyLayout;
+```
+
+### ❌ BAD: Hardcoding Layout Dimensions
+
+Avoid using fixed pixel values or custom CSS for spacing and alignment that should be handled by the grid system or design tokens.
+
+```tsx
+// ❌ BAD: Avoid custom margins for layout
+<div style={{ marginLeft: '20px', paddingRight: '30px' }}>
+  {/* Content */}
+</div>
+```
+
+## 3. Component Usage: Standardized & Accessible
+
+Import components directly from `antd`. Always use TypeScript and configure ESLint with `eslint-plugin-antd` to enforce best practices. Prioritize accessibility by providing necessary `aria-*` attributes.
+
+### ✅ GOOD: Proper Imports and Accessibility
+
+```tsx
+import React from 'react';
+import { Button, Space, Typography } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
+
+const MyComponent: React.FC = () => {
+  const handleClick = () => {
+    console.log('Button clicked');
+  };
+
+  return (
+    <Space>
+      <Button type="primary" onClick={handleClick} icon={<PlusOutlined />} aria-label="Add new item">
+        Add Item
+      </Button>
+      <Text strong>Important information.</Text>
+    </Space>
+  );
+};
+
+export default MyComponent;
+```
+
+### ❌ BAD: Missing Accessibility Attributes
+
+Interactive components must have appropriate `aria-*` attributes for screen reader users.
+
+```tsx
+// ❌ BAD: Missing aria-label for icon-only button
+<Button icon={<PlusOutlined />} onClick={() => {}} />
+```
+
+## 4. Internationalization & SSR
 
+Wrap your root component with `ConfigProvider` to set the locale and theme. For Server-Side Rendering (SSR), follow the official Ant Design SSR guide to prevent hydration mismatches.
 
-## 2. Common Patterns and Anti-patterns
+### ✅ GOOD: Global Locale Configuration
+
+```tsx
+// src/main.tsx (or root entry)
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { ConfigProvider } from 'antd';
+import enUS from 'antd/locale/en_US'; // Import desired locale
+import App from './App';
+import { appTheme } from './theme';
 
-### 2.1. Design Patterns
+const container = document.getElementById('root');
+const root = createRoot(container!);
 
--   **Higher-Order Components (HOCs)**: Use for cross-cutting concerns like authentication or data fetching.  Prefer hooks where possible.
--   **Render Props**:  An alternative to HOCs for sharing code between components.  Prefer hooks where possible.
--   **Compound Components**: Create reusable components with implicit state sharing (e.g., `Tabs` and `Tab` components).
+root.render(
+  <React.StrictMode>
+    <ConfigProvider locale={enUS} theme={appTheme}>
+      <App />
+    </ConfigProvider>
+  </React.StrictMode>
+);
+```
 
-### 2.2. Recommended Approaches
+## 5. Performance: Zero Runtime & Tree Shaking
 
--   **Form Handling**: Use `antd`'s `Form` component for managing form state, validation, and submission.
--   **Data Display**: Leverage `antd`'s `Table`, `List`, and `Card` components for structured data presentation.
--   **Navigation**: Use `antd`'s `Menu` and `Breadcrumb` components for creating intuitive navigation.
+Leverage Ant Design's `zeroRuntime` mode (v6.0.0+) in production for improved performance by pre-generating styles. Ensure your build setup supports tree shaking for `antd` to minimize bundle size.
 
-### 2.3. Anti-patterns and Code Smells
+### ✅ GOOD: Zero Runtime Mode in Production
 
--   **Direct DOM Manipulation**: Avoid directly manipulating the DOM; let React manage updates.
--   **Over-reliance on `any` type**: Using `any` in TypeScript defeats the purpose of static typing.  Provide explicit types.
--   **Mutating Props**: Treat props as read-only and avoid modifying them directly.
--   **Inline Styles**:  Keep styles in CSS files or use styled-components for better organization and maintainability. Prefer CSS Modules or Styled Components for component specific styles.
+For production builds, enable `zeroRuntime` and import the pre-generated CSS.
 
-### 2.4. State Management
+```tsx
+// src/App.tsx
+import React from 'react';
+import { ConfigProvider, App as AntdApp } from 'antd';
+import { appTheme } from './theme';
+import HomePage from './pages/HomePage';
 
--   **Component State**: Use `useState` for simple, local component state.
--   **Context API**: Use for sharing state across multiple components without prop drilling.
--   **Redux/Zustand**: Consider for complex applications with global state and predictable state transitions.
--   **MobX**: Consider for complex applications where you want to observe changes in your data and derive calculations from that data.
+// In production, import the static CSS generated by @ant-design/static-style-extract
+// import 'antd/dist/antd.css'; // Or your custom extracted CSS file
 
-### 2.5. Error Handling
+const App: React.FC = () => {
+  // In a real app, you'd conditionally apply zeroRuntime based on NODE_ENV
+  const isProduction = process.env.NODE_ENV === 'production';
 
--   **Try-Catch Blocks**: Use for handling synchronous errors.
--   **Error Boundaries**: Use to catch errors during rendering and prevent the entire application from crashing.
--   **Global Error Handling**: Implement a global error handler to log errors and provide user feedback.
+  return (
+    <ConfigProvider theme={{ ...appTheme, zeroRuntime: isProduction }}>
+      <AntdApp>
+        <HomePage />
+      </AntdApp>
+    </ConfigProvider>
+  );
+};
 
-Example (Error Boundary):
+export default App;
+```
 
-jsx
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
+### ❌ BAD: Importing Full CSS with Runtime Styling
 
-  static getDerivedStateFromError(error) {
-    return { hasError: true };
-  }
+If `zeroRuntime` is `false` (default for development), avoid importing `antd/dist/antd.css` as it will lead to duplicate styles and larger bundle sizes.
 
-  componentDidCatch(error, errorInfo) {
-    console.error('Caught error: ', error, errorInfo);
-  }
+```tsx
+// ❌ BAD: If zeroRuntime is false, this is redundant and harmful
+import 'antd/dist/antd.css';
+```
 
-  render() {
-    if (this.state.hasError) {
-      return <h1>Something went wrong.</h1>;
-    }
+## 6. Hooks Best Practices
 
-    return this.props.children;
-  }
-}
+Utilize Ant Design's hooks for accessing theme tokens and managing context-aware static methods.
 
-export default ErrorBoundary;
+### ✅ GOOD: Using `useToken` and `App` Component
 
-// Usage:
-<ErrorBoundary>
-  <MyComponent />
-</ErrorBoundary>
+```tsx
+import React from 'react';
+import { Button, theme, message } from 'antd';
+import { App as AntdApp } from 'antd'; // Import App component for static methods
 
+const MyThemedComponent: React.FC = () => {
+  const { token } = theme.useToken(); // Access current theme tokens
+  const [messageApi, contextHolder] = message.useMessage(); // For context-aware message
 
-## 3. Performance Considerations
+  const showInfo = () => {
+    messageApi.info(`Primary color: ${token.colorPrimary}`);
+  };
 
-### 3.1. Optimization Techniques
+  return (
+    <div>
+      {contextHolder} {/* Important: Render contextHolder */}
+      <Button onClick={showInfo} style={{ backgroundColor: token.colorPrimary, color: token.colorTextLightSolid }}>
+        Show Primary Color
+      </Button>
+    </div>
+  );
+};
 
--   **Memoization**: Use `React.memo` to prevent unnecessary re-renders of components with the same props.
--   **Pure Components**: Extend `React.PureComponent` for class components to perform shallow prop comparisons.
--   **Virtualization**: Use `antd`'s `Table` and `List` components with virtualization for large datasets.
--   **Debouncing/Throttling**: Use for event handlers that trigger frequent updates (e.g., search input).
+// Wrap components that use static methods or useToken inside <AntdApp>
+const RootComponent: React.FC = () => (
+  <AntdApp>
+    <MyThemedComponent />
+  </AntdApp>
+);
 
-### 3.2. Memory Management
+export default RootComponent;
+```
 
--   **Avoid Memory Leaks**: Properly clean up event listeners and timers in `useEffect` hooks.
--   **Release Resources**: Release unused objects and data structures to free up memory.
+### ❌ BAD: Static Methods Without Context
 
-### 3.3. Rendering Optimization
+Calling `message.info()` or `Modal.confirm()` directly without `App` component or `useMessage`/`useModal` hooks will result in them not inheriting `ConfigProvider` context (e.g., theme, locale).
 
--   **ShouldComponentUpdate**: Implement `shouldComponentUpdate` (for class components) or use `React.memo` (for functional components) to prevent unnecessary re-renders.
--   **Immutable Data**: Use immutable data structures to simplify change detection.
+```tsx
+// ❌ BAD: This message will not inherit ConfigProvider context
+import { message, Button } from 'antd';
 
-### 3.4. Bundle Size Optimization
-
--   **Modular Imports**: Import only the necessary components from `antd` to reduce bundle size (e.g., `import { Button } from 'antd';`).  Use `babel-plugin-import` for automatic modular imports.
--   **Tree Shaking**: Ensure your build process supports tree shaking to remove unused code.
--   **Code Splitting**: As mentioned earlier, split your code into smaller chunks to reduce the initial bundle size.
-
-### 3.5. Lazy Loading
-
--   Use `React.lazy` and `Suspense` to load components on demand.
--   Implement lazy loading for images and other assets using libraries like `react-lazyload`.
-
-## 4. Security Best Practices
-
-### 4.1. Common Vulnerabilities
-
--   **Cross-Site Scripting (XSS)**: Prevent XSS by sanitizing user input and encoding output.
--   **Cross-Site Request Forgery (CSRF)**: Protect against CSRF attacks by implementing CSRF tokens.
--   **SQL Injection**: Avoid directly embedding user input in SQL queries; use parameterized queries or ORMs.
-
-### 4.2. Input Validation
-
--   **Server-Side Validation**: Always validate user input on the server-side.
--   **Client-Side Validation**: Use `antd`'s `Form` component for client-side validation to provide immediate feedback to the user.
--   **Sanitize Input**: Sanitize user input to remove potentially harmful characters or code.
-
-### 4.3. Authentication and Authorization
-
--   **Secure Authentication**: Use secure authentication mechanisms like JWT (JSON Web Tokens) or OAuth.
--   **Role-Based Access Control (RBAC)**: Implement RBAC to control access to different parts of the application based on user roles.
-
-### 4.4. Data Protection
-
--   **Encryption**: Encrypt sensitive data both in transit and at rest.
--   **Data Masking**: Mask sensitive data in the UI to prevent unauthorized access.
-
-### 4.5. Secure API Communication
-
--   **HTTPS**: Use HTTPS to encrypt communication between the client and the server.
--   **API Rate Limiting**: Implement rate limiting to prevent abuse and denial-of-service attacks.
-
-## 5. Testing Approaches
-
-### 5.1. Unit Testing
-
--   Test individual components in isolation to ensure they function correctly.
--   Use testing libraries like Jest and React Testing Library.
--   Mock dependencies to isolate the component being tested.
-
-### 5.2. Integration Testing
-
--   Test the interaction between multiple components or modules.
--   Use testing libraries like React Testing Library and Cypress.
-
-### 5.3. End-to-End Testing
-
--   Test the entire application from the user's perspective.
--   Use testing frameworks like Cypress or Playwright.
-
-### 5.4. Test Organization
-
--   Create a `tests/` directory at the root of your project.
--   Place test files alongside the components or modules they test (e.g., `MyComponent.test.jsx`).
--   Use descriptive test names to clearly indicate what is being tested.
-
-### 5.5. Mocking and Stubbing
-
--   Use mocking libraries like Jest's `jest.mock()` to mock external dependencies.
--   Use stubbing to replace functions or methods with predefined behavior.
-
-## 6. Common Pitfalls and Gotchas
-
-### 6.1. Frequent Mistakes
-
--   **Not using modular imports**:  Importing the entire `antd` library can significantly increase bundle size.
--   **Ignoring TypeScript errors**: Failing to address TypeScript errors can lead to runtime issues.
--   **Not handling asynchronous operations correctly**:  Failing to handle promises or async/await can lead to unhandled rejections and unexpected behavior.
--   **Not localizing strings correctly**: Hardcoding strings instead of using `antd` i18n features. 
-
-### 6.2. Edge Cases
-
--   **Handling different screen sizes and devices**: Ensuring responsive design using `antd` grid system.
--   **Accessibility**: Consider accessibility when using components, making sure to include `aria` attributes.
--   **Browser compatibility**: Test the app on various browsers (Chrome, Firefox, Safari, Edge, etc).
-
-### 6.3. Version-Specific Issues
-
--   **Breaking changes**: Be aware of breaking changes when upgrading `antd` versions.
--   **Deprecated APIs**:  Avoid using deprecated APIs and migrate to the recommended alternatives.
--   **CSS class conflicts:** Potential issues with CSS specificity or conflicts with global styles. Use CSS Modules or Styled Components for more robust style isolation.
-
-### 6.4. Compatibility Concerns
-
--   **React version**:  Ensure compatibility between `antd` and your React version.
--   **Other UI libraries**: Avoid conflicts with other UI libraries by using consistent styling and naming conventions.
-
-### 6.5. Debugging
-
--   **Use browser developer tools**: Inspect the DOM, network requests, and console output.
--   **Use React DevTools**: Inspect the component tree, props, and state.
--   **Use logging and debugging statements**: Add `console.log` statements to trace the execution flow and inspect variable values.
-
-## 7. Tooling and Environment
-
-### 7.1. Recommended Tools
-
--   **IDE**: VS Code, WebStorm.
--   **Build Tool**: Webpack, Parcel, Rollup, esbuild.
--   **Testing Libraries**: Jest, React Testing Library, Cypress.
--   **Linting**: ESLint, Prettier.
-
-### 7.2. Build Configuration
-
--   **Optimize for production**: Use production-specific build configurations to minimize bundle size and improve performance.
--   **Configure code splitting**: Set up code splitting to load components on demand.
--   **Enable tree shaking**: Ensure your build process supports tree shaking to remove unused code.
-
-### 7.3. Linting and Formatting
-
--   **ESLint**: Use ESLint with recommended React and `antd` plugins to enforce coding standards and detect potential errors.
--   **Prettier**: Use Prettier to automatically format your code for consistency.
--   **Stylelint:** Use Stylelint to enforce consistent style practices.
-
-### 7.4. Deployment
-
--   **Choose a hosting platform**:  Netlify, Vercel, AWS, Google Cloud, Azure.
--   **Configure environment variables**:  Set up environment variables for API keys, database credentials, and other sensitive information.
--   **Use a CDN**: Use a Content Delivery Network (CDN) to cache static assets and improve loading times.
-
-### 7.5. CI/CD Integration
-
--   **Set up a CI/CD pipeline**: Use tools like Jenkins, Travis CI, CircleCI, or GitHub Actions to automate testing, building, and deployment.
--   **Automate testing**: Run unit, integration, and end-to-end tests in your CI/CD pipeline.
--   **Automate deployment**: Automate the deployment process to reduce manual effort and errors.
+const BadComponent: React.FC = () => (
+  <Button onClick={() => message.info('Hello')}>
+    Show Message
+  </Button>
+);
+```

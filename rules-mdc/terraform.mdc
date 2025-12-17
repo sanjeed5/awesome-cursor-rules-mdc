@@ -1,166 +1,327 @@
 ---
-description: This rule provides guidelines for Terraform best practices, coding standards, and security considerations to ensure maintainable, efficient, and secure infrastructure-as-code.
-globs: *.tf
+description: Definitive guidelines for writing maintainable, secure, and scalable Terraform configurations. Focuses on structure, naming, state management, and automation.
+globs: **/*.tf
 ---
-- **Use Remote State**: Store Terraform state files remotely to enable collaboration and prevent conflicts. Consider using Terraform Cloud, HashiCorp Consul, AWS S3 with DynamoDB locking, or Azure Storage Account with Blob Storage Locking.
-	- Properly configure access controls for your remote state backend to prevent unauthorized access.
-	- Implement versioning for state files to track changes and facilitate rollbacks.
-- **Consistent Naming Conventions**: Adopt a consistent naming convention for resources, modules, and variables to improve readability and maintainability.
-	- Use nouns for resource names (e.g., `aws_instance.web_server` instead of `web_server_instance`).
-	- Include environment or project context in names (e.g., `dev_web_server` or `prod_db`).
-	- Follow a consistent casing style (e.g., snake_case or camelCase).
-- **Modularity and Code Structure**: Organize Terraform code into modules to promote reusability and maintainability.
-	- Create modules for common infrastructure components (e.g., VPC, EC2 instance, database).
-	- Follow a standard module structure (e.g., `variables.tf`, `outputs.tf`, `main.tf`, `versions.tf`).
-	- Limit the use of custom scripts within modules; prefer Terraform resources and data sources.
-- **Validation and Formatting**: Always validate and format Terraform code using `terraform fmt` and `terraform validate` to ensure quality and consistency.
-	- Integrate `terraform fmt` and `terraform validate` into your CI/CD pipeline.
-	- Use a linter such as TFLint to enforce organization-specific coding best practices.
-- **Use Existing Shared and Community Modules**: Leverage pre-built modules from the Terraform Registry or other trusted sources to avoid reinventing the wheel.
-	- Thoroughly review modules before use to understand their functionality and security implications.
-	- Pin module versions to prevent unexpected changes.
-- **Import Existing Infrastructure**: Use the `terraform import` command to bring existing infrastructure under Terraform management.
-	- Understand the limitations of `terraform import` and manually verify the imported configuration.
-- **Avoid Hard-coding Variables**: Use variables to parameterize Terraform configurations and avoid hard-coding values.
-	- Define variables in `variables.tf` with appropriate descriptions, types, and default values.
-	- Use environment variables or Terraform Cloud variables to pass sensitive values.
-- **Tag Resources**: Tag all Terraform resources with relevant metadata (e.g., `Name`, `Environment`, `Project`, `Owner`).
-	- Use consistent tagging conventions across your infrastructure.
-	- Leverage tags for cost allocation and resource management.
-- **Introduce Policy as Code**: Implement policy as code using tools like HashiCorp Sentinel or Open Policy Agent (OPA) to enforce compliance and security policies.
-	- Define policies for resource configurations, naming conventions, and security settings.
-	- Integrate policy checks into your CI/CD pipeline.
-- **Code Organization and Structure:**
-	- **Directory Structure Best Practices:** Organize your Terraform project with a clear directory structure. A common pattern:
-		
-		├── modules/
-		│   ├── vpc/
-		│   │   ├── main.tf
-		│   │   ├── variables.tf
-		│   │   └── outputs.tf
-		│   ├── ec2/
-		│   │   ├── main.tf
-		│   │   ├── variables.tf
-		│   │   └── outputs.tf
-		├── environments/
-		│   ├── dev/
-		│   │   ├── main.tf
-		│   │   ├── variables.tf
-		│   │   └── terraform.tfvars
-		│   ├── prod/
-		│   │   ├── main.tf
-		│   │   ├── variables.tf
-		│   │   └── terraform.tfvars
-		├── main.tf  # Top-level resources (if any)
-		├── variables.tf # Global variables
-		└── outputs.tf   # Global outputs
-		
-	- **File Naming Conventions:** Adhere to consistent file naming. Use `main.tf` for the primary resource definitions, `variables.tf` for variables, `outputs.tf` for outputs, and `terraform.tfvars` for environment-specific variable values.
-	- **Module Organization:** Keep modules self-contained and reusable. Each module should have a specific purpose (e.g., creating a VPC, an EC2 instance, or a database).
-	- **Component Architecture:** Design your infrastructure as a collection of loosely coupled components (modules) that can be composed together.
-	- **Code Splitting Strategies:** Break down large configurations into smaller, more manageable modules and files.
-- **Common Patterns and Anti-patterns:**
-	- **Design Patterns:**
-		- **Singleton Pattern:** Ensure only one instance of a critical resource exists (e.g., a VPC). Use `count = var.create_vpc ? 1 : 0` to conditionally create a single VPC.
-		- **Factory Pattern:** Use modules to create multiple instances of a resource with different configurations (e.g., multiple EC2 instances with different sizes and roles).
-		- **Facade Pattern:** Create a module that simplifies the creation of complex infrastructure by abstracting away the underlying details.
-	- **Recommended Approaches:**
-		- Use data sources to retrieve information about existing resources instead of hardcoding their IDs or names.
-		- Use dynamic blocks to create multiple resources or configure resource properties based on variable values.
-		- Use lifecycle rules to manage resource creation, modification, and deletion.
-	- **Anti-patterns:**
-		- **Hardcoding values:** Avoid hardcoding values in your Terraform configurations. Use variables instead.
-		- **Creating monolithic configurations:** Break down large configurations into smaller, more manageable modules.
-		- **Ignoring errors:** Always handle errors and provide meaningful error messages.
-	- **State Management Best Practices:**
-		- **Remote State:** Always use remote state to store Terraform state files.
-		- **State Locking:** Enable state locking to prevent concurrent modifications.
-		- **State Encryption:** Encrypt state files to protect sensitive data.
-		- **State Versioning:** Implement versioning for state files.
-	- **Error Handling Patterns:**
-		- Use the `try` and `can` functions to handle errors when retrieving data or evaluating expressions.
-		- Use `validation` blocks to validate variable values and prevent invalid configurations.
-		- Provide meaningful error messages to help users diagnose and fix issues.
-- **Performance Considerations:**
-	- **Optimization Techniques:**
-		- Use the `count` and `for_each` meta-arguments to create multiple resources efficiently.
-		- Use data sources to retrieve information about existing resources instead of creating new ones.
-		- Use the `depends_on` meta-argument sparingly to avoid unnecessary dependencies.
-	- **Memory Management:**
-		- Be mindful of the memory usage of your Terraform configurations, especially when working with large datasets.
-		- Avoid creating large variables or outputs that can consume excessive memory.
-	- **Rendering Optimization:**
-		- Use efficient string interpolation techniques to avoid unnecessary string concatenation.
-		- Use the `templatefile` function to render complex templates efficiently.
-- **Security Best Practices:**
-	- **Common Vulnerabilities:**
-		- **Hardcoded secrets:** Avoid hardcoding secrets in your Terraform configurations.
-		- **Publicly accessible resources:** Ensure that resources are not publicly accessible unless explicitly required.
-		- **Insufficient access controls:** Implement strict access controls to prevent unauthorized access to resources.
-	- **Input Validation:**
-		- Validate variable values to prevent invalid or malicious input.
-		- Use regular expressions to enforce specific input formats.
-	- **Authentication and Authorization Patterns:**
-		- Use IAM roles and policies to grant resources the necessary permissions.
-		- Use Terraform Cloud or other secrets management tools to manage sensitive credentials.
-	- **Data Protection Strategies:**
-		- Encrypt sensitive data at rest and in transit.
-		- Use encryption keys managed by a key management service (KMS).
-	- **Secure API Communication:**
-		- Use HTTPS for all API communication.
-		- Validate API responses to prevent data injection attacks.
-- **Testing Approaches:**
-	- **Unit Testing Strategies:**
-		- Use `terraform show` and `terraform plan` to verify that your Terraform configurations create the expected resources.
-		- Use `terratest` or other testing frameworks to write automated unit tests.
-	- **Integration Testing:**
-		- Deploy your Terraform configurations to a test environment and verify that the resources are functioning correctly.
-		- Use automated testing tools to perform integration tests.
-	- **End-to-end Testing:**
-		- Simulate real-world scenarios and verify that your infrastructure can handle them.
-		- Use automated testing tools to perform end-to-end tests.
-	- **Test Organization:**
-		- Organize your tests into a clear directory structure.
-		- Use meaningful test names to describe the purpose of each test.
-	- **Mocking and Stubbing:**
-		- Use mocking and stubbing to isolate your tests and prevent dependencies on external resources.
-		- Use testing frameworks that support mocking and stubbing.
-- **Common Pitfalls and Gotchas:**
-	- **Frequent Mistakes:**
-		- **Incorrect resource dependencies:** Ensure that resource dependencies are correctly defined.
-		- **Ignoring resource lifecycle:** Understand the lifecycle of Terraform resources and how they are created, modified, and deleted.
-		- **Using outdated Terraform versions:** Keep your Terraform version up to date to take advantage of new features and bug fixes.
-	- **Edge Cases:**
-		- **Handling resource conflicts:** Be prepared to handle resource conflicts that can occur when multiple Terraform configurations are applied simultaneously.
-		- **Managing resources with external dependencies:** Be aware of resources that have external dependencies (e.g., DNS records) and handle them appropriately.
-	- **Version-specific Issues:**
-		- Be aware of version-specific issues and compatibility concerns when upgrading Terraform or provider versions.
-		- Consult the Terraform and provider documentation for any breaking changes or migration guides.
-	- **Compatibility Concerns:**
-		- Ensure that your Terraform configurations are compatible with the target infrastructure environment.
-		- Use provider versions that are compatible with the Terraform version.
-	- **Debugging Strategies:**
-		- Use the `terraform plan` command to preview the changes that will be made to your infrastructure.
-		- Use the `terraform apply` command with the `-auto-approve` flag to apply changes automatically.
-		- Use the `terraform show` command to inspect the current state of your infrastructure.
-- **Tooling and Environment:**
-	- **Recommended Development Tools:**
-		- **Terraform CLI:** The official Terraform command-line interface.
-		- **Terraform Cloud/Enterprise:** A collaboration and automation platform for Terraform.
-		- **IDE/Text Editor:** Visual Studio Code with the Terraform extension, Atom, or Sublime Text.
-		- **TFLint:** A linter for Terraform code.
-		- **Terratest:** A testing framework for Terraform code.
-	- **Build Configuration:**
-		- Use a consistent build configuration across all environments.
-		- Use environment variables or Terraform Cloud variables to configure the build environment.
-	- **Linting and Formatting:**
-		- Integrate linting and formatting into your CI/CD pipeline.
-		- Use `terraform fmt` and TFLint to ensure code quality and consistency.
-	- **Deployment Best Practices:**
-		- Use a CI/CD pipeline to automate Terraform deployments.
-		- Use version control to track changes to your Terraform configurations.
-		- Use infrastructure-as-code principles to manage your infrastructure.
-	- **CI/CD Integration:**
-		- Integrate Terraform into your CI/CD pipeline using tools like Jenkins, GitLab CI, or GitHub Actions.
-		- Automate the execution of `terraform plan` and `terraform apply` commands.
-		- Implement automated testing and validation as part of the CI/CD process.
+# Terraform Best Practices
+
+Terraform configurations are production-grade software. Treat them with the same rigor: readable, versioned, testable, and governed by automated policies. This guide provides opinionated, actionable best practices for our team's Terraform development, ensuring consistency, reliability, and security.
+
+## 1. Code Organization and Structure
+
+Organize your Terraform code for clarity, reusability, and environment isolation.
+
+### 1.1 Project Layout
+
+**Always** separate environments and reusable components.
+
+❌ BAD: Monolithic `main.tf` or environment-specific resources mixed with modules.
+```terraform
+# environments/dev/main.tf
+resource "aws_vpc" "dev_vpc" { # ... }
+resource "aws_s3_bucket" "dev_app_bucket" { # ... }
+# Duplicated for staging/prod
+```
+
+✅ GOOD: Dedicated directories for environments and shared modules.
+```
+├── environments/
+│   ├── dev/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── backend.tf
+│   │   └── terraform.tfvars
+│   ├── prod/
+│       ├── main.tf
+│       ├── variables.tf
+│       ├── backend.tf
+│       └── terraform.tfvars
+├── modules/
+│   ├── vpc/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   └── s3_bucket/
+│       ├── main.tf
+│       ├── variables.tf
+│       └── outputs.tf
+```
+
+### 1.2 Standard File Naming
+
+Use HashiCorp's recommended file naming conventions for consistency.
+
+*   `backend.tf`: Remote state configuration.
+*   `main.tf`: Primary resource and module calls.
+*   `outputs.tf`: All output blocks, alphabetically sorted.
+*   `providers.tf`: `terraform` block (required version/providers) and `provider` blocks.
+*   `variables.tf`: All variable blocks, alphabetically sorted.
+*   `locals.tf`: Local values.
+
+## 2. Naming Conventions
+
+Consistency in naming is paramount for readability.
+
+### 2.1 Resource and Variable Names
+
+Use `lower_snake_case` for all resource, data source, variable, and output names. **Never** include the resource type in the name.
+
+❌ BAD:
+```terraform
+resource "aws_s3_bucket" "s3_bucket_app_logs" { # ... }
+variable "vpcName" { # ... }
+```
+
+✅ GOOD:
+```terraform
+resource "aws_s3_bucket" "app_logs" { # ... }
+variable "vpc_name" { # ... }
+```
+
+### 2.2 Boolean Variables
+
+Use positive boolean flags ending with `_enabled`.
+
+❌ BAD:
+```terraform
+variable "disable_encryption" { type = bool }
+```
+
+✅ GOOD:
+```terraform
+variable "encryption_enabled" { type = bool }
+```
+
+### 2.3 Descriptions
+
+**Every** `variable` and `output` block **must** include a `description`.
+
+```terraform
+variable "instance_type" {
+  description = "The EC2 instance type to use for the server."
+  type        = string
+  default     = "t3.micro"
+}
+
+output "vpc_id" {
+  description = "The ID of the created VPC."
+  value       = aws_vpc.main.id
+}
+```
+
+## 3. State Management
+
+Remote state and locking are non-negotiable for team collaboration.
+
+### 3.1 Remote State and Locking
+
+**Always** use a remote backend (e.g., S3 with DynamoDB locking). **Never** rely on local state in shared environments.
+
+```terraform
+# backend.tf
+terraform {
+  backend "s3" {
+    bucket         = "my-team-terraform-state"
+    key            = "environments/prod/app/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-state-lock" # Must be pre-created
+    encrypt        = true
+  }
+}
+```
+
+### 3.2 Workspaces
+
+**Avoid** `terraform workspace` for environment isolation. Use separate backend configurations in distinct directories (e.g., `environments/dev`, `environments/prod`) instead. Workspaces are primarily for ephemeral, short-lived deployments or testing variations within a single configuration.
+
+## 4. Modules: Reusability and Abstraction
+
+Modules are the cornerstone of scalable Terraform.
+
+### 4.1 Module Design
+
+Design modules to be single-purpose, composable, and reusable. Abstract implementation details.
+
+❌ BAD: A module that creates a VPC, an RDS instance, and an S3 bucket.
+✅ GOOD: Separate modules for `vpc`, `rds_instance`, and `s3_bucket`.
+
+### 4.2 Module Inputs and Outputs
+
+*   **Inputs**: Parameterize only what needs to vary. Use `nullable = false` for variables that should never be `null` (especially lists, maps, objects defaulting to empty).
+*   **Outputs**: Provide meaningful outputs with descriptions. **Never** pass outputs directly through input variables; reference resource attributes to ensure implicit dependencies.
+
+```terraform
+# modules/vpc/variables.tf
+variable "vpc_cidr" {
+  description = "CIDR block for the VPC."
+  type        = string
+}
+
+variable "tags" {
+  description = "A map of tags to assign to all resources in the VPC."
+  type        = map(string)
+  default     = {}
+  nullable    = false # Ensure tags is always a map, even if empty
+}
+
+# modules/vpc/outputs.tf
+output "vpc_id" {
+  description = "The ID of the created VPC."
+  value       = aws_vpc.main.id
+}
+```
+
+## 5. Common Patterns and Anti-patterns
+
+### 5.1 Loops and Conditionals (`for_each`, `count`)
+
+Use `for_each` for creating multiple instances of a resource when you have a map or set of strings, as it provides better state management and readability than `count`. Use `count` for simple numeric iteration or conditional resource creation (when `count` is 0 or 1).
+
+❌ BAD: Using `count` with a map for resource creation.
+```terraform
+resource "aws_instance" "app_servers" {
+  count = length(var.instance_configs) # var.instance_configs is a map
+  # ...
+  tags = {
+    Name = var.instance_configs[count.index].name
+  }
+}
+```
+
+✅ GOOD: Using `for_each` with a map for resource creation.
+```terraform
+resource "aws_instance" "app_servers" {
+  for_each = var.instance_configs # var.instance_configs is a map of objects
+  # ...
+  tags = {
+    Name = each.value.name
+  }
+}
+```
+
+### 5.2 Dynamic Blocks
+
+Use dynamic blocks to construct repeatable nested blocks based on a complex variable.
+
+```terraform
+resource "aws_security_group" "web" {
+  # ...
+  dynamic "ingress" {
+    for_each = var.ingress_rules
+    content {
+      from_port   = ingress.value.from_port
+      to_port     = ingress.value.to_port
+      protocol    = ingress.value.protocol
+      cidr_blocks = ingress.value.cidr_blocks
+    }
+  }
+}
+```
+
+### 5.3 Tagging Resources
+
+**Always** tag all resources with meaningful metadata (e.g., `Project`, `Environment`, `Owner`, `CostCenter`). Use a `default_tags` block in your provider configuration.
+
+```terraform
+provider "aws" {
+  region = "us-east-1"
+  default_tags {
+    tags = {
+      Project     = "MyApplication"
+      Environment = "prod"
+      ManagedBy   = "Terraform"
+    }
+  }
+}
+```
+
+## 6. Security and Configuration Management
+
+### 6.1 Secrets Management
+
+**Never** hardcode sensitive data. Fetch secrets dynamically from a dedicated secrets manager (e.g., AWS Secrets Manager, HashiCorp Vault).
+
+❌ BAD:
+```terraform
+resource "aws_db_instance" "app_db" {
+  password = "SuperSecretPassword123!" # NEVER DO THIS
+}
+```
+
+✅ GOOD:
+```terraform
+data "aws_secretsmanager_secret_version" "db_creds" {
+  secret_id = "prod/my-app/db-credentials"
+}
+
+locals {
+  db_credentials = jsondecode(data.aws_secretsmanager_secret_version.db_creds.secret_string)
+}
+
+resource "aws_db_instance" "app_db" {
+  password = local.db_credentials.password
+}
+```
+
+### 6.2 Policy as Code
+
+Integrate Policy as Code (e.g., Open Policy Agent (OPA) or HashiCorp Sentinel) into your CI/CD pipeline to enforce organizational compliance and security policies before deployment.
+
+## 7. Common Pitfalls and Gotchas
+
+### 7.1 Formatting and Validation
+
+**Always** run `terraform fmt` and `terraform validate` before committing. Integrate these into Git pre-commit hooks and CI/CD pipelines.
+
+### 7.2 Linting
+
+Use a linter like TFLint to catch style violations, potential errors, and enforce best practices early.
+
+### 7.3 Version Pinning
+
+**Always** pin versions for Terraform, providers, and modules to ensure reproducible deployments and prevent unexpected changes.
+
+```terraform
+# providers.tf
+terraform {
+  required_version = "~> 1.5" # Pin Terraform CLI version
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0" # Pin AWS provider version
+    }
+  }
+}
+
+# main.tf (for modules)
+module "vpc" {
+  source  = "cloudposse/vpc/aws"
+  version = "2.0.0" # Pin module version
+  # ...
+}
+```
+
+### 7.4 Lifecycle Management
+
+Use the `lifecycle` block judiciously, especially `prevent_destroy` for critical resources and `create_before_destroy` for zero-downtime updates.
+
+```terraform
+resource "aws_s3_bucket" "critical_data" {
+  bucket = "my-critical-data-bucket"
+  # ...
+  lifecycle {
+    prevent_destroy = true # Protect critical resources from accidental deletion
+  }
+}
+```
+
+## 8. CI/CD Integration
+
+Automate your Terraform workflow with CI/CD.
+
+### 8.1 Automated Plan Checks
+
+**Every** pull request **must** trigger a `terraform plan` and post the output as a comment or check. This ensures visibility and prevents unexpected changes.
+
+### 8.2 Automated Apply
+
+Implement automated `terraform apply` on merge to `main` (or environment branches) only after successful plan, validation, and policy checks. This requires robust state locking and access controls.

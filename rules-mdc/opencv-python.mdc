@@ -1,199 +1,253 @@
 ---
-description: This rule outlines best practices for developing with the opencv-python library, focusing on code organization, performance, security, testing, and common pitfalls. It provides comprehensive guidelines for efficient and maintainable opencv-python projects.
-globs: *.py
+description: This guide provides definitive, opinionated best practices for writing high-performance, maintainable, and robust `opencv-python` code in Python applications.
+globs: **/*.py
 ---
-- Always use UV or Pipenv when installing dependencies for consistent environments.
-- Always specify Python 3.10 or higher, as older versions may lack feature parity and security updates.
-- Use type hints extensively for improved code readability and maintainability.
+# `opencv-python` Best Practices
 
-# Library Information:
-- Name: opencv-python
-- Tags: python, image-processing, computer-vision, opencv
+`opencv-python` is the de-facto standard for computer vision in Python. To write efficient, reliable, and maintainable code, treat OpenCV objects as NumPy arrays and prioritize vectorized operations. This guide outlines the essential practices for our team.
 
-## 1. Code Organization and Structure
+## Core Philosophy: Vectorize Everything
 
-- **Directory Structure:**
-    - 
-    project_root/
-    ├── data/           # Store image, video, and other data files.
-    ├── src/            # Source code directory.
-    │   ├── modules/     # Reusable modules and utility functions.
-    │   │   ├── image_processing/  # Specific image processing functions.
-    │   │   │   ├── __init__.py
-    │   │   │   ├── filters.py  # Implement filters as functions or classes
-    │   │   │   ├── transforms.py # Implement image transforms as functions or classes
-    │   │   ├── utils.py       # Utility functions for data loading, etc.
-    │   ├── main.py        # Entry point of your application.
-    ├── tests/          # Test suite.
-    │   ├── unit/        # Unit tests for individual components.
-    │   ├── integration/   # Integration tests for combined components.
-    ├── models/          # Saved model files
-    ├── notebooks/      # Jupyter notebooks for experimentation.
-    ├── requirements.txt # Project dependencies.
-    ├── pyproject.toml   # Project metadata and build configuration.
-    └── README.md        # Project documentation.
-    
+OpenCV functions are C++ optimized. Leverage them directly or use NumPy's vectorized operations instead of explicit Python loops for pixel-wise processing. This is the single most important performance rule.
 
-- **File Naming Conventions:**
-    - Use descriptive and consistent naming.
-    - `module_name.py` (e.g., `image_utils.py`, `feature_extraction.py`).
-    - Class names: `PascalCase` (e.g., `ImageProcessor`, `FeatureDetector`).
-    - Function names: `snake_case` (e.g., `load_image`, `apply_filter`).
+❌ **BAD: Pixel-wise loop**
+```python
+import cv2
+import numpy as np
 
-- **Module Organization:**
-    - Group related functions and classes into modules within the `src/modules/` directory.
-    - Use `__init__.py` files to make directories packages.
-    - Employ clear and concise module names.
+def invert_image_slow(image: np.ndarray) -> np.ndarray:
+    """Inverts an image pixel by pixel (slow)."""
+    h, w, c = image.shape
+    inverted_image = np.zeros_like(image)
+    for y in range(h):
+        for x in range(w):
+            inverted_image[y, x] = 255 - image[y, x]
+    return inverted_image
+```
 
-- **Component Architecture:**
-    - Follow a layered architecture:
-        - **Data Access Layer:** Handles image loading, saving, and data source interactions.
-        - **Processing Layer:** Implements image processing algorithms and feature extraction.
-        - **Application Layer:** Orchestrates the processing and presents the results.
+✅ **GOOD: Vectorized operation**
+```python
+import cv2
+import numpy as np
 
-- **Code Splitting:**
-    - Decompose complex functions into smaller, well-defined units.
-    - Create separate modules for distinct functionalities (e.g., filtering, feature detection, object tracking).
-    - Utilize classes to encapsulate related state and behavior.
+def invert_image_fast(image: np.ndarray) -> np.ndarray:
+    """Inverts an image using vectorized NumPy (fast)."""
+    return 255 - image
 
-## 2. Common Patterns and Anti-patterns
+# Or using OpenCV's built-in function for more complex ops
+def convert_to_grayscale(image: np.ndarray) -> np.ndarray:
+    """Converts an image to grayscale using cv2 (fast)."""
+    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+```
 
-- **Design Patterns:**
-    - **Strategy Pattern:** To swap image processing algorithms at runtime.
-    - **Factory Pattern:** To create different image processing objects based on configuration.
-    - **Observer Pattern:** To notify subscribers of image processing events.
+## Code Organization and Structure
 
-- **Recommended Approaches:**
-    - **Image Loading:** Use `cv2.imread()` for loading images.  Handle potential file errors gracefully.
-    - **Image Display:** Use `cv2.imshow()` for displaying images, and remember to call `cv2.waitKey()` to prevent freezing.
-    - **Video Processing:** Use `cv2.VideoCapture()` to capture video from a file or camera.
-    - **Iterating Pixels:** Access pixel values directly using NumPy array indexing for performance.  Avoid slow Python loops when possible.
+Organize your vision pipelines into small, focused functions. Each function should perform a single, well-defined image processing step.
 
-- **Anti-patterns and Code Smells:**
-    - **Deeply Nested Loops:** Indicate inefficient pixel-level operations. Consider vectorization using NumPy.
-    - **Global Variables:** Lead to unpredictable state. Encapsulate state within classes.
-    - **Hardcoded Paths:** Make code inflexible. Use relative paths and configurable settings.
-    - **Ignoring Errors:** Can lead to unexpected crashes. Implement robust error handling.
+❌ **BAD: Monolithic script**
+```python
+import cv2
+import numpy as np
 
-- **State Management:**
-    - Encapsulate state within classes.
-    - Minimize mutable state; favor immutable data structures where appropriate.
-    - Use dependency injection to manage external dependencies.
+# main.py
+img = cv2.imread('input.jpg')
+if img is None:
+    print("Error loading image")
+    exit()
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+edges = cv2.Canny(blurred, 50, 150)
+cv2.imshow('Edges', edges)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+cv2.imwrite('output_edges.jpg', edges)
+```
 
-- **Error Handling:**
-    - Use `try...except` blocks to handle potential exceptions (e.g., file not found, invalid image format).
-    - Log errors for debugging and monitoring.
-    - Raise exceptions to propagate errors up the call stack.
+✅ **GOOD: Modular functions**
+```python
+import cv2
+import numpy as np
+from typing import Optional
 
-## 3. Performance Considerations
+def load_image(path: str) -> Optional[np.ndarray]:
+    """Loads an image, checking for errors."""
+    img = cv2.imread(path)
+    if img is None:
+        print(f"Error: Could not load image from {path}")
+    return img
 
-- **Optimization Techniques:**
-    - **Vectorization:** Use NumPy's vectorized operations instead of loops for faster processing.
-    - **Pre-allocation:** Pre-allocate NumPy arrays instead of repeatedly resizing them.
-    - **Caching:** Cache frequently accessed data (e.g., lookup tables) to avoid recalculation.
-    - **Multiprocessing/Multithreading:** Use `multiprocessing` or `threading` to parallelize independent image processing tasks.
-    - **Cython:** Implement performance-critical sections in Cython for C-like speeds.
-    - **GPU Acceleration:** Leverage OpenCV's CUDA module for GPU-accelerated processing (if applicable).
+def preprocess_image(image: np.ndarray) -> np.ndarray:
+    """Applies grayscale, blur, and Canny edge detection."""
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(blurred, 50, 150)
+    return edges
 
-- **Memory Management:**
-    - Release unused memory by explicitly deleting large arrays or objects.
-    - Be mindful of memory copies. Use `view()` or `ascontiguousarray()` to avoid unnecessary copies.
-    - Use generators to process large images in chunks.
+def display_image(window_name: str, image: np.ndarray) -> None:
+    """Displays an image and waits for a key press."""
+    cv2.imshow(window_name, image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
-- **Rendering Optimization:**
-    - Minimize the number of draw calls.
-    - Use efficient drawing functions (e.g., `cv2.polylines()` instead of individual `cv2.line()` calls).
+# main.py
+if __name__ == "__main__":
+    input_path = 'input.jpg'
+    output_path = 'output_edges.jpg'
 
-- **Bundle Size Optimization:**
-    - Not directly applicable to opencv-python. For applications that use opencv-python, dependencies should be managed effectively. 
+    original_img = load_image(input_path)
+    if original_img is not None:
+        processed_img = preprocess_image(original_img)
+        display_image('Processed Edges', processed_img)
+        cv2.imwrite(output_path, processed_img)
+```
 
-- **Lazy Loading:**
-    - Load images only when needed.
-    - Use lazy initialization for computationally expensive objects.
+## Common Pitfalls and Gotchas
 
-## 4. Security Best Practices
+### 1. `cv2.imread` Returns `None`
 
-- **Common Vulnerabilities:**
-    - **Denial of Service (DoS):** Prevent processing extremely large or malformed images that can consume excessive resources.
-    - **Code Injection:** Avoid executing arbitrary code based on user input (e.g., constructing file paths dynamically without proper sanitization).
-    - **Buffer Overflows:** Check image dimensions and data types to prevent buffer overflows when accessing pixel data directly.
+Always check the return value of `cv2.imread`. It returns `None` if the image cannot be found or loaded.
 
-- **Input Validation:**
-    - Validate image file extensions and formats.
-    - Check image dimensions and data types.
-    - Sanitize filenames to prevent path traversal attacks.
+❌ **BAD: Assuming image load success**
+```python
+img = cv2.imread('non_existent.jpg')
+# This will crash if img is None
+gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+```
 
-- **Authentication and Authorization:**
-    - Not typically applicable to core opencv-python functionality. These are relevant for applications leveraging opencv-python for tasks like facial recognition or video surveillance, requiring access control mechanisms.
+✅ **GOOD: Robust image loading**
+```python
+img = cv2.imread('non_existent.jpg')
+if img is None:
+    raise FileNotFoundError("Image not found or could not be loaded.")
+gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+```
 
-- **Data Protection:**
-    - Encrypt sensitive image data at rest and in transit (if applicable).
-    - Implement access control mechanisms to restrict access to sensitive image data.
-    - Anonymize or redact personally identifiable information (PII) from images.
+### 2. Color Space Mismatches (BGR vs RGB)
 
-- **Secure API Communication:**
-    - Enforce HTTPS for all API communication.
-    - Use secure authentication mechanisms (e.g., API keys, OAuth).
-    - Validate all API requests and responses.
+OpenCV uses BGR (Blue, Green, Red) as its default color order for images. Matplotlib and many other libraries use RGB. Be explicit with conversions.
 
-## 5. Testing Approaches
+❌ **BAD: Displaying BGR as RGB**
+```python
+import matplotlib.pyplot as plt
+img_bgr = cv2.imread('image.jpg')
+plt.imshow(img_bgr) # Colors will be wrong
+plt.show()
+```
 
-- **Unit Testing:**
-    - Test individual functions and classes in isolation.
-    - Use mocking to isolate components from external dependencies (e.g., file system, camera).
-    - Test edge cases and boundary conditions.
-    - Use libraries like `pytest` and `unittest`.
+✅ **GOOD: Explicit color conversion**
+```python
+import matplotlib.pyplot as plt
+img_bgr = cv2.imread('image.jpg')
+img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+plt.imshow(img_rgb)
+plt.show()
+```
 
-- **Integration Testing:**
-    - Test the interaction between different components.
-    - Verify that data flows correctly between modules.
-    - Use realistic test data.
+### 3. Data Type Mismatches
 
-- **End-to-End Testing:**
-    - Test the entire application workflow.
-    - Simulate user interactions.
-    - Verify that the application meets the requirements.
+OpenCV functions expect specific data types (e.g., `np.uint8` for most image operations, `np.float32` for some calculations like `cv2.filter2D`). Always ensure your image data has the correct `dtype`.
 
-- **Test Organization:**
-    - Structure tests to mirror the source code organization.
-    - Use descriptive test names.
-    - Keep tests concise and focused.
+❌ **BAD: Incorrect data type for operations**
+```python
+img_float = np.random.rand(100, 100, 3) # float64
+# This will likely fail or produce unexpected results
+edges = cv2.Canny(img_float, 50, 150)
+```
 
-- **Mocking and Stubbing:**
-    - Use `unittest.mock` or `pytest-mock` to create mock objects for external dependencies.
-    - Stub out functions that perform I/O operations or interact with hardware.
+✅ **GOOD: Explicit type casting**
+```python
+img_float = np.random.rand(100, 100, 3).astype(np.float32) * 255
+img_uint8 = img_float.astype(np.uint8)
+edges = cv2.Canny(img_uint8, 50, 150)
+```
 
-## 6. Common Pitfalls and Gotchas
+## Type Hints
 
-- **BGR vs. RGB:** Be aware that OpenCV uses BGR color format by default, while other libraries (e.g., Matplotlib, PIL) use RGB. Convert between formats using `cv2.cvtColor()`.
-- **Image Data Types:** Understand the different image data types (e.g., `uint8`, `float32`) and their implications for processing.
-- **Memory Layout:** Be aware of the memory layout of NumPy arrays and use `ascontiguousarray()` when necessary.
-- **`cv2.waitKey()`:** Remember to call `cv2.waitKey()` after `cv2.imshow()` to display the image and allow the window to respond to events. A value of 0 will wait indefinitely for a key press.
-- **Incorrect File Paths:** Double-check file paths when loading images or videos.
-- **Version Compatibility:** Be aware of compatibility issues between different versions of opencv-python.
-- **Global Interpreter Lock (GIL):** Understand the implications of the GIL for multithreading in Python. Use multiprocessing for CPU-bound tasks.
+Always use Python type hints, especially for function arguments and return values involving `numpy.ndarray`. This improves code readability, enables static analysis, and reduces bugs.
 
-## 7. Tooling and Environment
+```python
+import numpy as np
+import cv2
+from typing import Tuple
 
-- **Recommended Development Tools:**
-    - **IDE:** VS Code, PyCharm, Jupyter Notebook.
-    - **Virtual Environment:** `venv`, `conda`.
-    - **Package Manager:** `pip`, `uv`.
+def resize_image(image: np.ndarray, new_size: Tuple[int, int]) -> np.ndarray:
+    """
+    Resizes an image to the specified (width, height).
+    Args:
+        image: The input image as a NumPy array.
+        new_size: A tuple (width, height) for the new dimensions.
+    Returns:
+        The resized image.
+    """
+    return cv2.resize(image, new_size)
 
-- **Build Configuration:**
-    - Use `pyproject.toml` for project metadata and build configuration.
-    - Specify dependencies in `requirements.txt` or `pyproject.toml`.
-    - Use a build system like `setuptools` or `poetry`.
+# Example usage
+img = cv2.imread('input.jpg')
+if img is not None:
+    resized_img = resize_image(img, (640, 480))
+```
 
-- **Linting and Formatting:**
-    - Use `flake8` for linting.
-    - Use `black` for formatting.
-    - Configure your IDE to automatically format code on save.
+## Performance Considerations
 
-- **Deployment:**
-    - Containerize your application using Docker.
-    - Use a deployment platform like AWS, Azure, or Google Cloud.
+1.  **Prefer `cv2` functions**: They are highly optimized C++ implementations.
+2.  **Vectorize with NumPy**: For operations not directly available in `cv2`, use NumPy's vectorized functions.
+3.  **Avoid unnecessary copies**: Operations like `img[y1:y2, x1:x2]` create views, which are efficient. `img.copy()` creates a new array. Use `copy()` only when you intend to modify the subset independently.
+4.  **Image `dtype`**: Stick to `np.uint8` for most image storage. Convert to `np.float32` or `np.float64` only for mathematical operations requiring higher precision, then convert back if needed.
+5.  **Batch Processing**: If processing many images, consider loading and processing them in batches where possible, especially for deep learning inference.
 
-- **CI/CD:**
-    - Integrate with a CI/CD system like Jenkins, GitLab CI, or GitHub Actions.
-    - Automate testing, linting, and deployment.
+## Virtual Environments and Packaging
+
+Always use virtual environments (`venv` or `conda`) to isolate project dependencies. Pin `opencv-python` and `numpy` versions in `requirements.txt` for reproducibility.
+
+```bash
+# Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate # Linux/macOS
+# .venv\Scripts\activate # Windows
+
+# Install packages
+pip install opencv-python==4.12.0.88 numpy<2.0 # For Python < 3.9
+# pip install opencv-python==4.12.0.88 numpy<2.3.0,>=2 # For Python >= 3.9
+```
+
+`requirements.txt`:
+```
+opencv-python==4.12.0.88
+numpy<2.0; python_version < "3.9"
+numpy<2.3.0,>=2; python_version >= "3.9"
+```
+
+## Testing Approaches
+
+Implement unit and integration tests for your image processing pipelines. `pytest` is the recommended framework.
+
+1.  **Unit Tests**: Test individual image processing functions with known inputs and expected outputs.
+2.  **Integration Tests**: Test the entire pipeline with sample images, verifying the final output.
+3.  **Image Comparison**: For asserting image correctness, load a reference image and compare it pixel-wise using `numpy.array_equal` or a perceptual difference metric.
+
+```python
+# tests/test_image_processing.py
+import pytest
+import numpy as np
+import cv2
+from my_module import preprocess_image, load_image
+
+def test_preprocess_image_grayscale():
+    """Test if preprocess_image correctly grayscales and blurs."""
+    # Create a dummy color image (BGR)
+    dummy_img = np.zeros((10, 10, 3), dtype=np.uint8)
+    dummy_img[:, :, 0] = 255 # Blue channel
+    dummy_img[:, :, 1] = 128 # Green channel
+    dummy_img[:, :, 2] = 64  # Red channel
+
+    processed_img = preprocess_image(dummy_img)
+
+    # Expected output for grayscale of (255, 128, 64) is ~125
+    # Canny output is binary, so check shape and type
+    assert processed_img.shape == (10, 10) # Grayscale, then Canny
+    assert processed_img.dtype == np.uint8
+    # Further checks could involve comparing with a pre-computed reference image
+    # For example:
+    # expected_edges = cv2.imread('tests/ref_edges.png', cv2.IMREAD_GRAYSCALE)
+    # assert np.array_equal(processed_img, expected_edges)
+```

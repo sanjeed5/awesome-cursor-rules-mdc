@@ -1,317 +1,333 @@
 ---
-description: This rule file provides comprehensive best practices and coding standards for developing projects using spaCy, covering code organization, performance, security, testing, and more. It aims to guide developers in building maintainable, efficient, and secure NLP applications with spaCy.
-globs: *.py
+description: This guide provides definitive, opinionated best practices for writing maintainable, performant, and robust spaCy code in Python, focusing on modern patterns and avoiding common pitfalls.
+globs: **/*.py
 ---
-# spaCy Best Practices and Coding Standards
+# spaCy Best Practices
 
-This document outlines the recommended best practices and coding standards for developing projects using spaCy. Adhering to these guidelines will result in more maintainable, efficient, and secure NLP applications.
+spaCy is the backbone of our NLP systems. Adhering to these guidelines ensures our pipelines are performant, reproducible, and easy to maintain.
 
-## Library Information:
-- Name: spaCy
-- Tags: python, nlp, text-processing
+## 1. Project Organization & Configuration
 
-## 1. Code Organization and Structure
+Always structure your spaCy projects using `spacy project` and define all pipeline settings in a declarative YAML config. This is non-negotiable for reproducibility and scalability.
 
-### 1.1 Directory Structure Best Practices
+**✅ GOOD: Use `spacy project` and declarative configs.**
+Organize your pipeline logic in a dedicated `src/pipeline/` package. Use `project.yml` to manage workflows and `config.cfg` for all spaCy pipeline settings.
 
-Organizing your spaCy project with a clear directory structure enhances maintainability and collaboration. Here’s a recommended structure:
-
-
-project_root/
-├── data/                  # Contains raw and processed datasets
-│   ├── raw/              # Raw data files (e.g., .txt, .csv)
-│   ├── processed/        # Processed data (e.g., spaCy Doc objects)
-│   └── README.md        # Description of the data and preprocessing steps
-├── models/                # Trained spaCy models
-│   ├── en_core_web_sm/   # Example model directory
-│   └── README.md        # Information about the trained models
-├── scripts/               # Python scripts for training, evaluation, and data processing
-│   ├── train.py           # Script for training the spaCy model
-│   ├── evaluate.py        # Script for evaluating the model
-│   ├── preprocess.py      # Script for preprocessing the data
-│   └── utils.py           # Utility functions
-├── components/            # Custom spaCy components
-│   ├── custom_ner.py      # Custom NER component
-│   └── custom_tokenizer.py # Custom tokenizer
-├── tests/                 # Unit and integration tests
-│   ├── unit/             # Unit tests
-│   ├── integration/      # Integration tests
-│   └── conftest.py        # Pytest configuration file
-├── notebooks/             # Jupyter notebooks for exploration and prototyping
-│   └── data_exploration.ipynb # Example notebook
-├── requirements.txt       # Project dependencies
-├── pyproject.toml         # Project configuration and build dependencies (recommended over setup.py)
-├── README.md            # Project overview and instructions
-├── .gitignore             # Specifies intentionally untracked files that Git should ignore
-└── .cursor/              # Cursor IDE configuration
-
-
-### 1.2 File Naming Conventions
-
-Follow these conventions for consistency and readability:
-
-- **Python Files:** `lowercase_with_underscores.py`
-- **Data Files:** `lowercase-with-hyphens.csv`
-- **Model Files:** `descriptive_name.spacy`
-- **Configuration Files:** `config.cfg` or `config.yaml`
-
-### 1.3 Module Organization
-
-Organize your code into modules based on functionality:
-
-- **Data Processing:**  Modules for loading, cleaning, and transforming data.
-- **Model Training:** Modules for training spaCy models.
-- **Custom Components:** Modules for custom spaCy components (e.g., custom NER, custom tokenizer).
-- **Evaluation:** Modules for evaluating model performance.
-- **Utilities:** Modules for helper functions and shared logic.
-
-### 1.4 Component Architecture Recommendations
-
-When building custom spaCy components, follow these guidelines:
-
-- **Encapsulation:** Each component should have a well-defined purpose and encapsulate its logic.
-- **Modularity:**  Components should be designed to be reusable in different parts of your project.
-- **Configuration:** Make components configurable through parameters passed during initialization.
-- **Testing:**  Write unit tests for each component to ensure its correctness.
-
-Example of a custom component structure:
-
-python
-# components/custom_ner.py
-import spacy
+```python
+# src/pipeline/custom_component.py
 from spacy.language import Language
-from spacy.tokens import Doc, Span
-from spacy.util import filter_spans
+from spacy.tokens import Doc
 
-@Language.factory(
-    "custom_ner",
-    default_config={
-        "label": "CUSTOM",
-        "patterns": []
-    },
-)
-def create_custom_ner(
-    nlp: Language,
-    name: str,
-    label: str,
-    patterns: list
-):
-    return CustomNer(nlp, name, label, patterns)
+@Language.factory("my_custom_component")
+def create_my_component(nlp: Language, name: str):
+    return MyCustomComponent(nlp, name)
 
-
-class CustomNer:
-    def __init__(self, nlp: Language, name: str, label: str, patterns: list):
-        self.label = label
-        self.patterns = patterns
-        self.ruler = nlp.add_pipe("entity_ruler")
-        self.ruler.add_patterns([{"label": self.label, "pattern": p} for p in self.patterns])
-
+class MyCustomComponent:
+    def __init__(self, nlp: Language, name: str):
+        self.nlp = nlp
+        self.name = name
 
     def __call__(self, doc: Doc) -> Doc:
-        #Add the custom patterns to the entity recognizer
-        doc.ents = filter_spans(doc.ents)
+        # Custom logic here
         return doc
 
+# project.yml (simplified)
+# ...
+workflows:
+  train:
+    - "python -m spacy train config.cfg --output models/"
+  package:
+    - "python -m spacy package models/en_core_web_v1.0.0 ./dist --build wheel"
 
-### 1.5 Code Splitting Strategies
+# config.cfg (simplified)
+[nlp]
+lang = "en"
+pipeline = ["tok2vec", "ner", "my_custom_component"]
 
-For large projects, split your code into smaller, manageable files:
+[components.my_custom_component]
+factory = "my_custom_component"
+```
 
-- **Functional Decomposition:** Split code based on functionality (e.g., data loading, preprocessing, model training).
-- **Component-Based Splitting:**  Each custom spaCy component should reside in its own file.
-- **Layered Architecture:** If applicable, separate the presentation, business logic, and data access layers.
+**❌ BAD: Ad-hoc scripts and hardcoded parameters.**
+Avoid scattering pipeline logic across multiple scripts or hardcoding model paths and hyperparameters. This makes experiments non-reproducible and deployment fragile.
 
-## 2. Common Patterns and Anti-patterns
+```python
+# bad_script.py
+import spacy
+# Parameters hardcoded or passed via CLI args, not in a central config
+MODEL_PATH = "path/to/my/model"
+THRESHOLD = 0.7
 
-### 2.1 Design Patterns
+nlp = spacy.load(MODEL_PATH)
+# ... pipeline components added programmatically ...
+```
 
-- **Pipeline Pattern:** Leverage spaCy's pipeline architecture for sequential processing of text.
-- **Factory Pattern:** Use factory functions to create spaCy components with specific configurations.
-- **Strategy Pattern:** Implement different strategies for text processing (e.g., different tokenization methods) and switch between them based on the input.
+## 2. Type Hinting
 
-### 2.2 Recommended Approaches for Common Tasks
+Strictly use type hints for all spaCy objects (`Language`, `Doc`, `Span`, `Token`). This improves code readability, enables static analysis, and reduces runtime errors.
 
-- **Text Preprocessing:** Use spaCy's built-in tokenization, lemmatization, and stop word removal for efficient text preprocessing.
-- **Named Entity Recognition:** Utilize spaCy's NER capabilities or train custom NER models for specific entity types.
-- **Dependency Parsing:**  Leverage spaCy's dependency parser to extract relationships between words in a sentence.
-- **Similarity Analysis:**  Use spaCy's word vectors to compute similarity between documents or phrases.
+**✅ GOOD: Comprehensive type hints.**
+Annotate function arguments and return types with precise spaCy types.
 
-### 2.3 Anti-patterns and Code Smells
+```python
+import spacy
+from spacy.language import Language
+from spacy.tokens import Doc, Span, Token
+from typing import List
 
-- **Ignoring Errors:** Always handle exceptions and log errors appropriately.
-- **Global Variables:**  Avoid using global variables; use dependency injection or configuration files instead.
-- **Hardcoding Paths:**  Use relative paths or environment variables for file paths.
-- **Overly Complex Functions:**  Keep functions short and focused on a single task.
-- **Lack of Documentation:**  Document your code with docstrings and comments.
+def process_document(nlp: Language, text: str) -> Doc:
+    """Processes text with a spaCy pipeline."""
+    return nlp(text)
 
-### 2.4 State Management Best Practices
+def extract_entities(doc: Doc) -> List[Span]:
+    """Extracts named entities from a processed Doc."""
+    return list(doc.ents)
 
-- **Stateless Components:** Design spaCy components to be stateless whenever possible to avoid unexpected side effects.
-- **Configuration Objects:** Use configuration objects to manage component state.
-- **Immutability:**  Prefer immutable data structures to prevent unintended modifications.
+def get_token_lemma(token: Token) -> str:
+    """Returns the lemma of a single token."""
+    return token.lemma_
+```
 
-### 2.5 Error Handling Patterns
+**❌ BAD: Untyped spaCy code.**
+Omitting type hints makes code harder to understand and refactor.
 
-- **Try-Except Blocks:** Use try-except blocks to handle potential exceptions during text processing.
-- **Logging:**  Log errors and warnings to a file for debugging and monitoring.
-- **Custom Exceptions:** Define custom exceptions for specific error conditions.
-- **Graceful Degradation:**  Implement fallback mechanisms to handle errors gracefully.
+```python
+# bad_types.py
+import spacy
+
+def process_document(nlp, text): # What are nlp and text? What does it return?
+    return nlp(text)
+
+def extract_entities(doc): # What is 'doc'?
+    return list(doc.ents)
+```
 
 ## 3. Performance Considerations
 
-### 3.1 Optimization Techniques
+Optimize for speed and memory by disabling unused pipeline components and processing text in batches.
 
-- **Model Selection:** Use smaller spaCy models (e.g., `en_core_web_sm`) for faster processing if accuracy is not critical.
-- **Batch Processing:** Process large texts in batches to improve throughput.
-- **GPU Acceleration:** Utilize GPU acceleration for faster processing of large datasets (requires `cupy`).
-- **Disable Unnecessary Components:** Disable pipeline components that are not needed for a specific task.
-- **Cython Optimization:** Write performance-critical code in Cython for faster execution.
-- **Vector Data:** Utilize vector data whenever possible for performance as it can be GPU accelerated.
+**✅ GOOD: Efficient pipeline usage.**
+Use `nlp.select_pipes` for inference to only run necessary components. Process multiple documents with `nlp.pipe`.
 
-### 3.2 Memory Management
+```python
+import spacy
+from spacy.language import Language
+from spacy.tokens import Doc
+from typing import Iterator
 
-- **Object Reuse:** Reuse spaCy Doc objects to reduce memory allocation overhead.
-- **Data Streaming:** Stream large data files instead of loading them into memory at once.
-- **Garbage Collection:**  Explicitly trigger garbage collection when memory usage is high (use with caution).
+def analyze_text_batch(nlp: Language, texts: List[str]) -> Iterator[Doc]:
+    """Processes a batch of texts, only running NER."""
+    # Temporarily disable unused pipes for performance during inference
+    with nlp.select_pipes(enable=["ner"]):
+        yield from nlp.pipe(texts, batch_size=50)
 
-### 3.3 Bundle Size Optimization (If applicable)
+# Example usage
+nlp_full = spacy.load("en_core_web_sm")
+documents = ["Apple is looking at buying U.K. startup.", "Tim Cook is CEO of Apple."]
+for doc in analyze_text_batch(nlp_full, documents):
+    print(f"Text: {doc.text}, Entities: {[(ent.text, ent.label_) for ent in doc.ents]}")
+```
 
-- **Tree shaking** If deploying spaCy models to the web or other bundle-size-sensitive environments, use tree shaking to remove unused code from the spaCy library.
+**❌ BAD: Inefficient processing.**
+Loading full pipelines for simple tasks or processing documents one by one in a loop is wasteful.
 
-### 3.4 Lazy Loading Strategies
+```python
+# bad_performance.py
+import spacy
 
-- **Model Loading on Demand:** Load spaCy models only when they are needed, rather than at application startup.
-- **Component Initialization on Demand:** Initialize custom spaCy components only when they are used.
+nlp = spacy.load("en_core_web_lg") # Loads all components, even if only tokenization is needed
+texts = ["Text 1", "Text 2", "Text 3"]
 
-## 4. Security Best Practices
+for text in texts: # Processes one by one, no batching
+    doc = nlp(text)
+    # ... only use doc.text or doc.tokens, ignoring NER, POS, etc.
+```
 
-### 4.1 Common Vulnerabilities
+## 4. Virtual Environments & Dependencies
 
-- **Injection Attacks:** Prevent injection attacks by sanitizing user inputs before passing them to spaCy.
-- **Denial of Service:** Limit the size of input texts to prevent denial-of-service attacks.
-- **Model Poisoning:** Protect against model poisoning by verifying the integrity of trained spaCy models.
+Always use a virtual environment and pin your `spacy` version in `requirements.txt`. This prevents dependency conflicts and ensures consistent environments.
 
-### 4.2 Input Validation
+**✅ GOOD: Pinned dependencies in a virtual environment.**
 
-- **Text Length Limits:** Limit the length of input texts to prevent excessive processing time and memory usage.
-- **Character Encoding:**  Validate that input texts are encoded in a supported character encoding (e.g., UTF-8).
-- **Whitelist Validation:**  Use whitelist validation to allow only specific characters or patterns in input texts.
+```bash
+# Terminal
+python -m venv .venv
+source .venv/bin/activate
+pip install -U pip setuptools wheel
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+```
 
-### 4.3 Authentication and Authorization (If applicable)
+```ini
+# requirements.txt
+spacy==3.8.*
+spacy-llm==0.8.* # If using LLM integration
+# Other dependencies...
+```
 
-- **API Keys:** Use API keys to authenticate clients accessing spaCy services.
-- **Role-Based Access Control:** Implement role-based access control to restrict access to sensitive spaCy features.
+**❌ BAD: Global installs or unpinned versions.**
+Installing `spacy` globally or using `spacy>=3.0` can lead to unexpected behavior and "works on my machine" issues.
 
-### 4.4 Data Protection
+```ini
+# requirements.txt (BAD)
+spacy # No version specified, will install latest
+```
 
-- **Data Encryption:** Encrypt sensitive data at rest and in transit.
-- **Data Masking:** Mask or redact sensitive data in log files and debugging output.  Use the retokenizer features to create [REDACTED] names or private identifiable information
-- **Anonymization:**  Anonymize data before storing it for analysis or research purposes.
+## 5. Custom Components & Extension Attributes
 
-### 4.5 Secure API Communication (If applicable)
+Extend spaCy's `Doc`, `Span`, and `Token` objects using custom components and extension attributes. This keeps your custom logic integrated and accessible.
 
-- **HTTPS:** Use HTTPS for all API communication to encrypt data in transit.
-- **Input Sanitization:**  Sanitize any data received from the user to prevent injections of malicious code.
-- **Rate limiting** Implement rate limiting to mitigate denial-of-service (DoS) attacks by restricting the number of requests a user can make within a specific timeframe.
+**✅ GOOD: Custom components and extension attributes.**
 
-## 5. Testing Approaches
+```python
+# src/pipeline/custom_component.py
+from spacy.language import Language
+from spacy.tokens import Doc, Span, Token
 
-### 5.1 Unit Testing
+# Register extension attribute
+if not Doc.has_extension("custom_sentiment"):
+    Doc.set_extension("custom_sentiment", default=0.0)
 
-- **Component Testing:** Write unit tests for each custom spaCy component to ensure its correctness.
-- **Function Testing:** Test individual functions in your code to verify their behavior.
-- **Mocking:** Use mocking to isolate components and functions during testing.
+@Language.factory("sentiment_analyzer")
+def create_sentiment_analyzer(nlp: Language, name: str):
+    return SentimentAnalyzer(nlp, name)
 
-### 5.2 Integration Testing
+class SentimentAnalyzer:
+    def __init__(self, nlp: Language, name: str):
+        self.nlp = nlp
+        self.name = name
 
-- **Pipeline Testing:** Test the integration of multiple spaCy components in a pipeline.
-- **Data Flow Testing:** Test the flow of data through your application to ensure that it is processed correctly.
-- **API Testing:** Test the integration of your spaCy application with external APIs.
+    def __call__(self, doc: Doc) -> Doc:
+        # Simple sentiment logic
+        score = sum(1 for token in doc if token.text == "good") - sum(1 for token in doc if token.text == "bad")
+        doc._.custom_sentiment = float(score)
+        return doc
 
-### 5.3 End-to-End Testing
+# config.cfg
+# ...
+[nlp]
+pipeline = ["tok2vec", "ner", "sentiment_analyzer"]
 
-- **User Interface Testing (if applicable):** Test the user interface of your spaCy application to ensure that it is user-friendly and functions as expected.
-- **System Testing:** Test the entire system to ensure that all components work together correctly.
+[components.sentiment_analyzer]
+factory = "sentiment_analyzer"
 
-### 5.4 Test Organization
+# Usage
+nlp = spacy.load("path/to/your/trained_model") # Load model with custom component
+doc = nlp("This is a good movie, not bad at all.")
+print(f"Sentiment: {doc._.custom_sentiment}") # Access custom attribute
+```
 
-- **Separate Test Directory:** Keep tests in a separate `tests/` directory.
-- **Test Modules:**  Organize tests into modules based on the functionality being tested.
-- **Test Fixtures:**  Use test fixtures to set up test data and dependencies.
-- **Coverage Analysis:**  Use coverage analysis to identify untested code.
+**❌ BAD: Storing custom data separately or modifying core attributes.**
+Avoid maintaining parallel data structures or attempting to directly modify `Doc` attributes that are meant to be read-only.
 
-### 5.5 Mocking and Stubbing Techniques
+```python
+# bad_extensions.py
+import spacy
 
-- **Mocking External Dependencies:** Mock external dependencies (e.g., APIs, databases) to isolate your code during testing.
-- **Stubbing Function Calls:** Stub function calls to control the behavior of dependencies.
-- **Monkey Patching:** Use monkey patching to replace functions or objects during testing (use with caution).
+nlp = spacy.load("en_core_web_sm")
+doc = nlp("Some text.")
 
-## 6. Common Pitfalls and Gotchas
+# ❌ BAD: Storing custom data in a separate dictionary
+custom_data = {doc.text: {"sentiment": 0.5}}
 
-### 6.1 Frequent Mistakes
+# ❌ BAD: Attempting to modify read-only attributes (will raise error)
+# doc.user_data = {"my_field": "value"}
+```
 
-- **Not Handling Exceptions:** Failing to handle exceptions properly can lead to unexpected application crashes.
-- **Ignoring Performance:**  Not optimizing your code for performance can result in slow processing times.
-- **Lack of Testing:**  Insufficient testing can lead to bugs and regressions.
-- **Incorrect model versions:** Using the wrong model version for your spaCy version may cause incompatibility errors.
+## 6. Testing
 
-### 6.2 Edge Cases
+Write focused unit tests for custom components and integration tests for pipeline behavior using `pytest`. Use minimal `nlp` objects for unit tests.
 
-- **Unicode Characters:**  Handle Unicode characters correctly to avoid encoding issues.
-- **Rare Words:**  Be aware of rare words that may not be in spaCy's vocabulary.
-- **Out-of-Vocabulary Words:**  Handle out-of-vocabulary words gracefully.
+**✅ GOOD: Targeted unit tests with `pytest`.**
 
-### 6.3 Version-Specific Issues
+```python
+# tests/test_custom_component.py
+import pytest
+import spacy
+from spacy.language import Language
+from spacy.tokens import Doc
 
-- **API Changes:**  Be aware of API changes in spaCy versions and update your code accordingly.
-- **Model Compatibility:**  Ensure that trained spaCy models are compatible with the spaCy version you are using.
+# Assuming custom_component.py is in src/pipeline/
+# from src.pipeline.custom_component import create_my_component, MyCustomComponent
 
-### 6.4 Compatibility Concerns
+# Register factory for testing
+@Language.factory("test_my_custom_component")
+def create_test_my_component(nlp: Language, name: str):
+    return MyCustomComponent(nlp, name)
 
-- **Dependency Conflicts:**  Be aware of dependency conflicts between spaCy and other libraries.
-- **Operating System Compatibility:**  Ensure that your spaCy application is compatible with the target operating systems.
+class MyCustomComponent: # Define a minimal version for testing
+    def __init__(self, nlp: Language, name: str):
+        self.nlp = nlp
+        self.name = name
+    def __call__(self, doc: Doc) -> Doc:
+        doc.set_extension("processed_by_custom", default=True, force=True)
+        return doc
 
-### 6.5 Debugging Strategies
+def test_my_custom_component_adds_extension():
+    nlp = spacy.blank("en")
+    nlp.add_pipe("test_my_custom_component")
+    doc = nlp("Hello world.")
+    assert doc._.processed_by_custom is True
 
-- **Logging:** Use logging to track the execution flow of your code and identify errors.
-- **Debugging Tools:**  Use a debugger to step through your code and inspect variables.
-- **Print Statements:**  Use print statements to output debugging information.
-- **Profiling:**  Use a profiler to identify performance bottlenecks in your code.
-- **Error Messages:**  Read and understand error messages to diagnose problems.
+def test_my_custom_component_returns_doc():
+    nlp = spacy.blank("en")
+    nlp.add_pipe("test_my_custom_component")
+    doc = nlp("Another test.")
+    assert isinstance(doc, Doc)
+```
 
-## 7. Tooling and Environment
+**❌ BAD: Untested components or overly broad tests.**
+Avoid relying solely on manual testing or writing integration tests that load full, complex models for every small change.
 
-### 7.1 Recommended Development Tools
+```python
+# tests/bad_test.py
+import spacy
 
-- **IDE:** Visual Studio Code, PyCharm, or other Python IDE.
-- **Virtual Environment:** Use virtual environments (e.g., `venv`, `conda`) to isolate project dependencies.
-- **Package Manager:** Use `pip` or `conda` to manage project dependencies.
+def test_full_pipeline_output():
+    # ❌ BAD: Loads a large, slow model for a simple test
+    nlp = spacy.load("en_core_web_lg")
+    doc = nlp("This is a test sentence.")
+    assert len(doc.ents) > 0 # Fragile, depends on model behavior
+```
 
-### 7.2 Build Configuration
+## 7. LLM Integration
 
-- **`pyproject.toml`:** Use `pyproject.toml` for build configuration and dependency management (recommended).
-- **`setup.py`:** Use `setup.py` for older projects or when `pyproject.toml` is not supported.
-- **`requirements.txt`:**  Use `requirements.txt` to specify project dependencies.
+For integrating Large Language Models, leverage the `spacy-llm` package. It provides a structured, component-based approach that aligns with spaCy's pipeline philosophy.
 
-### 7.3 Linting and Formatting
+**✅ GOOD: Use `spacy-llm` for structured LLM integration.**
+Define LLM components in your `config.cfg` just like any other spaCy component.
 
-- **`flake8`:** Use `flake8` for linting Python code.
-- **`pylint`:** Use `pylint` for static code analysis.
-- **`black`:** Use `black` for automatic code formatting.
-- **`isort`:**  Use `isort` for sorting imports.
+```ini
+# config.cfg (simplified for spacy-llm)
+[nlp]
+lang = "en"
+pipeline = ["llm_ner"]
 
-### 7.4 Deployment
+[components.llm_ner]
+factory = "spacy.LLM"
+task = {"@llm_tasks": "spacy.NER.v3"}
+model = {"@llm_models": "spacy.GPT-3-5.v1"}
+```
 
-- **Docker:** Use Docker to containerize your spaCy application.
-- **Cloud Platforms:** Deploy your spaCy application to cloud platforms such as AWS, Google Cloud, or Azure.
-- **Serverless Functions:** Deploy your spaCy application as serverless functions (e.g., AWS Lambda, Google Cloud Functions).
+**❌ BAD: Ad-hoc LLM calls outside the pipeline.**
+Directly calling LLM APIs in your application code bypasses spaCy's structured pipeline, making it harder to manage, test, and swap models.
 
-### 7.5 CI/CD Integration
+```python
+# bad_llm.py
+import openai # or other LLM client
+import spacy
 
-- **GitHub Actions:** Use GitHub Actions for continuous integration and continuous deployment.
-- **Jenkins:** Use Jenkins for continuous integration.
-- **Travis CI:** Use Travis CI for continuous integration.
-- **Automated Testing:** Automate unit, integration, and end-to-end tests as part of your CI/CD pipeline.
-- **Automated Deployment:**  Automate the deployment of your spaCy application to staging and production environments.
+def process_with_llm_and_spacy(text: str):
+    # ❌ BAD: LLM call is separate from the spaCy pipeline
+    response = openai.Completion.create(
+        model="text-davinci-003",
+        prompt=f"Extract entities from: {text}",
+        max_tokens=100
+    )
+    llm_entities = parse_llm_response(response)
 
-By following these best practices, you can build robust, scalable, and maintainable NLP applications with spaCy.
+    nlp = spacy.load("en_core_web_sm")
+    doc = nlp(text)
+    # Now you have two separate sets of entities, difficult to reconcile
+    return doc, llm_entities
+```

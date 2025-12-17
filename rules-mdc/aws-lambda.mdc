@@ -1,220 +1,173 @@
 ---
-description: Comprehensive guide for AWS Lambda development, covering best practices for code organization, performance, security, testing, and common pitfalls. Focuses on building robust, scalable, and secure serverless applications using AWS Lambda.
-globs: *.js,*.ts,*.jsx,*.tsx,*.py,*.java,*.go,*.c#,*.cs,*.ps1,*.sh
+description: Definitive guidelines for writing secure, performant, and maintainable AWS Lambda functions using modern best practices.
+globs: **/*
 ---
-- **Use Documented APIs Only:** Rely solely on AWS Lambda's documented APIs to ensure compatibility and avoid unexpected behavior. Do not use undocumented or internal APIs.
+# aws-lambda Best Practices
 
-- **Single Responsibility Principle:** Design Lambda functions to perform a single, well-defined task. This promotes modularity, testability, and maintainability.
+This guide outlines the definitive best practices for developing AWS Lambda functions. Adhere to these principles to build reliable, cost-effective, and secure serverless applications.
 
-- **Native AWS Integrations:** Prefer native AWS integrations (e.g., SQS, SNS, Kinesis) for passing data between services instead of custom code, which enhances scalability and reduces complexity.
+## Code Organization and Structure
 
-- **Local Dependencies:** Store and reference dependencies locally within the Lambda function package to minimize latency and improve cold start times.
+**1. Single Responsibility Principle:** Each Lambda function must perform one distinct task. Decompose complex workflows into smaller, focused functions orchestrated by services like AWS Step Functions.
 
-- **Limit Variable Re-initialization:** Initialize variables outside the function handler to leverage execution context reuse and reduce initialization overhead.
+**2. Initialize Outside the Handler:** Leverage execution environment reuse by initializing SDK clients, database connections, and heavy dependencies in the global scope.
 
-- **Thorough Testing:** Implement a comprehensive testing strategy including unit, integration, and end-to-end tests to ensure function correctness and reliability.
+❌ BAD:
+```python
+import boto3
 
-## 1. Code Organization and Structure:
+def handler(event, context):
+    s3 = boto3.client('s3') # Initialized on every invocation
+    # ...
+```
 
-   - **Directory Structure:**
-      - Organize code into logical directories based on functionality (e.g., `src`, `tests`, `utils`).
-      - Separate handler logic from core business logic.
-      - Example:
-        
-        my-lambda-function/
-        ├── src/
-        │   ├── handler.js       # Lambda handler function
-        │   ├── business-logic.js # Core business logic
-        │   └── utils.js          # Utility functions
-        ├── tests/
-        │   ├── handler.test.js  # Unit tests for handler.js
-        │   └── ...
-        ├── package.json         # Dependencies and scripts
-        └── ...
-        
+✅ GOOD:
+```python
+import boto3
 
-   - **File Naming Conventions:**
-      - Use descriptive and consistent file names.
-      - Follow a naming convention (e.g., `kebab-case`, `PascalCase`) consistently.
-      - Example: `user-service.js`, `UserService.java`.
+s3 = boto3.client('s3') # Initialized once per execution environment
 
-   - **Module Organization:**
-      - Break down large functions into smaller, reusable modules.
-      - Use appropriate module systems (e.g., ES modules in JavaScript, packages in Python, modules in Go).
-      - Example (JavaScript):
-        javascript
-        // src/user-service.js
-        export function createUser(userData) { ... }
-        export function getUser(userId) { ... }
-        
+def handler(event, context):
+    # s3 client is reused across invocations
+    # ...
+```
 
-   - **Component Architecture:**
-      - Design Lambda functions as part of a larger component-based architecture.
-      - Decouple functions from specific triggers (e.g., API Gateway, SQS) to increase reusability.
-      - Implement interfaces or contracts to define interactions between components.
+**3. Use Lambda Layers for Shared Code:** Keep deployment packages small and promote code reuse for common libraries and dependencies.
 
-   - **Code Splitting Strategies:**
-      - Use code splitting techniques to reduce Lambda function package size.
-      - Implement dynamic imports or lazy loading for infrequently used modules (where supported by the runtime).
-      - Leverage layers for shared dependencies across multiple functions.
+**4. Configuration via Environment Variables:** Never hardcode operational parameters. Use environment variables for dynamic configuration. For sensitive data, use AWS Secrets Manager or AWS Systems Manager Parameter Store.
 
-## 2. Common Patterns and Anti-patterns:
+**5. Structured JSON Logging:** Output logs in JSON format to CloudWatch. This makes logs easily queryable and analyzable. Use `aws-lambda-powertools` Logger utility.
 
-   - **Design Patterns:**
-      - **Event-Driven Architecture:** Design functions to respond to events from various AWS services.
-      - **Command Pattern:** Encapsulate requests as objects to decouple request processing from the handler.
-      - **Dependency Injection:** Inject dependencies into functions to improve testability and maintainability.
+❌ BAD:
+```python
+print(f"Processing event: {event}")
+```
 
-   - **Recommended Approaches:**
-      - **Configuration Management:** Use environment variables or AWS Systems Manager Parameter Store for configuration data.
-      - **Logging:** Implement structured logging with timestamps, request IDs, and relevant context.
-      - **Idempotency:** Ensure functions are idempotent to handle potential retry scenarios gracefully.
+✅ GOOD:
+```python
+from aws_lambda_powertools import Logger
+logger = Logger()
 
-   - **Anti-patterns:**
-      - **Monolithic Functions:** Avoid creating large, complex functions that perform multiple unrelated tasks.
-      - **Hardcoding Secrets:** Never hardcode sensitive information (e.g., API keys, passwords) in code. Use AWS Secrets Manager or environment variables.
-      - **Excessive Dependencies:** Minimize the number of dependencies to reduce package size and improve cold start times.
+@logger.inject_lambda_context
+def handler(event, context):
+    logger.info("Processing event", event=event)
+    # ...
+```
 
-   - **State Management:**
-      - Use external services (e.g., DynamoDB, Redis) for persistent state management.
-      - Leverage Lambda layers for caching frequently accessed data.
-      - Design functions to be stateless whenever possible.
+**6. Infrastructure as Code (AWS CDK v2):** Define your Lambda functions and their surrounding infrastructure (API Gateway, DynamoDB, IAM roles) using AWS CDK v2. This ensures version control, repeatability, and safe deployments.
 
-   - **Error Handling:**
-      - Implement robust error handling mechanisms, including try-catch blocks and error logging.
-      - Use custom exceptions for specific error scenarios.
-      - Return meaningful error messages to the caller.
-      - Implement dead-letter queues (DLQs) for asynchronous invocations to handle failed events.
+✅ GOOD:
+```python
+# Example using AWS CDK v2 (Python)
+from aws_cdk import Stack, aws_lambda as lambda_
+from constructs import Construct
 
-## 3. Performance Considerations:
+class MyLambdaStack(Stack):
+    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+        super().__init__(scope, construct_id, **kwargs)
 
-   - **Optimization Techniques:**
-      - **Minimize Package Size:** Reduce the size of the deployment package by removing unnecessary files and dependencies.
-      - **Optimize Dependencies:** Use lightweight dependencies and avoid importing entire libraries when only specific functions are needed.
-      - **Code Optimization:** Profile and optimize code for performance bottlenecks.
-      - **Connection Reuse:** Reuse database connections, HTTP clients, and other resources to minimize overhead.
+        lambda_.Function(self, "MyHandler",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="index.handler",
+            code=lambda_.Code.from_asset("lambda"), # 'lambda' directory contains index.py
+            environment={
+                "TABLE_NAME": "MyTable",
+            },
+            # Add more configurations like memory, timeout, IAM roles
+        )
+```
 
-   - **Memory Management:**
-      - Allocate sufficient memory to Lambda functions based on their needs.
-      - Monitor memory usage and adjust the memory allocation accordingly.
-      - Clean up resources (e.g., closing file streams, releasing memory) to avoid memory leaks.
+## Common Patterns and Anti-patterns
 
-   - **Cold Starts:**
-      - Minimize cold start times by reducing package size, optimizing dependencies, and using provisioned concurrency.
-      - Use initilization logic outside the handler to take advantage of container reuse
+**1. Implement Idempotency:** Design functions to produce the same result even if invoked multiple times with the same input. Use `aws-lambda-powertools` for robust idempotency.
 
-   - **Bundle Size Optimization:**
-      - Use tools like Webpack or esbuild to bundle and optimize code for production.
-      - Minify code and remove unused code (dead code elimination).
+❌ BAD:
+```python
+# No idempotency check, might process duplicate events
+def handler(event, context):
+    order_id = event['detail']['orderId']
+    # Process order, could be duplicated
+    # ...
+```
 
-   - **Lazy Loading Strategies:**
-      - Implement lazy loading or dynamic imports for infrequently used modules to reduce initial load time.
+✅ GOOD:
+```python
+from aws_lambda_powertools.utilities.idempotency import idempotent
+from aws_lambda_powertools.utilities.idempotency.persistence import DynamoDBPersistenceLayer
+import os
 
-## 4. Security Best Practices:
+persistence_layer = DynamoDBPersistenceLayer(table_name=os.environ["IDEMPOTENCY_TABLE"])
 
-   - **Common Vulnerabilities:**
-      - **Injection Attacks:** Prevent SQL injection, command injection, and other injection attacks by validating and sanitizing input.
-      - **Cross-Site Scripting (XSS):** Protect against XSS vulnerabilities by encoding output properly.
-      - **Insecure Deserialization:** Avoid deserializing untrusted data to prevent arbitrary code execution.
-      - **Broken Authentication:** Implement strong authentication and authorization mechanisms.
+@idempotent(persistence_layer=persistence_layer)
+def handler(event, context):
+    order_id = event['detail']['orderId']
+    # Process order, guaranteed to run once
+    # ...
+```
 
-   - **Input Validation:**
-      - Validate all input data to prevent malicious or invalid data from being processed.
-      - Use schema validation libraries to enforce data types and formats.
-      - Sanitize input data to remove potentially harmful characters or code.
+**2. Stateless Functions:** Functions must not rely on mutable local state between invocations. Any mutable data belongs in external, durable storage (e.g., DynamoDB, S3).
 
-   - **Authentication and Authorization:**
-      - Use AWS Identity and Access Management (IAM) roles to grant Lambda functions the necessary permissions.
-      - Implement authentication and authorization mechanisms to protect sensitive resources.
-      - Use AWS Cognito for user authentication and authorization.
+**3. Orchestrate with Step Functions:** For complex, multi-step workflows, use AWS Step Functions to manage state and coordination. Keep individual Lambda functions simple.
 
-   - **Data Protection:**
-      - Encrypt sensitive data at rest and in transit.
-      - Use AWS Key Management Service (KMS) to manage encryption keys.
-      - Mask or redact sensitive data in logs.
+## Performance Considerations
 
-   - **Secure API Communication:**
-      - Use HTTPS for all API communication.
-      - Implement API authentication and authorization using API keys, JWT tokens, or other secure mechanisms.
-      - Protect against common web application attacks (e.g., CSRF, DDoS).
+**1. Optimize Memory and CPU:** Memory allocation directly impacts CPU. Use the AWS Lambda Power Tuning tool to find the optimal memory configuration for your function.
 
-## 5. Testing Approaches:
+**2. Keep Deployment Packages Small:** Minimize cold start times by reducing package size. Use Lambda Layers and only include necessary dependencies.
 
-   - **Unit Testing:**
-      - Write unit tests to verify the correctness of individual functions or modules.
-      - Use mocking or stubbing to isolate units of code from external dependencies.
-      - Use testing frameworks (e.g., Jest, Mocha, pytest) to automate unit testing.
+**3. Use Keep-Alive for Persistent Connections:** Prevent idle connections from being purged, especially for HTTP clients.
 
-   - **Integration Testing:**
-      - Write integration tests to verify the interactions between different components or services.
-      - Test the integration of Lambda functions with other AWS services (e.g., SQS, DynamoDB).
-      - Use tools like AWS SAM Local to run integration tests locally.
+✅ GOOD:
+```python
+import http.client
+import ssl
 
-   - **End-to-End Testing:**
-      - Write end-to-end tests to verify the entire application flow from end to end.
-      - Simulate user interactions to test the application's functionality.
-      - Use tools like Selenium or Cypress to automate end-to-end testing.
+# Global scope for connection reuse
+http_client = http.client.HTTPSConnection("example.com", context=ssl._create_unverified_context())
 
-   - **Test Organization:**
-      - Organize tests into separate directories based on the type of test (e.g., unit, integration, e2e).
-      - Use descriptive test names to clearly identify the purpose of each test.
-      - Follow a consistent testing strategy across all projects.
+def handler(event, context):
+    http_client.request("GET", "/api/data")
+    response = http_client.getresponse()
+    # ...
+```
 
-   - **Mocking and Stubbing:**
-      - Use mocking or stubbing to replace external dependencies with controlled test doubles.
-      - Mock AWS SDK calls to isolate Lambda functions from AWS services.
-      - Use mocking frameworks (e.g., Jest, Sinon.js) to simplify mocking and stubbing.
+## Common Pitfalls and Gotchas
 
-## 6. Common Pitfalls and Gotchas:
+**1. Over-privileged IAM Roles:** Apply the principle of least privilege. Grant only the minimum necessary permissions to your function's execution role.
 
-   - **Frequent Mistakes:**
-      - **Incorrect IAM Permissions:** Ensure that Lambda functions have the necessary IAM permissions to access required AWS resources.
-      - **Timeout Errors:** Increase the Lambda function timeout if it takes longer than expected to complete.
-      - **Memory Exhaustion:** Allocate sufficient memory to Lambda functions to avoid memory exhaustion errors.
-      - **Unclosed Connections:** Close database connections, HTTP clients, and other resources properly to avoid resource leaks.
+❌ BAD:
+```json
+{
+  "Effect": "Allow",
+  "Action": "s3:*", // Too broad
+  "Resource": "*"
+}
+```
 
-   - **Edge Cases:**
-      - **Concurrent Invocations:** Handle concurrent invocations gracefully to avoid race conditions or data corruption.
-      - **Throttling:** Implement retry mechanisms to handle throttling errors from AWS services.
-      - **Error Retries:** Design functions to be idempotent to handle potential retry scenarios gracefully.
+✅ GOOD:
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "s3:GetObject",
+    "s3:PutObject"
+  ],
+  "Resource": "arn:aws:s3:::my-specific-bucket/*" // Specific bucket and actions
+}
+```
 
-   - **Version-Specific Issues:**
-      - Be aware of version-specific issues or compatibility concerns when upgrading Lambda function runtimes or dependencies.
-      - Test Lambda functions thoroughly after upgrading to ensure they still function correctly.
+**2. Lack of Input Validation:** Always validate and sanitize all incoming event data to prevent injection attacks and unexpected behavior. Use libraries like Pydantic or `aws-lambda-powertools` Parser utility.
 
-   - **Compatibility Concerns:**
-      - Ensure that Lambda functions are compatible with the supported runtime environment.
-      - Use compatible versions of dependencies to avoid compatibility issues.
+**3. Recursive Invocations:** Avoid functions calling themselves directly or indirectly, as this can lead to infinite loops and escalated costs.
 
-   - **Debugging Strategies:**
-      - Use CloudWatch Logs to debug Lambda function execution.
-      - Use AWS X-Ray to trace and analyze Lambda function performance.
-      - Use local debugging tools (e.g., AWS SAM Local) to debug Lambda functions locally.
+**4. Unhandled Errors:** Ensure all potential errors are caught and handled gracefully. Throw explicit exceptions for unrecoverable issues. Use `async/await` for asynchronous operations.
 
-## 7. Tooling and Environment:
+## Testing Approaches
 
-   - **Recommended Tools:**
-      - **AWS SAM:** Use AWS SAM (Serverless Application Model) to define and deploy Lambda functions and other serverless resources.
-      - **AWS CLI:** Use the AWS CLI (Command Line Interface) to manage AWS resources from the command line.
-      - **Terraform/CloudFormation:** Use Infrastructure as Code (IaC) tools like Terraform or CloudFormation to provision and manage AWS infrastructure.
-      - **IDE:** Use an IDE with support for Lambda development (e.g., VS Code with the AWS Toolkit extension).
+**1. Unit Testing:** Focus on testing the core business logic of your function in isolation, mocking AWS service interactions.
 
-   - **Build Configuration:**
-      - Use build tools (e.g., npm, yarn, Maven, Gradle) to manage dependencies and build Lambda function packages.
-      - Configure build scripts to automate common tasks (e.g., linting, testing, bundling).
+**2. Integration Testing:** Test your function's interactions with actual AWS services. Use ephemeral resources provisioned by CDK.
 
-   - **Linting and Formatting:**
-      - Use linters (e.g., ESLint, Pylint) to enforce coding standards and identify potential code quality issues.
-      - Use formatters (e.g., Prettier, Black) to automatically format code consistently.
+**3. End-to-End Testing:** Simulate real-world scenarios, testing the entire flow from event source to final outcome.
 
-   - **Deployment:**
-      - Use AWS SAM CLI or other deployment tools to deploy Lambda functions to AWS.
-      - Implement blue/green deployments or canary deployments to minimize downtime during deployments.
-      - Automate deployments using CI/CD pipelines.
-
-   - **CI/CD Integration:**
-      - Integrate Lambda function deployments with CI/CD pipelines to automate testing and deployment.
-      - Use CI/CD tools (e.g., Jenkins, CircleCI, GitHub Actions) to build, test, and deploy Lambda functions.
-
-@file aws-lambda-security.mdc
-@file aws-lambda-performance.mdc
+**4. Local Development and Testing:** Utilize tools like AWS SAM CLI or LocalStack to test functions locally before deployment.

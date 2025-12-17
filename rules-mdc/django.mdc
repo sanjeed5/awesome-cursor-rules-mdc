@@ -1,202 +1,264 @@
 ---
-description: Comprehensive guide to Django best practices covering code organization, performance, security, testing, and common pitfalls. This rule ensures adherence to community standards for maintainable and efficient Django applications.
-globs: *.py
+description: Definitive guidelines for writing maintainable, performant, and secure Django applications, emphasizing modern best practices, clear code organization, and efficient patterns.
+globs: **/*.py
 ---
-# Django Best Practices and Coding Standards
+# django Best Practices
 
-This guide outlines best practices for developing Django applications to ensure code quality, maintainability, performance, and security.
+This guide outlines the definitive best practices for developing Django applications, ensuring maintainability, performance, and security. Adhere to these rules for consistent, high-quality code.
 
-## 1. Code Organization and Structure
+## 1. Code Organization & Project Structure
 
-- **Directory Structure:**
-    - **Project Root:** Manage.py, settings, urls, wsgi.
-    - **Apps:** Each app should reside in its own directory.
-    - **Static Files:** Separate directory for static files (CSS, JavaScript, images).
-    - **Templates:** Dedicated directory for HTML templates.
-    - **Media:** For user-uploaded files.
-    - **Tests:** Tests for each app in a separate tests/ directory.
+Adopt the `src-layout` for clear separation of concerns. Keep apps focused on a single domain.
 
-- **File Naming Conventions:**
-    - Use lowercase letters with underscores (snake_case) for Python files and variables (e.g., `models.py`, `user_profile`).
-    - Classes should use CamelCase (e.g., `UserProfile`).
-    - Function names should use snake_case (e.g., `get_user_profile`).
+*   **Project Layout (`src-layout`)**:
+    ```
+    .
+    ├── manage.py
+    ├── src/
+    │   ├── config/             # Project-level settings, URLs, WSGI/ASGI
+    │   │   ├── __init__.py
+    │   │   ├── settings/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── base.py
+    │   │   │   ├── development.py
+    │   │   │   └── production.py
+    │   │   └── urls.py
+    │   ├── apps/               # Domain-driven Django apps
+    │   │   ├── users/
+    │   │   │   ├── models.py
+    │   │   │   ├── views.py
+    │   │   │   └── tests/
+    │   │   ├── products/
+    │   │   └── ...
+    │   └── common/             # Reusable utilities, abstract base models, etc.
+    └── requirements.txt
+    ```
 
-- **Module Organization:**
-    - Each app should be a self-contained module.
-    - Group related functionalities into submodules within the app.
-    - Use `__init__.py` files to define packages.
+*   **Split Settings**: Use `django-environ` for environment-specific settings. Never commit secrets.
 
-- **Component Architecture:**
-    - Follow the Model-View-Template (MVT) architecture.
-    - Keep models lean and focused on data representation.
-    - Use views for request handling and business logic.
-    - Templates should focus on presentation.
+    ❌ BAD: Hardcoding secrets, single `settings.py`
+    ```python
+    # config/settings.py
+    DEBUG = True
+    SECRET_KEY = 'super-secret-dev-key'
+    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}}
+    ```
 
-- **Code Splitting Strategies:**
-    - Break down large views into smaller, reusable functions or class-based views.
-    - Use mixins to share functionality across multiple views.
-    - Implement custom template tags and filters for reusable template logic.
-    - Consider using Celery for asynchronous task processing.
+    ✅ GOOD: Environment variables, split files
+    ```python
+    # src/config/settings/base.py
+    import environ
+    env = environ.Env()
+    environ.Env.read_env() # reads .env file
 
-## 2. Common Patterns and Anti-patterns
+    SECRET_KEY = env('SECRET_KEY')
+    DEBUG = env.bool('DEBUG', default=False)
+    ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
-- **Design Patterns:**
-    - **Model-View-Template (MVT):** Django's core architectural pattern.
-    - **Form Objects:** Use Django's forms for handling user input and validation.
-    - **Signals:** Implement signals for decoupled event handling.
-    - **Managers:** Use custom model managers to encapsulate query logic.
-    - **DRY (Don't Repeat Yourself):**  Avoid redundant code by extracting reusable components.
+    # src/config/settings/development.py
+    from .base import *
+    DEBUG = True
+    DATABASES = {'default': env.db('DATABASE_URL', default='sqlite:///db.sqlite3')}
 
-- **Recommended Approaches:**
-    - **Database Interactions:** Use Django's ORM for database interactions. Avoid raw SQL queries unless necessary.
-    - **Form Handling:** Leverage Django's form classes for data validation and rendering forms.
-    - **URL Routing:** Use named URL patterns for reverse URL lookup.
-    - **Template Inheritance:** Utilize template inheritance to create a consistent look and feel.
+    # .env file (not committed to VCS)
+    SECRET_KEY=your_actual_secret_key
+    DEBUG=True
+    DATABASE_URL=postgres://user:pass@host:port/dbname
+    ```
 
-- **Anti-patterns and Code Smells:**
-    - **Fat Models:** Avoid putting too much business logic in models. Use services or utility functions instead.
-    - **Complex Templates:** Keep templates simple and focused on presentation. Move complex logic to views or custom template tags.
-    - **Hardcoded Values:** Avoid hardcoding values in code. Use settings or environment variables.
-    - **Ignoring Security:** Neglecting security best practices can lead to vulnerabilities.
+*   **Model Naming**: Models are singular nouns. `related_name` for reverse relationships is plural.
 
-- **State Management:**
-    - Use Django's session framework for managing user sessions.
-    - Avoid storing sensitive data in sessions.
-    - Consider using a dedicated caching system (e.g., Redis, Memcached) for storing frequently accessed data.
+    ❌ BAD:
+    ```python
+    class Users(models.Model): pass
+    owner = models.ForeignKey(Owner, related_name='item')
+    ```
 
-- **Error Handling:**
-    - Implement proper error handling using `try...except` blocks.
-    - Use Django's logging framework to log errors and warnings.
-    - Display user-friendly error messages.
+    ✅ GOOD:
+    ```python
+    class User(models.Model): pass
+    owner = models.ForeignKey(Owner, related_name='items', on_delete=models.CASCADE)
+    ```
+
+## 2. Common Patterns & Anti-patterns
+
+*   **Fat Models, Skinny Views**: Business logic belongs in models or dedicated service layers, not views. Views orchestrate, models/services execute.
+
+    ❌ BAD: Logic in view
+    ```python
+    # apps/orders/views.py
+    def create_order_view(request):
+        # ... validation ...
+        product = Product.objects.get(id=product_id)
+        if product.stock < quantity:
+            raise ValidationError("Not enough stock")
+        order = Order.objects.create(user=request.user, product=product, quantity=quantity)
+        product.stock -= quantity
+        product.save()
+        # ...
+    ```
+
+    ✅ GOOD: Logic in model/service
+    ```python
+    # apps/orders/models.py
+    class Order(models.Model):
+        # ... fields ...
+        @classmethod
+        def create_with_stock_check(cls, user, product, quantity):
+            if product.stock < quantity:
+                raise ValidationError("Not enough stock")
+            order = cls.objects.create(user=user, product=product, quantity=quantity)
+            product.stock -= quantity
+            product.save()
+            return order
+
+    # apps/orders/views.py
+    def create_order_view(request):
+        # ... validation ...
+        order = Order.create_with_stock_check(request.user, product, quantity)
+        # ...
+    ```
 
 ## 3. Performance Considerations
 
-- **Optimization Techniques:**
-    - **Database Optimization:** Use indexes on frequently queried fields.
-    - **Caching:** Implement caching at various levels (e.g., template caching, view caching, database caching).
-    - **Query Optimization:** Use `select_related` and `prefetch_related` to reduce the number of database queries.
-    - **Gzip Compression:** Enable Gzip compression for static files and responses.
+*   **Optimize ORM Queries**: Avoid N+1 queries.
 
-- **Memory Management:**
-    - Avoid loading large datasets into memory. Use iterators or generators.
-    - Close database connections and file handles properly.
-    - Be mindful of memory leaks.
+    ❌ BAD: N+1 query
+    ```python
+    # Iterates over users, then queries profile for each
+    users = User.objects.all()
+    for user in users:
+        print(user.profile.bio)
+    ```
 
-- **Rendering Optimization:**
-    - Minimize the use of complex template logic.
-    - Use template caching to cache rendered templates.
-    - Optimize images and other static assets.
+    ✅ GOOD: `select_related` (one-to-one, foreign key)
+    ```python
+    users = User.objects.select_related('profile').all()
+    for user in users:
+        print(user.profile.bio)
+    ```
 
-- **Lazy Loading Strategies:**
-    - Implement lazy loading for images and other resources that are not immediately visible.
-    - Use pagination to display large datasets in smaller chunks.
+    ✅ GOOD: `prefetch_related` (many-to-many, reverse foreign key)
+    ```python
+    # For a list of books, prefetch all authors for each book
+    books = Book.objects.prefetch_related('authors').all()
+    for book in books:
+        print([author.name for author in book.authors.all()])
+    ```
+
+*   **Database Indexes**: Add `db_index=True` to frequently filtered/ordered fields.
+    ```python
+    class MyModel(models.Model):
+        name = models.CharField(max_length=100, db_index=True) # Indexed
+        created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    ```
+
+*   **Async ORM**: Use `sync_to_async` for blocking ORM calls in async views, or the native async ORM (Django 4.1+).
+
+    ```python
+    # In an async view
+    from asgiref.sync import sync_to_async
+
+    async def my_async_view(request):
+        # Blocking ORM call, wrap it
+        user = await sync_to_async(User.objects.get)(id=request.user.id)
+        # Or, if using native async ORM (Django 4.1+):
+        # user = await User.objects.aget(id=request.user.id)
+        return JsonResponse({'username': user.username})
+    ```
 
 ## 4. Security Best Practices
 
-- **Common Vulnerabilities:**
-    - **Cross-Site Scripting (XSS):** Prevent XSS by escaping user input in templates and using Django's `escape` filter.
-    - **Cross-Site Request Forgery (CSRF):** Protect against CSRF attacks by using Django's CSRF protection.
-    - **SQL Injection:** Use Django's ORM to prevent SQL injection attacks. Avoid raw SQL queries.
-    - **Authentication and Authorization Issues:** Implement proper authentication and authorization mechanisms.
+*   **Secrets Management**: Never commit secrets to VCS. Use environment variables (see Split Settings).
 
-- **Input Validation:**
-    - Validate all user input on both the client-side and server-side.
-    - Use Django's form validation to validate data.
-    - Sanitize user input to remove potentially harmful characters.
+*   **Permissions (DRF)**: Implement role-based permissions using DRF's `permission_classes`.
 
-- **Authentication and Authorization:**
-    - Use Django's built-in authentication system for user authentication.
-    - Implement proper authorization checks to restrict access to sensitive resources.
-    - Use Django's permission system to manage user permissions.
+    ❌ BAD: Manual checks in view
+    ```python
+    class MyView(APIView):
+        def get(self, request):
+            if not request.user.is_staff:
+                return Response(status=403)
+            # ...
+    ```
 
-- **Data Protection:**
-    - Store sensitive data securely using encryption.
-    - Use HTTPS to encrypt communication between the client and server.
-    - Protect against data breaches by implementing proper access controls and monitoring.
+    ✅ GOOD: DRF Permission Classes
+    ```python
+    from rest_framework.permissions import IsAdminUser
 
-- **Secure API Communication:**
-    - Use authentication tokens or API keys to authenticate API requests.
-    - Implement rate limiting to prevent abuse.
-    - Validate all API input.
+    class MyView(APIView):
+        permission_classes = [IsAdminUser] # Only staff can access
+        def get(self, request):
+            # ...
+    ```
 
-## 5. Testing Approaches
+*   **Static & Media Files**: Serve static files with `ManifestStaticFilesStorage` and media files from cloud storage (e.g., S3, GCS).
 
-- **Unit Testing:**
-    - Write unit tests for individual functions and classes.
-    - Use Django's testing framework to write and run tests.
-    - Mock external dependencies to isolate units of code.
+    ```python
+    # config/settings/production.py
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage' # e.g., django-storages
+    ```
 
-- **Integration Testing:**
-    - Write integration tests to test the interaction between different components.
-    - Test database interactions, form handling, and view rendering.
+## 5. API Design (DRF)
 
-- **End-to-End Testing:**
-    - Write end-to-end tests to test the entire application flow.
-    - Use tools like Selenium or Cypress to automate browser testing.
+*   **ViewSets & Routers**: Use `ModelViewSet` for CRUD operations to reduce boilerplate.
 
-- **Test Organization:**
-    - Organize tests into separate test suites for each app or component.
-    - Use meaningful test names to describe what each test does.
-    - Keep tests concise and focused.
+    ❌ BAD: Separate views for list and detail
+    ```python
+    class ProductListView(APIView): pass
+    class ProductDetailView(APIView): pass
+    # urls.py: path('products/', ProductListView.as_view()), path('products/<int:pk>/', ProductDetailView.as_view())
+    ```
 
-- **Mocking and Stubbing:**
-    - Use mocking and stubbing to isolate units of code during testing.
-    - Avoid mocking external dependencies unless necessary.
+    ✅ GOOD: `ModelViewSet` with Router
+    ```python
+    # apps/products/views.py
+    from rest_framework import viewsets
+    from .models import Product
+    from .serializers import ProductSerializer
 
-## 6. Common Pitfalls and Gotchas
+    class ProductViewSet(viewsets.ModelViewSet):
+        queryset = Product.objects.all()
+        serializer_class = ProductSerializer
 
-- **Frequent Mistakes:**
-    - **Incorrect Database Configuration:** Ensure that the database settings are configured correctly.
-    - **Improper Static File Handling:** Configure static file serving properly in production.
-    - **Not Using Django's Built-in Features:** Leverage Django's built-in features instead of reinventing the wheel.
-    - **Ignoring Security Warnings:** Address any security warnings or vulnerabilities reported by Django's security checks.
+    # src/config/urls.py
+    from rest_framework.routers import DefaultRouter
+    from apps.products.views import ProductViewSet
 
-- **Edge Cases:**
-    - **Handling Time Zones:** Be mindful of time zones and use Django's time zone support.
-    - **Dealing with Unicode:** Handle Unicode characters correctly.
-    - **Managing File Uploads:** Implement proper file upload handling to prevent security vulnerabilities.
+    router = DefaultRouter()
+    router.register(r'products', ProductViewSet)
+    urlpatterns = [
+        # ...
+        path('api/', include(router.urls)),
+    ]
+    ```
 
-- **Version-Specific Issues:**
-    - Be aware of compatibility issues between different Django versions.
-    - Consult the Django release notes for information about breaking changes.
+## 6. Type Hints
 
-- **Compatibility Concerns:**
-    - Ensure that your code is compatible with different browsers and devices.
-    - Test your application on different platforms.
+Always use type hints for improved readability, maintainability, and static analysis with `mypy`.
 
-- **Debugging Strategies:**
-    - Use Django's debugging tools to identify and fix errors.
-    - Use logging to track the execution flow of your application.
-    - Consult the Django documentation and community forums for help.
+❌ BAD: Untyped function
+```python
+def calculate_total(price, quantity):
+    return price * quantity
+```
 
-## 7. Tooling and Environment
+✅ GOOD: Typed function
+```python
+def calculate_total(price: float, quantity: int) -> float:
+    return price * quantity
 
-- **Recommended Development Tools:**
-    - **IDE:** PyCharm, VS Code, Sublime Text
-    - **Package Manager:** pip, uv
-    - **Database Client:** pgAdmin, MySQL Workbench
+# For models:
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
-- **Build Configuration:**
-    - Use a `requirements.txt` file to manage dependencies.
-    - Use a virtual environment to isolate project dependencies.
+class Product(models.Model):
+    name: str = models.CharField(max_length=255)
+    price: float = models.DecimalField(max_digits=10, decimal_places=2)
 
-- **Linting and Formatting:**
-    - Use Black to format code automatically.
-    - Use flake8 to lint code and identify potential errors.
-
-- **Deployment Best Practices:**
-    - Use a production-ready web server (e.g., Gunicorn, uWSGI).
-    - Configure a reverse proxy (e.g., Nginx, Apache).
-    - Use a database server (e.g., PostgreSQL, MySQL).
-
-- **CI/CD Integration:**
-    - Integrate your project with a CI/CD pipeline to automate testing and deployment.
-    - Use tools like Jenkins, Travis CI, or GitLab CI.
-
-## Additional Notes
-
-- Always follow PEP 8 guidelines for Python code.
-- Write clear and concise comments.
-- Keep your code DRY (Don't Repeat Yourself).
-- Regularly update your dependencies.
-- Monitor your application for performance and security issues.
+    def get_related_products(self) -> "QuerySet[Product]":
+        # ...
+        return Product.objects.filter(...)
+```

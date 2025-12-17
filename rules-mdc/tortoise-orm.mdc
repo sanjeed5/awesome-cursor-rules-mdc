@@ -1,235 +1,259 @@
 ---
-description: This rule provides comprehensive best practices for using Tortoise ORM in Python projects, covering aspects like code organization, performance, security, and testing.
-globs: *.py
+description: Definitive guidelines for using Tortoise ORM effectively, focusing on async patterns, robust model design, efficient querying, and production-ready migrations.
+globs: **/*.py
 ---
-- Use Tortoise ORM for asynchronous database interactions in Python.
-- Always use UV when installing dependencies for faster performance, especially when combined with Tortoise ORM's asynchronous capabilities.
-- Ensure you are using a supported version of Python (>= 3.8). Python 3.12 or later is recommended for the best performance and features.
-- Organize code into classes for better structure and maintainability, especially when defining models and database interactions.
+# tortoise-orm Best Practices
 
-## 1. Code Organization and Structure:
+Tortoise ORM is an excellent choice for `asyncio`-native Python applications. Adhere to these guidelines for maintainable, performant, and secure database interactions.
 
-- **Directory Structure:**
-    - `src/`: Root directory for the main application code.
-    - `src/models/`: Contains Tortoise ORM model definitions.
-    - `src/schemas/`: Pydantic schemas for data validation and API interaction (if using FastAPI).
-    - `src/routers/`: FastAPI routers or equivalent for handling API endpoints.
-    - `src/database.py`: Database initialization and connection management.
-    - `src/config.py`: Configuration settings for the application.
-    - `tests/`: Contains unit and integration tests.
-    - `migrations/`: Aerich migration files.
-    - `docs/`: Documentation for the project.
+## 1. Async Lifecycle Management
 
-- **File Naming Conventions:**
-    - Models: `user_model.py`, `product_model.py`
-    - Schemas: `user_schema.py`, `product_schema.py`
-    - Routers: `user_router.py`, `product_router.py`
-    - Database: `database.py` or `db.py`
-    - Config: `config.py` or `settings.py`
+Always initialize and close connections explicitly. Failing to do so leads to resource leaks and unpredictable behavior.
 
-- **Module Organization:**
-    - Group related models, schemas, and routers into logical modules.
-    - Use namespaces (packages) to avoid naming conflicts.
-    - Keep modules focused and avoid overly large files.
+❌ BAD: Dangling connections
+```python
+from tortoise import Tortoise
 
-- **Component Architecture:**
-    - Models: Define database entities using Tortoise ORM's `Model` class.
-    - Schemas: Use Pydantic for data validation and serialization.
-    - Services: Encapsulate business logic and database interactions.
-    - Repositories: Abstract data access logic from services (optional).
-    - Controllers/Routers: Handle API requests and responses.
+async def main():
+    await Tortoise.init(db_url='sqlite://:memory:', modules={'models': ['app.models']})
+    # ... application logic ...
+    # No close_connections()
+```
 
-- **Code Splitting:**
-    - Use lazy loading for models with large relationships.
-    - Split large modules into smaller, more manageable files.
-    - Consider using sub-applications (e.g., with FastAPI) to separate concerns.
+✅ GOOD: Proper async context management
+```python
+from tortoise import Tortoise, run_async
 
-## 2. Common Patterns and Anti-patterns:
+async def init_db():
+    await Tortoise.init(
+        db_url='sqlite://:memory:',
+        modules={'models': ['app.models']}
+    )
+    await Tortoise.generate_schemas() # For development only
 
-- **Design Patterns:**
-    - Repository Pattern: Abstract data access logic.
-    - Unit of Work Pattern: Manage database transactions.
-    - Factory Pattern: Create model instances with complex dependencies.
-    - DTO (Data Transfer Object): Use Pydantic models for data transfer between layers.
+async def close_db():
+    await Tortoise.close_connections()
 
-- **Recommended Approaches:**
-    - Use `Tortoise.init()` to initialize the database connection once at application startup.
-    - Use `Tortoise.generate_schemas()` to create database tables.
-    - Use `Tortoise.close_connections()` to close database connections when the application shuts down.
-    - Utilize `prefetch_related` for eager loading of related data to optimize performance.
-    - Implement proper error handling using try-except blocks to catch potential exceptions.
+# Use in your application entry point:
+async def run_app():
+    await init_db()
+    try:
+        # Your application code here
+        pass
+    finally:
+        await close_db()
 
-- **Anti-patterns and Code Smells:**
-    - Initializing the database connection on every request.
-    - Not closing database connections, leading to resource leaks.
-    - Over-fetching data without using `prefetch_related`.
-    - Ignoring exceptions, which can hide potential issues.
-    - Writing complex SQL queries directly instead of using Tortoise ORM's query builder.
-    - Performing database operations within a loop without batching.
+# Or, for simple scripts:
+run_async(run_app())
+```
 
-- **State Management:**
-    - Keep database state separate from application state.
-    - Use transactions to ensure data consistency.
-    - Avoid storing sensitive data in the application state.
+## 2. Production Migrations with Aerich
 
-- **Error Handling:**
-    - Catch specific exceptions (e.g., `DoesNotExist`, `IntegrityError`) rather than generic `Exception`.
-    - Log errors with detailed information for debugging.
-    - Use custom exception classes for specific error conditions.
+`Tortoise.generate_schemas()` is for development convenience only. For production, use Aerich, the official migration tool.
 
-## 3. Performance Considerations:
+❌ BAD: Using `generate_schemas` in production
+```python
+# app.py
+await Tortoise.init(...)
+await Tortoise.generate_schemas() # 🚨 DANGER: Do NOT use in production!
+```
 
-- **Optimization Techniques:**
-    - Use `prefetch_related` to reduce the number of database queries.
-    - Use `bulk_create` and `bulk_update` for batch operations.
-    - Use indexes to speed up queries on frequently accessed columns.
-    - Optimize database queries by using `filter` and `exclude` to narrow down results.
-    - Defer loading large fields using Tortoise ORM's field options.
+✅ GOOD: Aerich for schema evolution
+1.  **Install Aerich:** `pip install "aerich[toml]"`
+2.  **Configure `TORTOISE_ORM` to include `aerich.models`:**
+    ```python
+    # config.py
+    TORTOISE_ORM = {
+        "connections": {"default": "postgres://user:pass@host:port/db"},
+        "apps": {
+            "models": {
+                "models": ["app.models", "aerich.models"], # Crucial: include aerich.models
+                "default_connection": "default",
+            },
+        },
+    }
+    ```
+3.  **Initialize Aerich:** `aerich init -t config.TORTOISE_ORM`
+4.  **Generate initial migration:** `aerich init-db`
+5.  **Generate subsequent migrations:** `aerich migrate`
+6.  **Apply migrations:** `aerich upgrade`
 
-- **Memory Management:**
-    - Close database connections when they are no longer needed.
-    - Use asynchronous generators to process large datasets.
-    - Avoid loading unnecessary data into memory.
+## 3. Robust Model Design
 
-- **Rendering Optimization:**
-    - This is generally not applicable to Tortoise ORM itself, but consider optimizing data serialization (e.g., using `orjson`).
+Define models clearly with explicit types, primary keys, and `Meta` options.
 
-- **Bundle Size Optimization:**
-    - Not directly applicable to Tortoise ORM.
+### 3.1 Base Model & Primary Keys
+Every model must inherit from `tortoise.models.Model` and define a primary key. Use recommended primary key types.
 
-- **Lazy Loading:**
-    - Use relationships wisely to avoid over-fetching data.
-    - Implement pagination for large result sets.
+❌ BAD: Implicit primary key, missing type hints
+```python
+from tortoise.models import Model
+from tortoise import fields
 
-## 4. Security Best Practices:
+class User(Model):
+    name = fields.TextField() # 'id' will be auto-generated, but less explicit
+```
 
-- **Common Vulnerabilities:**
-    - SQL injection: Prevent by using Tortoise ORM's query builder and parameterized queries.
-    - Cross-site scripting (XSS): Prevent by sanitizing user inputs.
-    - Cross-site request forgery (CSRF): Implement CSRF protection in your application.
+✅ GOOD: Explicit primary key, type hints
+```python
+from tortoise.models import Model
+from tortoise import fields
+from uuid import UUID
 
-- **Input Validation:**
-    - Use Pydantic to validate user inputs before saving them to the database.
-    - Sanitize user inputs to prevent XSS attacks.
-    - Limit the length of input fields to prevent buffer overflows.
+class User(Model):
+    id: UUID = fields.UUIDField(primary_key=True) # Explicit UUID PK
+    name: str = fields.CharField(max_length=255, unique=True)
+    created_at: fields.DatetimeField = fields.DatetimeField(auto_now_add=True)
+    updated_at: fields.DatetimeField = fields.DatetimeField(auto_now=True)
 
-- **Authentication and Authorization:**
-    - Use a secure authentication mechanism (e.g., JWT).
-    - Implement role-based access control (RBAC) to restrict access to sensitive data.
-    - Use password hashing (e.g., bcrypt) to store passwords securely.
+    class Meta:
+        table = "users" # Explicit table name
+```
 
-- **Data Protection:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use SSL/TLS to secure API communication.
-    - Implement data masking to protect sensitive data in logs and reports.
+### 3.2 Abstract Models for Reusability
+Use abstract models for common fields to avoid repetition.
 
-- **Secure API Communication:**
-    - Use HTTPS for all API endpoints.
-    - Implement rate limiting to prevent denial-of-service attacks.
-    - Validate API requests and responses.
+```python
+from tortoise.models import Model
+from tortoise import fields
 
-## 5. Testing Approaches:
+class TimestampMixin(Model):
+    created_at = fields.DatetimeField(null=True, auto_now_add=True)
+    updated_at = fields.DatetimeField(null=True, auto_now=True)
 
-- **Unit Testing:**
-    - Test model methods and business logic in isolation.
-    - Use mocking to isolate database interactions.
-    - Use pytest and asyncio.run for async tests.
+    class Meta:
+        abstract = True # This model will not create a table
 
-- **Integration Testing:**
-    - Test the interaction between different components of the application.
-    - Use a test database to avoid affecting the production database.
-    - Use fixtures to set up test data.
+class Product(TimestampMixin):
+    id: int = fields.IntField(primary_key=True)
+    name: str = fields.CharField(max_length=100)
+    price: float = fields.DecimalField(max_digits=10, decimal_places=2)
 
-- **End-to-End Testing:**
-    - Test the entire application from the user's perspective.
-    - Use a testing framework like Playwright or Selenium.
+    class Meta:
+        table = "products"
+```
 
-- **Test Organization:**
-    - Organize tests by module or component.
-    - Use descriptive test names.
-    - Keep tests small and focused.
+### 3.3 Model Discovery (`__models__`)
+For explicit model discovery, define `__models__` in your model modules.
 
-- **Mocking and Stubbing:**
-    - Use `unittest.mock` to mock database connections and queries.
-    - Use stubs to replace complex dependencies with simplified versions.
-    - Avoid over-mocking, which can make tests less reliable.
+```python
+# app/models.py
+from tortoise.models import Model
+from tortoise import fields
 
-## 6. Common Pitfalls and Gotchas:
+class Category(Model):
+    id: int = fields.IntField(primary_key=True)
+    name: str = fields.CharField(max_length=50, unique=True)
 
-- **Frequent Mistakes:**
-    - Forgetting to await asynchronous calls.
-    - Using synchronous code in asynchronous contexts.
-    - Not handling exceptions properly.
-    - Over-fetching data.
-    - Not using transactions for complex operations.
+class Item(Model):
+    id: int = fields.IntField(primary_key=True)
+    name: str = fields.CharField(max_length=100)
+    category: fields.ForeignKeyRelation["Category"] = fields.ForeignKeyField('models.Category', related_name='items')
 
-- **Edge Cases:**
-    - Handling concurrency and race conditions.
-    - Dealing with large datasets.
-    - Handling database migrations.
+__models__ = [
+    "app.models.Category",
+    "app.models.Item",
+]
+```
 
-- **Version-Specific Issues:**
-    - Refer to the Tortoise ORM changelog for breaking changes and known issues.
-    - Use version pinning to ensure compatibility between Tortoise ORM and other dependencies.
+## 4. Efficient Querying (Avoid N+1)
 
-- **Compatibility Concerns:**
-    - Ensure compatibility between Tortoise ORM and the database driver (e.g., `asyncpg`, `aiosqlite`).
-    - Ensure compatibility between Tortoise ORM and other libraries (e.g., FastAPI, Pydantic).
+Always eager-load related objects to prevent the N+1 query problem.
 
-- **Debugging Strategies:**
-    - Use logging to track the execution flow of the application.
-    - Use a debugger to step through the code and inspect variables.
-    - Use database profiling tools to identify slow queries.
+❌ BAD: N+1 queries
+```python
+# Fetching each category's items individually
+categories = await Category.all()
+for category in categories:
+    print(f"Category: {category.name}")
+    # This triggers a new query for each category
+    items = await category.items.all()
+    for item in items:
+        print(f"  Item: {item.name}")
+```
 
-## 7. Tooling and Environment:
+✅ GOOD: Eager loading with `select_related` or `fetch_related`
+```python
+# Using select_related for forward relations (e.g., Item -> Category)
+items_with_categories = await Item.all().select_related('category')
+for item in items_with_categories:
+    print(f"Item: {item.name}, Category: {item.category.name}") # category is pre-fetched
 
-- **Recommended Development Tools:**
-    - IDE: PyCharm, VS Code
-    - Database client: pgAdmin, Dbeaver
-    - Testing framework: pytest
-    - Linting: pylint, flake8
-    - Formatting: black, autopep8
+# Using fetch_related for reverse relations (e.g., Category -> items)
+categories_with_items = await Category.all()
+await categories_with_items.fetch_related('items') # Fetches all items for all categories in one query
+for category in categories_with_items:
+    print(f"Category: {category.name}")
+    for item in category.items:
+        print(f"  Item: {item.name}")
+```
 
-- **Build Configuration:**
-    - Use a `pyproject.toml` file to manage dependencies.
-    - Use a virtual environment to isolate dependencies.
+## 5. Batch Operations
 
-- **Linting and Formatting:**
-    - Use pylint or flake8 to enforce code style guidelines.
-    - Use black or autopep8 to automatically format code.
-    - Configure linters and formatters to run automatically on every commit.
+Use `bulk_create` and `bulk_update` for inserting/updating multiple records efficiently.
 
-- **Deployment:**
-    - Use a containerization technology like Docker.
-    - Use a process manager like systemd or supervisord.
-    - Use a reverse proxy like Nginx or Apache.
+❌ BAD: Individual saves in a loop
+```python
+# Inefficient for many objects
+for data in list_of_data:
+    await MyModel.create(**data)
+```
 
-- **CI/CD Integration:**
-    - Use a CI/CD pipeline to automate testing, linting, and deployment.
-    - Use a version control system like Git.
-    - Use a deployment tool like Ansible or Terraform.
+✅ GOOD: Batch operations
+```python
+from datetime import datetime
 
-**Additional Considerations:**
+# Efficient for many objects
+objects_to_create = [MyModel(**data) for data in list_of_data]
+await MyModel.bulk_create(objects_to_create)
 
-- **Use Asynchronous Context Managers for Database Operations:** Tortoise-ORM is an async ORM. Leveraging asynchronous context managers within functions or methods that interact with the database ensures that the database connection is properly released, preventing connection exhaustion and improving overall performance. Use it with `async with`. Example:
+# Similarly for updates:
+objects_to_update = await MyModel.filter(status="pending")
+for obj in objects_to_update:
+    obj.status = "processed"
+    obj.updated_at = datetime.now()
+await MyModel.bulk_update(objects_to_update, fields=["status", "updated_at"])
+```
 
-python
-async def create_user(user_data):
-    async with Tortoise.get_connection('default') as conn:
-        await User.create(**user_data)
+## 6. Transactions for Atomicity
 
+Ensure data consistency with atomic transactions for related operations.
 
-- **Leverage Transactions:** Complex operations should be wrapped in transactions to ensure atomicity. Tortoise-ORM provides a transaction decorator. For example:
+```python
+from tortoise.transactions import in_transaction
 
-python
-from tortoise import transaction
+class Account(Model): # Assume Account model exists
+    id: int = fields.IntField(primary_key=True)
+    balance: float = fields.DecimalField(max_digits=10, decimal_places=2)
 
-@transaction.atomic()
-async def transfer_funds(from_account, to_account, amount):
-    # Your operations here
-    pass
+async def transfer_funds(from_account_id: int, to_account_id: int, amount: float):
+    async with in_transaction() as connection:
+        from_account = await Account.get(id=from_account_id)
+        to_account = await Account.get(id=to_account_id)
 
+        if from_account.balance < amount:
+            raise ValueError("Insufficient funds")
 
-- **Monitor and Profile Database Queries:** Regularly monitor your database queries to identify slow or inefficient queries. Tools like `pg_stat_statements` for PostgreSQL or similar for other databases can provide insights. Profile your code with tools like `cProfile` to find bottlenecks. Use `explain` command on queries to verify execution plans.
+        from_account.balance -= amount
+        to_account.balance += amount
 
-- **Regular Database Maintenance:** Perform regular database maintenance tasks such as vacuuming (PostgreSQL), optimizing tables (MySQL), and updating statistics to ensure optimal performance.
+        await from_account.save(update_fields=["balance"], using_db=connection)
+        await to_account.save(update_fields=["balance"], using_db=connection)
+    # Transaction commits automatically on success, rolls back on error
+```
+
+## 7. Version Pinning
+
+Pin your `tortoise-orm` version in `requirements.txt` to a stable minor release (e.g., `0.25.x`) to avoid unexpected breaking changes.
+
+❌ BAD: Loose dependency
+```
+tortoise-orm
+```
+
+✅ GOOD: Pinned dependency
+```
+tortoise-orm==0.25.10 # Pin to a specific patch version
+# or
+tortoise-orm~=0.25.0 # Pin to a minor version range
+```

@@ -1,192 +1,313 @@
 ---
-description: This rule provides comprehensive best practices for developing with Shadcn UI, covering code organization, performance, security, and testing.
-globs: *.js,*.jsx,*.ts,*.tsx
+description: This guide defines definitive best practices for developing with shadcn/ui, ensuring consistent code organization, robust TypeScript, optimal performance, and accessible, maintainable components.
+globs: **/*
 ---
-# Shadcn UI Best Practices
+# shadcn Best Practices
 
-This document outlines best practices for developing with Shadcn UI, covering code organization, common patterns, performance considerations, security, testing, common pitfalls, and tooling.
+This document outlines our team's definitive best practices for developing with `shadcn/ui`. Adhere to these guidelines for all `shadcn` component development and integration.
 
 ## 1. Code Organization and Structure
 
-- **Directory Structure:**
-    - Organize components into logical directories based on functionality or domain. For example, place form-related components in a `components/forms` directory.
-    - Separate components into their own files.  Each component should have a dedicated file named after the component (e.g., `Button.tsx`).
-    - Consider using an `index.ts` file within each directory to export all components from that directory, simplifying imports.
-    - Structure directories to reflect the UI hierarchy.  For example, `/components/layout` for layout related components and `/components/ui` for reusable UI elements.
+Organize components logically to reflect UI hierarchy and promote discoverability.
 
-- **File Naming Conventions:**
-    - Use PascalCase for component file names (e.g., `MyComponent.tsx`).
-    - Use camelCase for variable and function names (e.g., `handleClick`).
-    - Use descriptive names that clearly indicate the purpose of the component or function.
+**Rule:** Place domain-specific components under `components/<domain>` and reusable UI primitives under `components/ui`. Each component must reside in its own PascalCase file.
 
-- **Module Organization:**
-    - Break down complex components into smaller, reusable modules.
-    - Keep components focused on a single responsibility.
-    - Utilize shared utility functions and constants to avoid code duplication.  Create a `utils` directory for helper functions.
-    - Use `components` directory to store UI components.
+❌ BAD:
+```
+// components/Button.tsx
+// components/profile-card.tsx
+// components/user-settings/index.tsx (contains multiple components)
+```
 
-- **Component Architecture:**
-    - Favor composition over inheritance. Create flexible components that can be customized through props.
-    - Design components with clear separation of concerns: presentational components (UI) and container components (logic).
-    - Use functional components with hooks for managing state and side effects.
+✅ GOOD:
+```
+// components/ui/Button.tsx
+// components/forms/DatePicker.tsx
+// components/layout/Sidebar.tsx
 
-- **Code Splitting Strategies:**
-    - Implement lazy loading for non-critical components to improve initial load time.
-    - Utilize React.lazy and Suspense for code splitting at the component level.
-    - Configure your bundler (e.g., Webpack, Parcel) to automatically split code into smaller chunks.
-    - Consider route-based code splitting for larger applications.
+// components/forms/index.ts
+export * from "./DatePicker";
+export * from "./Input";
+```
 
-## 2. Common Patterns and Anti-patterns
+## 2. Component Architecture
 
-- **Design Patterns Specific to Shadcn UI:**
-    - Leverage the existing components provided by Shadcn UI whenever possible.
-    - Customize components using styling solutions like Tailwind CSS's utility classes or CSS variables.
-    - Create compound components by combining existing Shadcn UI components to build more complex UI elements.
+Favor functional components, composition, and explicit prop definitions.
 
-- **Recommended Approaches for Common Tasks:**
-    - Use Shadcn UI's form components (e.g., `Input`, `Select`) for handling user input.
-    - Implement accessible components by following ARIA guidelines and using appropriate HTML semantics.
-    - Use the `cn` utility (classnames library) provided by Shadcn UI to manage CSS class names effectively.
+**Rule:** Use functional components with `React.forwardRef` and `asChild` for seamless integration with Radix primitives.
 
-- **Anti-patterns and Code Smells to Avoid:**
-    - Directly modifying the Shadcn UI component code.
-    - Overusing custom CSS, as Shadcn UI is built with Tailwind CSS.
-    - Neglecting accessibility considerations.
-    - Creating overly complex components with too many responsibilities.
+❌ BAD:
+```tsx
+// No ref forwarding, no asChild
+const Button = ({ children, onClick }) => (
+  <button onClick={onClick}>{children}</button>
+);
+```
 
-- **State Management Best Practices:**
-    - Use React's built-in `useState` hook for simple component-level state.
-    - Consider using a state management library like Zustand, Redux, or Recoil for more complex application state.
-    - Avoid mutating state directly; always use the setState function or a state management library's update methods.
+✅ GOOD:
+```tsx
+// components/ui/Button.tsx
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils"; // Assuming you have a cn utility
 
-- **Error Handling Patterns:**
-    - Implement error boundaries to catch errors in components and prevent the entire application from crashing.
-    - Use try-catch blocks to handle errors in asynchronous operations and API calls.
-    - Provide informative error messages to users.
-    - Log errors to a monitoring service for debugging and analysis.
+const buttonVariants = cva(
+  "inline-flex items-center justify-center rounded-md text-sm font-medium",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-destructive-foreground",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+);
 
-## 3. Performance Considerations
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+}
 
-- **Optimization Techniques:**
-    - Minimize re-renders by using `React.memo` for functional components and `shouldComponentUpdate` for class components.
-    - Optimize event handlers by using useCallback to prevent unnecessary re-creation of functions.
-    - Debounce or throttle expensive operations to reduce the frequency of execution.
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
+Button.displayName = "Button";
 
-- **Memory Management:**
-    - Avoid memory leaks by properly cleaning up event listeners and timers in the `useEffect` hook.
-    - Release unused resources, such as large data structures, when they are no longer needed.
+export { Button, buttonVariants };
+```
 
-- **Rendering Optimization:**
-    - Use virtualized lists or grids for rendering large datasets.
-    - Batch DOM updates to minimize reflows and repaints.
-    - Use CSS containment to isolate rendering changes to specific parts of the DOM.
+## 3. TypeScript and API Design
 
-- **Bundle Size Optimization:**
-    - Remove unused code and dependencies using tree shaking.
-    - Minify JavaScript and CSS files to reduce their size.
-    - Compress images using tools like ImageOptim or TinyPNG.
+Enforce strict TypeScript with clear interfaces and robust validation.
 
-- **Lazy Loading Strategies:**
-    - Implement lazy loading for images and other media assets.
-    - Use the Intersection Observer API to detect when elements are visible in the viewport and load them on demand.
+**Rule:** Use interfaces for component props. Validate form data with Zod schemas. Avoid `any` and prefer explicit types.
 
-## 4. Security Best Practices
+❌ BAD:
+```typescript
+// Vague props, no validation
+type UserFormProps = {
+  data: any;
+  onSubmit: (values: any) => void;
+};
+```
 
-- **Common Vulnerabilities and How to Prevent Them:**
-    - Prevent cross-site scripting (XSS) attacks by sanitizing user input and escaping HTML entities.
-    - Protect against cross-site request forgery (CSRF) attacks by using anti-CSRF tokens.
-    - Avoid storing sensitive information, such as API keys or passwords, in client-side code.
+✅ GOOD:
+```typescript
+// components/forms/UserForm.tsx
+import { z } from "zod";
 
-- **Input Validation:**
-    - Validate user input on both the client-side and server-side.
-    - Use a validation library like Zod or Yup to define data schemas and enforce validation rules.
-    - Sanitize user input to remove potentially harmful characters or code.
+export interface UserFormProps {
+  initialData?: UserFormData;
+  onSubmit: (values: UserFormData) => void;
+}
 
-- **Authentication and Authorization Patterns:**
-    - Use a secure authentication protocol, such as OAuth 2.0 or OpenID Connect.
-    - Implement role-based access control (RBAC) to restrict access to sensitive resources.
-    - Store user credentials securely using hashing and salting.
+export const userFormSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  email: z.string().email("Invalid email address."),
+});
 
-- **Data Protection Strategies:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use HTTPS to protect data transmitted between the client and server.
-    - Implement data masking to hide sensitive information from unauthorized users.
+export type UserFormData = z.infer<typeof userFormSchema>;
+```
 
-- **Secure API Communication:**
-    - Use HTTPS for all API requests.
-    - Implement rate limiting to prevent abuse and denial-of-service attacks.
-    - Validate API responses to ensure data integrity.
+## 4. Theming and Styling
 
-## 5. Testing Approaches
+Leverage Tailwind CSS and `class-variance-authority` (CVA) for consistent, maintainable styling.
 
-- **Unit Testing Strategies:**
-    - Write unit tests for individual components and functions.
-    - Use a testing framework like Jest or Mocha.
-    - Test component behavior with different props and inputs.
+**Rule:** Define component variants using CVA. Use the `cn` utility for conditional class merging. Centralize Tailwind configuration and design tokens.
 
-- **Integration Testing:**
-    - Write integration tests to verify that components work together correctly.
-    - Test the interaction between components and APIs.
+❌ BAD:
+```tsx
+// Inconsistent inline styles or direct class manipulation
+<button className={`p-2 ${isActive ? 'bg-blue-500' : 'bg-gray-200'}`}>
+```
 
-- **End-to-End Testing:**
-    - Write end-to-end tests to simulate user interactions and verify that the application functions as expected.
-    - Use a testing framework like Cypress or Playwright.
+✅ GOOD:
+```tsx
+// components/ui/Badge.tsx
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
 
-- **Test Organization:**
-    - Organize tests into separate files based on the component or feature being tested.
-    - Use descriptive test names that clearly indicate the purpose of the test.
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+  {
+    variants: {
+      variant: {
+        default: "border-transparent bg-primary text-primary-foreground",
+        secondary: "border-transparent bg-secondary text-secondary-foreground",
+        outline: "text-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+);
 
-- **Mocking and Stubbing:**
-    - Use mocking and stubbing to isolate components and functions during testing.
-    - Mock external dependencies, such as APIs or third-party libraries.
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
 
-## 6. Common Pitfalls and Gotchas
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return (
+    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  );
+}
 
-- **Frequent Mistakes Developers Make:**
-    - Forgetting to handle edge cases.
-    - Overcomplicating components.
-    - Neglecting accessibility.
-    - Ignoring performance considerations.
+export { Badge, badgeVariants };
+```
 
-- **Edge Cases to Be Aware Of:**
-    - Handling different screen sizes and devices.
-    - Dealing with slow network connections.
-    - Handling invalid or unexpected user input.
+## 5. Common Patterns and Anti-patterns
 
-- **Version-Specific Issues:**
-    - Be aware of breaking changes between Shadcn UI versions.
-    - Consult the Shadcn UI changelog for migration instructions.
+**Rule:** Use React Hook Form with Zod for all forms. Implement early returns and guard clauses for error handling.
 
-- **Compatibility Concerns:**
-    - Ensure that your application is compatible with the target browsers and devices.
-    - Test your application on different browsers and devices.
+❌ BAD:
+```tsx
+// Deeply nested logic, manual form state
+if (data) {
+  // ... many lines
+  if (isValid) {
+    // ... more lines
+  }
+}
+```
 
-- **Debugging Strategies:**
-    - Use browser developer tools to inspect the DOM and debug JavaScript code.
-    - Use console logging to track the flow of execution and identify errors.
-    - Use a debugger to step through code and inspect variables.
+✅ GOOD:
+```tsx
+// Early return for invalid state
+if (!user) {
+  return <p>User not found.</p>;
+}
 
-## 7. Tooling and Environment
+// React Hook Form + Zod example
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { userFormSchema, UserFormData } from "./UserForm"; // From section 3
 
-- **Recommended Development Tools:**
-    - Visual Studio Code (VS Code) with extensions for React, TypeScript, and Tailwind CSS.
-    - A browser with developer tools (e.g., Chrome DevTools, Firefox Developer Tools).
-    - A terminal for running commands and scripts.
+function UserProfileForm({ initialData, onSubmit }: UserFormProps) {
+  const form = useForm<UserFormData>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: initialData,
+  });
 
-- **Build Configuration:**
-    - Use a build tool like Webpack, Parcel, or Rollup to bundle your application.
-    - Configure your build tool to optimize code for production.
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      {/* Form fields */}
+    </form>
+  );
+}
+```
 
-- **Linting and Formatting:**
-    - Use ESLint to enforce code style and identify potential errors.
-    - Use Prettier to automatically format code.
-    - Configure your editor to automatically lint and format code on save.
+## 6. Performance Considerations
 
-- **Deployment Best Practices:**
-    - Deploy your application to a reliable hosting provider.
-    - Use a content delivery network (CDN) to serve static assets.
-    - Configure your server to serve compressed files.
+Optimize for fast initial loads and smooth interactions.
 
-- **CI/CD Integration:**
-    - Use a continuous integration and continuous deployment (CI/CD) pipeline to automate the build, test, and deployment process.
-    - Integrate your CI/CD pipeline with your version control system.
+**Rule:** Lazy-load heavy UI sections (e.g., dialogs, data tables) using `React.lazy` or dynamic imports. Memoize expensive components and callbacks.
+
+❌ BAD:
+```tsx
+// Always loads heavy component
+import { BigComplexChart } from "./BigComplexChart";
+function Dashboard() {
+  return <BigComplexChart data={...} />;
+}
+```
+
+✅ GOOD:
+```tsx
+// Lazy load for better initial performance
+import React from "react";
+const LazyBigComplexChart = React.lazy(() => import("./BigComplexChart"));
+
+function Dashboard() {
+  const [showChart, setShowChart] = React.useState(false);
+
+  // Memoize callbacks to prevent unnecessary re-renders
+  const handleToggleChart = React.useCallback(() => {
+    setShowChart((prev) => !prev);
+  }, []);
+
+  return (
+    <div>
+      <Button onClick={handleToggleChart}>Toggle Chart</Button>
+      {showChart && (
+        <React.Suspense fallback={<div>Loading chart...</div>}>
+          <LazyBigComplexChart data={...} />
+        </React.Suspense>
+      )}
+    </div>
+  );
+}
+```
+
+## 7. Accessibility
+
+Build inclusive UIs by leveraging Radix primitives and ARIA attributes.
+
+**Rule:** Always use `shadcn/ui` components as they are built on Radix UI and provide excellent accessibility out-of-the-box. Ensure custom components correctly pass ARIA attributes and manage focus.
+
+❌ BAD:
+```tsx
+// Custom button without ARIA attributes or proper semantics
+<div role="button" onClick={...}>Click me</div>
+```
+
+✅ GOOD:
+```tsx
+// Leverage shadcn/ui's accessible Button
+import { Button } from "@/components/ui/Button";
+<Button onClick={() => alert("Action!")}>Perform Action</Button>
+```
+
+## 8. Common Pitfalls and Gotchas
+
+Avoid these common mistakes to maintain a scalable and robust codebase.
+
+**Rule:** Never directly modify `shadcn/ui` component files. Instead, extend them with `cn` or wrap them in higher-order components. Avoid `dangerouslySetInnerHTML`.
+
+❌ BAD:
+```tsx
+// Direct modification of a shadcn component (will be overwritten by CLI updates)
+// components/ui/button.tsx (modified directly)
+```
+
+```tsx
+// Security vulnerability
+<div dangerouslySetInnerHTML={{ __html: userProvidedContent }} />
+```
+
+✅ GOOD:
+```tsx
+// Extend with cn for custom styles
+import { Button } from "@/components/ui/Button";
+<Button className="bg-red-500 hover:bg-red-600">Custom Red Button</Button>
+```
+
+```tsx
+// Sanitize and render text content safely
+import DOMPurify from 'dompurify';
+
+const sanitizedContent = DOMPurify.sanitize(userProvidedContent);
+return <div className="prose" dangerouslySetInnerHTML={{ __html: sanitizedContent }} />;
+// Or even better, avoid dangerouslySetInnerHTML if possible and render text directly
+// return <p>{userProvidedContent}</p>;
+```

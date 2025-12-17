@@ -1,188 +1,423 @@
 ---
-description: This rule provides comprehensive best practices for developing with Turbopack, covering code organization, performance, security, testing, and tooling to ensure efficient and maintainable applications.
-globs: *.js,*.jsx,*.ts,*.tsx
+description: This guide provides opinionated, actionable best practices for developing high-performance, maintainable, and secure applications using Turbopack as the default bundler in Next.js 16+.
+globs: **/*.{js,jsx}
 ---
-# Turbopack Best Practices
+# turbopack Best Practices
 
-This document outlines best practices for developing with Turbopack, focusing on code organization, performance, security, testing, and tooling.
+Turbopack is the default, Rust-based incremental bundler for Next.js 16+, offering unparalleled speed through function-level caching, lazy bundling, and a unified build graph. To fully leverage its power, adhere to these modern best practices.
 
-## 1. Core Principles
+## 1. Code Organization and Structure
 
-- **Leverage the Turbo Engine:** Turbopack's core strength lies in its Turbo engine for function-level caching. Understand and utilize this for incremental builds.
-- **Embrace Incremental Computation:** Be mindful of how changes affect the build process. Design your application to maximize incremental computation benefits.
-- **Use TypeScript:** Turbopack has built-in support for TypeScript and JSX, so use them to improve code quality and developer experience.  Make full use of TypeScript's features like generics, interfaces and types.
-- **Follow Next.js Conventions:** When using Turbopack within Next.js, adhere to Next.js's recommended patterns and practices.
-- **Avoid direct webpack configurations:** Turbopack aims to abstract away webpack configurations, prefer using Next.js configurations to customize Turbopack.
+Turbopack thrives on a well-structured project. Standardize your directory layout to maximize its incremental compilation benefits.
 
-## 2. Code Organization and Structure
+### 1.1 Standardized Directory Structure
+Always place application source code under `src/`. This provides a clear boundary and helps Turbopack understand your project's scope.
 
-- **Directory Structure:**
-    - **`src/`:**  All application source code should reside within the `src/` directory.
-    - **`components/`:** Reusable UI components.
-    - **`pages/`:**  (Next.js) Pages for routing.
-    - **`api/`:** (Next.js) API routes.
-    - **`lib/` or `utils/`:** Utility functions and shared logic.
-    - **`types/` or `interfaces/`:** TypeScript type definitions and interfaces.
-    - **`styles/` or `css/`:** Global styles and CSS modules.
-    - **`public/`:** Static assets (images, fonts, etc.).
-- **File Naming Conventions:**
-    - Use descriptive names for files and directories.
-    - Component files: `ComponentName.jsx` or `ComponentName.tsx`.
-    - Style files: `ComponentName.module.css` or `ComponentName.module.scss`.
-    - Utility files: `utilityName.js` or `utilityName.ts`.
-- **Module Organization:**
-    - Group related code into modules with clear responsibilities.
-    - Export only what is necessary from each module.
-    - Use ES modules (import/export) for modularity.
-- **Component Architecture:**
-    - **Atomic Design:** Consider using Atomic Design principles to create a scalable and maintainable component architecture.
-    - **Composition:** Favor composition over inheritance for component reusability.
-    - **Separation of Concerns:**  Separate UI logic, data fetching, and state management within components.
-    - **Keep components small:** Focus on single responsability principle.
-- **Code Splitting Strategies:**
-    - **Dynamic Imports:** Use dynamic imports (`import()`) to split code into smaller chunks that are loaded on demand.
-    - **Route-Based Splitting:** (Next.js) Each page in the `pages/` directory is automatically code-split.
-    - **Component-Based Splitting:** Split large components into smaller, lazily loaded sub-components.
-    - **Vendor Splitting:** Turbopack automatically splits vendor code (third-party libraries) into separate chunks. 
+❌ BAD: Scattered files
+```jsx
+// project-root/
+// ├── index.js
+// ├── components/Button.jsx
+// └── api/users.js
+```
 
-## 3. Common Patterns and Anti-patterns
+✅ GOOD: Centralized `src/`
+```jsx
+// project-root/
+// └── src/
+//     ├── app/          // Next.js App Router routes
+//     ├── components/   // Reusable UI components
+//     ├── lib/          // Utility functions and shared logic
+//     ├── services/     // Data fetching and external API calls
+//     ├── styles/       // Global and modular styles
+//     └── types/        // TypeScript type definitions
+```
 
-- **Design Patterns:**
-    - **Higher-Order Components (HOCs):** Reusable logic for components (use with caution, consider hooks).
-    - **Render Props:** Sharing code between React components using a prop whose value is a function.
-    - **Hooks:**  Reusable stateful logic for functional components.
-    - **Context API:**  Share data that is considered "global" for a tree of React components.
-- **Recommended Approaches:**
-    - **Data Fetching:** Use `getServerSideProps`, `getStaticProps`, or `getInitialProps` (Next.js) for data fetching depending on your requirements.
-    - **API Routes:** Use Next.js API routes to create serverless functions for handling API requests.
-    - **State Management:** Choose a state management library (Redux, Zustand, Jotai, Recoil) based on the complexity of your application.
-- **Anti-patterns:**
-    - **Global State Mutation:** Avoid directly mutating global state, use reducers or state management libraries.
-    - **Over-Fetching:** Fetch only the data that is needed by a component.
-    - **Tight Coupling:**  Reduce dependencies between modules to improve maintainability.
-    - **Long Component Files:** Avoid having components larger than 200-300 lines, break down them into smaller components.
-- **State Management Best Practices:**
-    - **Centralized State:** Manage application state in a central store.
-    - **Immutability:** Treat state as immutable to prevent unexpected side effects.
-    - **Reducers:** Use reducers to update state based on actions.
-    - **Selectors:** Use selectors to derive data from the state.
-- **Error Handling Patterns:**
-    - **Error Boundaries:**  Use error boundaries to catch JavaScript errors anywhere in a component tree.
-    - **Centralized Error Logging:**  Log errors to a central service for monitoring and debugging.
-    - **Graceful Degradation:**  Handle errors gracefully and provide informative messages to the user.
-    - **Retry mechanisms:** Implement retry mechanisms for failed requests.
+### 1.2 TypeScript First
+Turbopack has built-in, highly optimized support for TypeScript and JSX/TSX via SWC. Always use TypeScript to catch errors early and enhance developer experience.
 
-## 4. Performance Considerations
+❌ BAD: Plain JavaScript
+```javascript
+// src/lib/math.js
+export function add(a, b) {
+  return a + b;
+}
+```
 
-- **Optimization Techniques:**
-    - **Caching:** Leverage Turbopack's caching capabilities to avoid unnecessary re-builds.
-    - **Memoization:** Use `React.memo` or `useMemo` to memoize components and values.
-    - **Debouncing and Throttling:** Use debouncing and throttling to reduce the frequency of function calls.
-- **Memory Management:**
-    - **Avoid Memory Leaks:**  Be careful to clean up event listeners and timers when components unmount.
-    - **Garbage Collection:**  Understand how JavaScript garbage collection works and avoid creating unnecessary objects.
-- **Rendering Optimization:**
-    - **Virtualization:** Use virtualization libraries for rendering large lists.
-    - **Code Splitting:** Split the codebase into smaller chunks using dynamic imports for faster initial load times.
-    - **Image Optimization:** Optimize images using tools like `next/image` or `cloudinary`.
-- **Bundle Size Optimization:**
-    - **Tree Shaking:**  Remove unused code from the bundle by using ES modules and configuring your bundler correctly.
-    - **Minification:** Minify JavaScript and CSS code to reduce bundle size.
-    - **Compression:** Compress assets using gzip or Brotli.
-- **Lazy Loading Strategies:**
-    - **Component-Level Lazy Loading:**  Lazy load components that are not initially visible.
-    - **Image Lazy Loading:**  Lazy load images that are not initially visible.
-    - **Route-Based Lazy Loading:**  Lazy load routes that are not frequently visited.
+✅ GOOD: Type-safe TypeScript
+```typescript
+// src/lib/math.ts
+export function add(a: number, b: number): number {
+  return a + b;
+}
+```
 
-## 5. Security Best Practices
+### 1.3 Component Granularity
+Design components to be small, pure, and focused on a single responsibility. This maximizes Turbopack's function-level caching and improves Fast Refresh times.
 
-- **Common Vulnerabilities:**
-    - **Cross-Site Scripting (XSS):**  Prevent XSS attacks by sanitizing user input and using appropriate escaping techniques.
-    - **Cross-Site Request Forgery (CSRF):**  Prevent CSRF attacks by using CSRF tokens.
-    - **SQL Injection:**  Prevent SQL injection attacks by using parameterized queries or ORMs.
-    - **Authentication and Authorization Issues:**  Secure your API endpoints with proper authentication and authorization mechanisms.
-- **Input Validation:**
-    - **Validate all user input:** Sanitize and validate all user input on both the client and server.
-    - **Use appropriate data types:** Enforce data types to prevent unexpected values.
-- **Authentication and Authorization Patterns:**
-    - **JSON Web Tokens (JWT):**  Use JWTs for authentication and authorization.
-    - **Role-Based Access Control (RBAC):**  Implement RBAC to control access to resources based on user roles.
-    - **OAuth:**  Use OAuth for third-party authentication.
-- **Data Protection Strategies:**
-    - **Encryption:** Encrypt sensitive data at rest and in transit.
-    - **Data Masking:** Mask sensitive data in logs and reports.
-    - **Data Retention Policies:**  Implement data retention policies to ensure compliance with regulations.
-- **Secure API Communication:**
-    - **HTTPS:**  Use HTTPS to encrypt communication between the client and server.
-    - **Rate Limiting:**  Implement rate limiting to prevent abuse and denial-of-service attacks.
-    - **API Keys:**  Use API keys for authentication.
+❌ BAD: Large, monolithic component
+```jsx
+// src/components/UserProfilePage.tsx
+'use client';
+import { useState, useEffect } from 'react';
+import { fetchUserData, updateUserProfile } from '@/services/api';
 
-## 6. Testing Approaches
+export default function UserProfilePage({ userId }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  // ... lots of state and logic for profile, orders, settings, etc.
+  useEffect(() => { /* fetch data */ }, [userId]);
+  const handleSubmit = () => { /* update profile */ };
+  return (
+    // ... massive JSX structure
+  );
+}
+```
 
-- **Unit Testing Strategies:**
-    - **Test individual components and functions:**  Write unit tests to verify the behavior of individual components and functions.
-    - **Use mocking and stubbing:**  Use mocking and stubbing to isolate components from their dependencies.
-    - **Test edge cases:**  Test edge cases and error conditions.
-- **Integration Testing:**
-    - **Test the interaction between components:**  Write integration tests to verify the interaction between components.
-    - **Test data flow:**  Test the flow of data between components and services.
-- **End-to-End Testing:**
-    - **Test the entire application flow:**  Write end-to-end tests to verify the entire application flow.
-    - **Use browser automation tools:**  Use browser automation tools like Cypress or Puppeteer.
-- **Test Organization:**
-    - **Keep tests close to the code:**  Organize tests in the same directory as the code they test.
-    - **Use descriptive test names:**  Use descriptive test names that clearly describe what the test is verifying.
-- **Mocking and Stubbing:**
-    - **Use mocking libraries:**  Use mocking libraries like Jest or Sinon to create mocks and stubs.
-    - **Avoid over-mocking:**  Mock only the dependencies that are necessary.
+✅ GOOD: Small, composable components
+```jsx
+// src/app/dashboard/profile/page.tsx (Server Component)
+import { Suspense } from 'react';
+import UserProfileForm from '@/components/UserProfileForm';
+import UserOrdersList from '@/components/UserOrdersList';
+import { fetchUserData } from '@/services/api';
 
-## 7. Common Pitfalls and Gotchas
+export default async function ProfilePage() {
+  const user = await fetchUserData(); // Server-side data fetch
+  return (
+    <div className="container">
+      <h1>Welcome, {user.name}</h1>
+      <Suspense fallback={<p>Loading profile...</p>}>
+        <UserProfileForm initialData={user} />
+      </Suspense>
+      <Suspense fallback={<p>Loading orders...</p>}>
+        <UserOrdersList userId={user.id} />
+      </Suspense>
+    </div>
+  );
+}
 
-- **Frequent Mistakes:**
-    - **Incorrectly configured `tsconfig.json`:** Ensure paths and baseUrl are correctly configured for absolute imports.
-    - **Misunderstanding caching:** Not utilizing Turbopack's caching efficiently, leading to slower builds.
-    - **Not using TypeScript features**: Not leveraging the benefits of Typescript and writing javascript code that misses out on typesafety.
-- **Edge Cases:**
-    - **Complex dependencies:**  Be aware of how complex dependencies can affect build times.
-    - **Large file sizes:**  Optimize large file sizes to improve performance.
-- **Version-Specific Issues:**
-    - **Breaking changes:**  Be aware of breaking changes in Turbopack and Next.js releases.
-    - **Compatibility issues:**  Ensure that your dependencies are compatible with the versions of Turbopack and Next.js that you are using.
-- **Compatibility Concerns:**
-    - **Browser compatibility:**  Test your application in different browsers to ensure compatibility.
-    - **Device compatibility:**  Test your application on different devices to ensure compatibility.
-- **Debugging Strategies:**
-    - **Use debugging tools:**  Use browser developer tools and debugging tools to identify and fix issues.
-    - **Log statements:**  Use log statements to track the flow of execution and identify errors.
-    - **Reproducible steps:**  Create reproducible steps to help isolate and fix issues.
+// src/components/UserProfileForm.tsx (Client Component)
+'use client';
+import { useState } from 'react';
+import { updateUserProfile } from '@/services/api';
 
-## 8. Tooling and Environment
+export default function UserProfileForm({ initialData }) {
+  const [name, setName] = useState(initialData.name);
+  const [email, setEmail] = useState(initialData.email);
 
-- **Recommended Development Tools:**
-    - **VS Code:**  A popular code editor with excellent support for JavaScript, TypeScript, and React.
-    - **ESLint:**  A linter that helps you identify and fix code style issues.
-    - **Prettier:**  A code formatter that automatically formats your code.
-    - **Chrome Developer Tools:** Powerful tools for debugging and profiling web applications.
-- **Build Configuration:**
-    - **Configure `tsconfig.json`:** Configure `tsconfig.json` to enable TypeScript features and specify compiler options.
-    - **Configure ESLint:** Configure ESLint to enforce code style guidelines.
-    - **Configure Prettier:** Configure Prettier to automatically format code.
-- **Linting and Formatting:**
-    - **Use ESLint and Prettier:**  Use ESLint and Prettier to automatically lint and format your code.
-    - **Integrate with your editor:**  Integrate ESLint and Prettier with your code editor to automatically lint and format code on save.
-- **Deployment Best Practices:**
-    - **Use a CI/CD pipeline:**  Use a CI/CD pipeline to automate the build, test, and deployment process.
-    - **Deploy to a CDN:**  Deploy static assets to a CDN for faster delivery.
-    - **Monitor your application:**  Monitor your application for errors and performance issues.
-- **CI/CD Integration:**
-    - **Use GitHub Actions, GitLab CI, or CircleCI:**  Use a CI/CD platform to automate the build, test, and deployment process.
-    - **Run tests in CI/CD:**  Run tests in your CI/CD pipeline to ensure that code changes do not introduce new bugs.
-    - **Automate deployments:**  Automate deployments to production and staging environments.
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await updateUserProfile({ name, email });
+    alert('Profile updated!');
+  };
 
-## 9. Additional Considerations
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <button type="submit">Save</button>
+    </form>
+  );
+}
+```
 
-- **Experimentation:** Turbopack is rapidly evolving. Experiment with new features and configurations to optimize your build process.
-- **Community Engagement:** Participate in the Turbopack community to share your experiences and learn from others.
-- **Documentation:**  Refer to the official Turbopack documentation for the latest information and guidance.
+## 2. Common Patterns and Anti-patterns
 
-By following these best practices, you can leverage the full potential of Turbopack to build high-performance, maintainable, and secure applications.
+Leverage Next.js 16 features that align with Turbopack's strengths, and avoid patterns that hinder its optimizations.
+
+### 2.1 Embrace Next.js App Router and Server Components
+Next.js 16 defaults to the App Router and Server Components. This is the optimal architecture for Turbopack, as it enables the unified graph and efficient server/client bundling.
+
+❌ BAD: Sticking to Pages Router for new features
+```jsx
+// src/pages/dashboard.jsx
+// ... uses getServerSideProps for data fetching
+```
+
+✅ GOOD: Utilize App Router with Server Components
+```jsx
+// src/app/dashboard/page.tsx
+// This is a Server Component by default
+import { fetchDashboardData } from '@/services/api';
+
+export default async function DashboardPage() {
+  const data = await fetchDashboardData();
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <p>Data: {data.summary}</p>
+    </div>
+  );
+}
+```
+
+### 2.2 Explicit Runtime and Caching Directives
+Guide Turbopack's incremental computation and caching with explicit flags.
+
+*   `export const runtime = 'edge'` for Edge Functions.
+*   `export const dynamic = 'force-static'` for full static rendering.
+*   `export const revalidate = 60` for Incremental Static Regeneration (ISR).
+*   `"use cache"` for fine-grained component caching (Next.js 16+).
+
+❌ BAD: Implicit behavior, relying on defaults for critical paths
+```typescript
+// src/app/api/hello/route.ts (runs on Node.js by default)
+export async function GET() { /* ... */ }
+```
+
+✅ GOOD: Explicitly define runtime for performance-critical APIs
+```typescript
+// src/app/api/hello/route.ts
+export const runtime = 'edge'; // Run this API route on the Edge
+export async function GET() {
+  return new Response('Hello from the Edge!');
+}
+```
+And for component caching:
+```jsx
+// src/components/CachedHeader.tsx
+"use cache"; // Cache this component's output
+export default function CachedHeader() {
+  // This component will be cached by Next.js 16's Cache Components feature
+  return <header>My Cached App Header</header>;
+}
+```
+
+### 2.3 Intentional Code Splitting
+Turbopack supports lazy bundling. Use `next/dynamic` or standard dynamic `import()` for large, non-critical components or libraries to reduce initial bundle size.
+
+❌ BAD: Importing heavy components eagerly
+```jsx
+// src/components/Dashboard.tsx
+import Chart from 'heavy-chart-library'; // Imported even if chart is not always visible
+export default function Dashboard() {
+  return <Chart data={...} />;
+}
+```
+
+✅ GOOD: Dynamically import components
+```jsx
+// src/components/Dashboard.tsx
+import dynamic from 'next/dynamic';
+
+const Chart = dynamic(() => import('heavy-chart-library'), {
+  ssr: false, // Only load on client-side
+  loading: () => <p>Loading chart...</p>,
+});
+
+export default function Dashboard() {
+  return (
+    <div>
+      <h1>Dashboard Overview</h1>
+      <Chart data={...} />
+    </div>
+  );
+}
+```
+
+## 3. Performance Considerations
+
+Turbopack is built for speed. Align your code with its incremental nature.
+
+### 3.1 Maximize Function-Level Caching
+Design modules with small, pure functions. Turbopack caches results at this granular level, significantly speeding up rebuilds when only small parts of the codebase change.
+
+❌ BAD: Functions with side effects or large dependencies
+```typescript
+// src/lib/dataProcessor.ts
+let globalConfig = {}; // Mutated elsewhere
+export function processData(data) {
+  // Depends on and modifies globalConfig
+  // ... complex logic ...
+  return processed;
+}
+```
+
+✅ GOOD: Pure, isolated functions
+```typescript
+// src/lib/dataProcessor.ts
+export function processData(data: any[], config: any): any[] {
+  // Pure function, depends only on its inputs
+  // ... complex logic ...
+  return processed;
+}
+```
+
+### 3.2 Scope CSS and Assets
+Import CSS and other assets directly within the components that use them. This allows Turbopack to effectively lazy bundle and optimize asset loading. Use CSS Modules for component-scoped styles.
+
+❌ BAD: Global CSS imports for component-specific styles
+```jsx
+// src/app/layout.tsx
+import '../styles/button.css'; // Global import for a specific button style
+
+export default function RootLayout({ children }) { /* ... */ }
+```
+
+✅ GOOD: CSS Modules for component-specific styles
+```css
+/* src/components/MyButton.module.css */
+.primary {
+  background-color: blue;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+}
+```
+```jsx
+// src/components/MyButton.tsx
+import styles from './MyButton.module.css';
+
+export default function MyButton() {
+  return <button className={styles.primary}>Click me</button>;
+}
+```
+
+### 3.3 Leverage Next.js 16 Cache Components
+Enable `cacheComponents: true` in `next.config.ts` and use the `"use cache"` directive to cache component outputs. This is a powerful feature for instant navigation with Partial Pre-rendering (PPR).
+
+```typescript
+// next.config.ts
+const nextConfig = {
+  cacheComponents: true, // Enable Next.js 16 Cache Components
+};
+export default nextConfig;
+```
+Then, in your components:
+```jsx
+// src/components/ProductCard.tsx
+"use cache"; // This component's output will be cached
+import Image from 'next/image';
+
+export default function ProductCard({ product }) {
+  return (
+    <div className="product-card">
+      <Image src={product.image} alt={product.name} width={200} height={200} />
+      <h3>{product.name}</h3>
+      <p>${product.price}</p>
+    </div>
+  );
+}
+```
+
+## 4. Common Pitfalls and Gotchas
+
+Be aware of these common issues when working with Turbopack.
+
+### 4.1 Avoid Direct Webpack Configuration
+Turbopack aims to abstract away Webpack. Do not attempt to configure Webpack directly when using Turbopack, as it will be ignored or lead to unexpected behavior. Configure Turbopack via `next.config.js` options where available.
+
+❌ BAD: Attempting to modify Webpack config directly
+```javascript
+// next.config.js
+module.exports = {
+  webpack: (config, { isServer }) => {
+    // This will be ignored by Turbopack
+    config.plugins.push(new MyWebpackPlugin());
+    return config;
+  },
+};
+```
+
+✅ GOOD: Use Next.js 16's `next.config.js` options for Turbopack
+```javascript
+// next.config.js
+const nextConfig = {
+  // Turbopack-specific configurations are exposed here
+  // e.g., for path aliases or root directory adjustments
+  turbopack: {
+    resolveAlias: {
+      '@my-custom-alias': '/path/to/custom/module',
+    },
+    root: '../../', // For monorepos with linked dependencies outside project root
+  },
+};
+module.exports = nextConfig;
+```
+
+### 4.2 Filesystem Root for Monorepos
+If you use linked dependencies (e.g., `npm link`, `yarn link`, `pnpm link`) that reside outside your project's root, Turbopack will not resolve them by default. Adjust the `turbopack.root` option in `next.config.js`.
+
+❌ BAD: Linked dependencies not resolving
+```
+// project-root/
+// └── src/
+//     └── app/page.tsx
+//
+// sibling-package/ (linked via npm link)
+// └── index.ts
+```
+```typescript
+// src/app/page.tsx
+import { someFunction } from 'sibling-package'; // Fails to resolve
+```
+
+✅ GOOD: Configure `turbopack.root`
+```javascript
+// next.config.js (assuming project-root and sibling-package are in the same parent directory)
+const nextConfig = {
+  turbopack: {
+    root: '../../', // Adjusts the root to include parent directory
+  },
+};
+module.exports = nextConfig;
+```
+
+### 4.3 Sass Functions
+Turbopack's Rust-based architecture does not support custom Sass functions (`sassOptions.functions`) that rely on JavaScript execution. If you need this, you *must* opt out of Turbopack for that specific project using `--webpack`.
+
+❌ BAD: Custom Sass functions with Turbopack
+```javascript
+// next.config.js
+module.exports = {
+  sassOptions: {
+    functions: {
+      'my-custom-func($value)': (value) => { /* JS logic */ },
+    },
+  },
+};
+```
+
+✅ GOOD: Avoid custom Sass functions or use Webpack explicitly
+```bash
+# If you absolutely need custom Sass functions
+next dev --webpack
+```
+Otherwise, refactor your Sass to avoid custom JS functions.
+
+## 5. Testing Approaches
+
+Integrate Turbopack into your testing pipeline to ensure compiled output behaves as expected.
+
+### 5.1 Unit and Integration Tests
+Run your tests against the compiled output. Turbopack provides built-in source map support for debugging, making it easier to pinpoint issues in your original source code.
+
+```json
+// package.json
+{
+  "scripts": {
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "build": "next build"
+  }
+}
+```
+Ensure your testing setup (e.g., Jest, Vitest) is configured to handle TypeScript and JSX/TSX, which Turbopack processes.
+
+### 5.2 End-to-End (E2E) Testing
+Always run E2E tests against the Turbopack-bundled production build (`next build` then `next start`). This validates the entire application flow, including how assets are loaded and code is split by Turbopack.
+
+```json
+// package.json
+{
+  "scripts": {
+    "build": "next build",
+    "start": "next start",
+    "e2e": "playwright test"
+  }
+}
+```
+Run `npm run build && npm run start` in a CI environment, then execute your Playwright or Cypress tests against the running application.
+
+By adhering to these guidelines, your team will build high-performance, maintainable, and secure Next.js applications that fully leverage the power of Turbopack.

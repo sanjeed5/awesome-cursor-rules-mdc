@@ -1,308 +1,309 @@
 ---
-description: This rule provides best practices and coding standards for Solidity smart contract development, covering code organization, security, performance, and testing.
-globs: *.sol
+description: Definitive guidelines for writing secure, maintainable, and gas-efficient Solidity smart contracts, emphasizing modern best practices and security-first development.
+globs: **/*
 ---
-# Solidity Smart Contract Best Practices and Coding Standards
-
-This guide provides comprehensive best practices and coding standards for writing secure, efficient, and maintainable Solidity smart contracts. It covers various aspects of smart contract development, from code organization to security considerations.
-
-## 1. Code Organization and Structure
-
-### 1.1. Directory Structure
-
-*   **contracts/:** Contains Solidity contract files (.sol).
-*   **interfaces/:**  Contains interface definitions (.sol).
-*   **libraries/:**  Contains reusable libraries (.sol).
-*   **test/:** Contains test scripts (e.g., using Hardhat, Foundry, or Truffle).
-*   **scripts/:** Contains deployment and utility scripts.
-*   **deployments/:** Stores contract deployment information (addresses, ABIs, etc.).
-*   **artifacts/:** (Typically generated) Contains compiled contract ABIs and bytecode.
-*   **node_modules/:** (Typically generated) Contains installed npm packages.
-
-Example:
-
-
-my-project/
-├── contracts/
-│   ├── MyContract.sol
-│   └── ERC20.sol
-├── interfaces/
-│   └── IMyContract.sol
-├── libraries/
-│   └── SafeMath.sol
-├── test/
-│   ├── MyContract.test.js
-│   └── ERC20.test.js
-├── scripts/
-│   ├── deploy.js
-│   └── utils.js
-├── deployments/
-│   └── rinkeby/
-│       └── MyContract.json
-├── artifacts/
-│   └── contracts/
-│       ├── MyContract.json
-│       └── ERC20.json
-├── node_modules/
-├── hardhat.config.js
-├── package.json
-└── README.md
-
-
-### 1.2. File Naming Conventions
-
-*   Use PascalCase for contract names (e.g., `MyContract.sol`).
-*   Use PascalCase starting with I for interface names (e.g., `IMyContract.sol`).
-*   Use PascalCase for library names (e.g., `SafeMath.sol`).
-*   Filenames should match the contract name defined within the file.
-
-### 1.3. Module Organization
-
-*   Keep contracts small and focused on a single responsibility (Single Responsibility Principle).
-*   Use libraries for reusable code blocks and mathematical operations.
-*   Use interfaces to define the functionality of contracts without implementation.
-*   Group related contracts into modules or subdirectories.
-
-### 1.4. Component Architecture
-
-*   **Modular Design:** Break down complex systems into smaller, manageable, and reusable components.
-*   **Layered Architecture:** Separate concerns into different layers (e.g., data access, business logic, presentation).
-*   **Dependency Injection:**  Decouple components by injecting dependencies instead of hardcoding them.
-
-### 1.5. Code Splitting Strategies
-
-*   Use libraries for common functionality to reduce contract size and gas costs.
-*   Consider using the delegatecall pattern for complex logic, but be aware of the security implications.
-*   Split large contracts into smaller, more manageable contracts using inheritance or composition.
-
-## 2. Common Patterns and Anti-patterns
-
-### 2.1. Design Patterns
-
-*   **Ownable:** Restricts access to certain functions to the contract owner.
-*   **Pausable:** Allows pausing contract functionality in case of emergency.
-*   **Pull over Push:** Favors withdrawing funds over automatically sending them.
-*   **Proxy Pattern:** Allows upgrading contract logic without changing the contract address (e.g., using UUPS or transparent proxies).
-*   **Factory Pattern:**  Used to create new contract instances.
-*   **State Machine:** Manages different states of a contract.
-*   **Circuit Breaker:** Prevents a function from being called if it has repeatedly failed.
-
-### 2.2. Recommended Approaches
-
-*   Use SafeMath library for arithmetic operations to prevent overflows and underflows (or use Solidity >= 0.8.0, which includes built-in overflow/underflow protection).
-*   Use events to log important state changes.
-*   Use modifiers to enforce access control and preconditions.
-*   Follow the Checks-Effects-Interactions pattern to prevent reentrancy attacks.
-
-### 2.3. Anti-patterns and Code Smells
-
-*   **Unchecked Arithmetic:** Not using SafeMath or built-in overflow/underflow protection.
-*   **Reentrancy:**  Vulnerable to reentrancy attacks.
-*   **Timestamp Dependence:**  Relying on block timestamps for critical logic.
-*   **Integer Overflow/Underflow:** Not handling potential overflows and underflows.
-*   **Gas Limit Issues:**  Causing transactions to run out of gas.
-*   **Centralization:** Over-reliance on a single administrator or owner.
-*   **Magic Numbers:** Using hardcoded values without explanation.
-*   **Tight Coupling:** Components are highly dependent on each other, making it difficult to modify or reuse them.
-
-### 2.4. State Management Best Practices
-
-*   Minimize state variables to reduce gas costs.
-*   Use appropriate data types for state variables.
-*   Initialize state variables correctly.
-*   Consider using immutables for constants.
-*   Use structs and mappings to organize related data.
-
-### 2.5. Error Handling Patterns
-
-*   Use `require()` to validate inputs and preconditions.
-*   Use `revert()` to handle errors and return informative error messages.
-*   Use custom errors to provide more context about errors (Solidity >= 0.8.4).
-*   Avoid using `assert()` in production code (it consumes all remaining gas).
-*   Consider using try/catch blocks for external calls.
-
-## 3. Performance Considerations
-
-### 3.1. Optimization Techniques
-
-*   **Gas Optimization:** Aim to reduce gas consumption by using efficient data structures, minimizing storage writes, and optimizing control flow.
-*   **Storage Optimization:** Minimize storage usage by using appropriate data types and packing variables.
-*   **Function Optimization:** Optimize functions by reducing the number of operations and minimizing gas costs.
-*   **Loop Optimization:** Avoid unnecessary loops and optimize loop conditions.
-*   **Use Calldata:** Pass function arguments as calldata instead of memory when possible.
-*   **Short Circuiting:**  Leverage short circuiting in conditional statements.
-
-### 3.2. Memory Management
-
-*   Minimize memory usage by using calldata for function arguments when possible.
-*   Avoid creating large arrays in memory.
-*   Use memory efficiently in loops.
-*   Consider using assembly for memory-intensive operations.
-
-### 3.3. Rendering Optimization (Applicable for front-ends interacting with contracts)
-
-*  This section refers to optimization of the front-end, typically written in Javascript, used to display data from the blockchain. Data retrieved from the blockchain should be displayed in an efficient manner. This is more applicable to traditional software engineering, and less applicable to Solidity itself. For the sake of completeness, it's added here.
-*   Use virtualization or pagination for large datasets.
-*   Optimize rendering logic to minimize DOM updates.
-*   Use caching to avoid unnecessary re-renders.
-
-### 3.4. Bundle Size Optimization (Applicable for front-ends interacting with contracts)
-*  This section refers to optimization of the front-end, typically written in Javascript, used to display data from the blockchain. The bundle size of the front end app should be as minimal as possible, to provide a performant user experience. This is more applicable to traditional software engineering, and less applicable to Solidity itself. For the sake of completeness, it's added here.
-*   Remove unused code and dependencies.
-*   Use code splitting to load only necessary code.
-*   Compress assets (images, JavaScript, CSS).
-
-### 3.5. Lazy Loading Strategies (Applicable for front-ends interacting with contracts)
-*  This section refers to optimization of the front-end, typically written in Javascript, used to display data from the blockchain. Lazy loading can be used to improve the performance of a front-end that interacts with a blockchain. This is more applicable to traditional software engineering, and less applicable to Solidity itself. For the sake of completeness, it's added here.
-*   Load images and other resources only when they are needed.
-*   Use lazy loading for off-screen components.
-
-## 4. Security Best Practices
-
-### 4.1. Common Vulnerabilities and Prevention
-
-*   **Reentrancy:** Prevent reentrancy attacks by following the Checks-Effects-Interactions pattern, using reentrancy guards, or using `transfer()`/`send()` to limit gas available for callbacks.
-*   **Integer Overflow/Underflow:** Use SafeMath or built-in overflow/underflow protection (Solidity >= 0.8.0).
-*   **Denial of Service (DoS):** Protect against DoS attacks by limiting gas consumption, avoiding unbounded loops, and using pull-over-push pattern.
-*   **Timestamp Dependence:** Avoid relying on block timestamps for critical logic, as they can be manipulated by miners.
-*   **Front Running:** Protect against front running by using commit-reveal schemes or off-chain order matching.
-*   **Gas Limit Issues:** Ensure that functions do not consume excessive gas, which can lead to transactions running out of gas.
-*   **Delegatecall:** Be extremely careful when using `delegatecall`, as the called contract can modify the caller's storage.
-*   **Uninitialized Storage Pointers:** Ensure all storage pointers are initialized before use.
-*   **Access Control:** Implement robust access control mechanisms to restrict access to sensitive functions and data.
-*   **Signature Replay:** Use nonces or other mechanisms to prevent signature replay attacks.
-
-### 4.2. Input Validation
-
-*   Validate all inputs to ensure they are within expected ranges.
-*   Check for zero addresses and invalid values.
-*   Sanitize inputs to prevent injection attacks.
-*   Use appropriate data types for inputs.
-
-### 4.3. Authentication and Authorization Patterns
-
-*   **Ownable:** Use the Ownable pattern to restrict access to certain functions to the contract owner.
-*   **Role-Based Access Control (RBAC):** Implement RBAC to assign different roles to users and grant them specific permissions.
-*   **Multi-Signature Wallets:** Use multi-signature wallets for critical operations that require multiple approvals.
-*   **Access Control Lists (ACLs):** Use ACLs to define fine-grained access control rules.
-
-### 4.4. Data Protection Strategies
-
-*   Use encryption to protect sensitive data.
-*   Store sensitive data off-chain.
-*   Use access control to restrict access to sensitive data.
-*   Consider using zero-knowledge proofs for privacy.
-
-### 4.5. Secure API Communication
-
-*   Use HTTPS for secure communication.
-*   Validate all data received from external sources.
-*   Implement rate limiting to prevent abuse.
-*   Use authentication and authorization to protect APIs.
-
-## 5. Testing Approaches
-
-### 5.1. Unit Testing Strategies
-
-*   Write unit tests for all functions.
-*   Test all possible scenarios and edge cases.
-*   Use assertions to verify expected behavior.
-*   Use code coverage tools to ensure that all code is tested.
-*   Test state transitions and event emissions.
-
-### 5.2. Integration Testing
-
-*   Test interactions between multiple contracts.
-*   Test integration with external systems.
-*   Test deployment and upgrade processes.
-
-### 5.3. End-to-End Testing
-
-*   Test the entire system from end to end.
-*   Simulate real-world scenarios.
-*   Test user interactions and workflows.
-
-### 5.4. Test Organization
-
-*   Organize tests into separate files or directories.
-*   Use descriptive test names.
-*   Group tests by functionality or module.
-
-### 5.5. Mocking and Stubbing
-
-*   Use mocking to isolate contracts and simulate dependencies.
-*   Use stubbing to replace external calls with predefined responses.
-
-## 6. Common Pitfalls and Gotchas
-
-### 6.1. Frequent Mistakes
-
-*   **Unchecked Arithmetic:** Not using SafeMath or built-in overflow/underflow protection.
-*   **Reentrancy:** Not protecting against reentrancy attacks.
-*   **Timestamp Dependence:** Relying on block timestamps for critical logic.
-*   **Gas Limit Issues:** Causing transactions to run out of gas.
-*   **Ignoring Event Emissions:** Failing to emit events for important state changes, making off-chain monitoring and indexing difficult.
-
-### 6.2. Edge Cases
-
-*   **Zero Values:** Handling cases where input values are zero.
-*   **Large Numbers:** Handling cases where input values are very large.
-*   **Empty Strings:** Handling cases where input strings are empty.
-*   **Extreme Conditions:** Testing the contract under extreme network conditions, such as high gas prices or network congestion.
-
-### 6.3. Version-Specific Issues
-
-*   Be aware of breaking changes between Solidity versions.
-*   Test your contracts with the target Solidity version.
-*   Use the latest compiler version to leverage improvements and security patches.
-
-### 6.4. Compatibility Concerns
-
-*   Ensure compatibility with different Ethereum clients and networks.
-*   Test your contracts on different testnets before deploying to mainnet.
-*   Consider compatibility with different wallets and browsers.
-
-### 6.5. Debugging Strategies
-
-*   Use debugging tools like Remix, Hardhat, or Truffle.
-*   Use console.log statements for debugging.
-*   Use event logs to track state changes.
-*   Use revert reasons to understand why transactions failed.
-*   Use fuzzing to find unexpected behavior and vulnerabilities.
-
-## 7. Tooling and Environment
-
-### 7.1. Recommended Development Tools
-
-*   **Remix:** Online IDE for writing, compiling, and deploying Solidity contracts.
-*   **Hardhat:** Development environment for Ethereum smart contracts.
-*   **Truffle:** Development framework for Ethereum with testing and deployment capabilities.
-*   **Foundry:** Blazing-fast, portable and modular toolkit for Ethereum application development
-*   **VS Code:** Code editor with Solidity extensions for syntax highlighting, linting, and debugging.
-
-### 7.2. Build Configuration
-
-*   Use a build tool like Hardhat or Truffle to manage the build process.
-*   Configure the compiler version and optimization settings.
-*   Generate contract ABIs and bytecode.
-
-### 7.3. Linting and Formatting
-
-*   Use a linter like Solhint to enforce code style and best practices.
-*   Use a formatter like Prettier to format code consistently.
-*   Configure linting and formatting rules to match your project's standards.
-
-### 7.4. Deployment Best Practices
-
-*   Deploy contracts to a testnet before deploying to mainnet.
-*   Verify contract code on Etherscan.
-*   Use a deployment script to automate the deployment process.
-*   Store contract deployment information (addresses, ABIs, etc.).
-
-### 7.5. CI/CD Integration
-
-*   Integrate testing and deployment into your CI/CD pipeline.
-*   Run tests automatically on every commit.
-*   Automate the deployment process to reduce errors.
-
-By following these best practices, you can write more secure, efficient, and maintainable Solidity smart contracts.
+# Solidity Best Practices
+
+This guide outlines the definitive best practices for writing Solidity smart contracts, ensuring security, readability, and efficiency. Adhere to these rules for all new and refactored code.
+
+## 1. Code Organization & Structure
+
+### 1.1 File Header
+Every Solidity file MUST start with an SPDX license identifier and a precise pragma statement. Pin to a specific, audited compiler version.
+
+❌ BAD
+```solidity
+pragma solidity ^0.8.0; // Vague pragma, allows minor version bumps
+// No license
+contract MyContract {}
+```
+
+✅ GOOD
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.29; // Pin to specific, audited compiler version
+contract MyContract {}
+```
+
+### 1.2 Indentation & Whitespace
+Use 4 spaces for indentation. Never use tabs. Maintain consistent spacing around operators and within control structures.
+
+❌ BAD
+```solidity
+function myFunction (uint256  _value) public {
+if(_value > 0){ emit Event(_value);}
+}
+```
+
+✅ GOOD
+```solidity
+function myFunction(uint256 _value) public {
+    if (_value > 0) {
+        emit Event(_value);
+    }
+}
+```
+
+### 1.3 Blank Lines
+Use two blank lines between top-level declarations (contracts, interfaces, libraries). Use one blank line between function declarations within a contract.
+
+❌ BAD
+```solidity
+contract A {}
+contract B {}
+contract C {
+    function foo() public {}
+    function bar() public {}
+}
+```
+
+✅ GOOD
+```solidity
+contract A {}
+
+
+contract B {}
+
+
+contract C {
+    function foo() public {}
+
+    function bar() public {}
+}
+```
+
+### 1.4 Maximum Line Length
+Keep lines under 120 characters. Wrap long lines with a single indent for arguments, placing the closing parenthesis/semicolon on its own line.
+
+❌ BAD
+```solidity
+function reallyLongFunctionName(address _arg1, uint256 _arg2, bytes32 _arg3, bool _arg4, string memory _arg5) public pure returns (bool) { return true; }
+```
+
+✅ GOOD
+```solidity
+function reallyLongFunctionName(
+    address _arg1,
+    uint256 _arg2,
+    bytes32 _arg3,
+    bool _arg4,
+    string memory _arg5
+)
+    public
+    pure
+    returns (bool)
+{
+    return true;
+}
+```
+
+### 1.5 Order of Elements
+Organize contract elements for clarity and consistency.
+
+1.  `type` declarations (structs, enums)
+2.  State variables (constants, immutables, then others by visibility: public, internal, private)
+3.  Events
+4.  Errors
+5.  Constructor
+6.  `receive()` function (if exists)
+7.  `fallback()` function (if exists)
+8.  External functions (view/pure last)
+9.  Public functions (view/pure last)
+10. Internal functions (view/pure last)
+11. Private functions (view/pure last)
+
+### 1.6 Naming Conventions
+Follow the Solidity style guide: `PascalCase` for Contracts, Structs, Enums, Custom Errors; `camelCase` for Functions, Events, Modifiers, Local Variables, State Variables; `SCREAMING_SNAKE_CASE` for `constant` and `immutable` variables. Prefix `_` for function parameters.
+
+❌ BAD
+```solidity
+contract my_contract {
+    uint256 PUBLIC_VAR;
+    function get_value() internal view returns (uint256) {
+        uint256 local_var = 1;
+        return local_var;
+    }
+}
+```
+
+✅ GOOD
+```solidity
+contract MyContract {
+    uint256 public publicVar;
+    uint256 internal immutable MY_IMMUTABLE_VALUE;
+
+    function getValue(uint256 _input) internal view returns (uint256) {
+        uint256 localVariable = _input;
+        return localVariable;
+    }
+}
+```
+
+### 1.7 Visibility Declarations
+Explicitly declare visibility (`public`, `external`, `internal`, `private`) for all state variables and functions. Never rely on defaults.
+
+❌ BAD
+```solidity
+uint256 myVar; // Defaults to internal
+function calculate() returns (uint256) { // Defaults to public
+    return 1;
+}
+```
+
+✅ GOOD
+```solidity
+uint256 private myVar;
+function calculate() external view returns (uint256) {
+    return 1;
+}
+```
+
+### 1.8 Natspec Documentation
+Document all public-facing functions, events, and custom errors using Natspec. This is critical for clarity and security audits.
+
+❌ BAD
+```solidity
+function transfer(address to, uint256 amount) public returns (bool) {
+    // ...
+}
+```
+
+✅ GOOD
+```solidity
+/// @notice Transfers `amount` tokens from the caller to `to`.
+/// @param to The address to transfer tokens to.
+/// @param amount The amount of tokens to transfer.
+/// @return A boolean indicating whether the transfer was successful.
+/// @dev Emits a {Transfer} event.
+function transfer(address to, uint256 amount) public returns (bool) {
+    // ...
+}
+```
+
+## 2. Common Patterns & Anti-patterns
+
+### 2.1 Custom Errors for Reverts
+Always use custom errors instead of `require` strings. This saves gas and provides clearer, structured error handling.
+
+❌ BAD
+```solidity
+function withdraw(uint256 amount) public {
+    require(balance[msg.sender] >= amount, "Insufficient balance");
+    // ...
+}
+```
+
+✅ GOOD
+```solidity
+error InsufficientBalance(uint256 requested, uint256 available);
+
+function withdraw(uint256 amount) public {
+    if (balance[msg.sender] < amount) {
+        revert InsufficientBalance(amount, balance[msg.sender]);
+    }
+    // ...
+}
+```
+
+### 2.2 Immutable and Constant Variables
+Use `immutable` for state variables initialized in the constructor and never changed. Use `constant` for compile-time fixed values. This saves gas by storing values in code, not storage.
+
+❌ BAD
+```solidity
+uint256 public owner; // Stored in storage, mutable
+uint256 public MAX_SUPPLY = 1000; // Stored in storage, mutable
+constructor() {
+    owner = msg.sender;
+}
+```
+
+✅ GOOD
+```solidity
+address public immutable OWNER; // Stored in code, immutable
+uint256 public constant MAX_SUPPLY = 1000; // Stored in code, constant
+
+constructor() {
+    OWNER = msg.sender;
+}
+```
+
+### 2.3 `unchecked` Blocks
+Only use `unchecked` blocks when you have *provably* ensured that arithmetic operations will not overflow or underflow. This is a micro-optimization and should be used sparingly, as it bypasses default 0.8.x safety.
+
+❌ BAD
+```solidity
+function add(uint256 a, uint256 b) public pure returns (uint256) {
+    return a + b; // Relying on default 0.8.x overflow checks
+}
+```
+
+✅ GOOD
+```solidity
+function add(uint256 a, uint256 b) public pure returns (uint256) {
+    // If a+b is guaranteed not to overflow due to external constraints
+    unchecked {
+        return a + b;
+    }
+}
+```
+
+### 2.4 Minimal On-chain Logic
+Keep on-chain logic as minimal as possible. Perform heavy computation off-chain and verify results on-chain to reduce attack surface and gas costs.
+
+## 3. Security & Pitfalls
+
+### 3.1 Reentrancy Protection
+Always use the Checks-Effects-Interactions pattern and apply reentrancy guards to functions that interact with external contracts and modify state. Leverage audited libraries like OpenZeppelin.
+
+❌ BAD
+```solidity
+function withdrawFunds(uint256 amount) public {
+    (bool success, ) = msg.sender.call{value: amount}(""); // External call first
+    require(success, "Transfer failed");
+    balance[msg.sender] -= amount; // State update after external call
+}
+```
+
+✅ GOOD
+```solidity
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract MyContract is ReentrancyGuard {
+    mapping(address => uint256) public balance;
+
+    function withdrawFunds(uint256 amount) public nonReentrant {
+        // Checks
+        require(balance[msg.sender] >= amount, "Insufficient balance");
+
+        // Effects
+        balance[msg.sender] -= amount;
+
+        // Interactions
+        (bool success, ) = msg.sender.call{value: amount}("");
+        require(success, "Transfer failed");
+    }
+}
+```
+
+### 3.2 Compiler Version
+Always use the latest **stable and audited** Solidity compiler version for deployment. Use the absolute latest version for static analysis to catch new warnings.
+
+### 3.3 Avoid `delegatecall` Proxies (Unless Expert)
+`delegatecall` proxy patterns are highly complex and error-prone. Prefer contract migration or simpler upgradeability patterns (e.g., data separation) unless your team has deep EVM expertise and dedicated audit resources.
+
+### 3.4 No Inline Assembly (Unless Expert)
+Avoid inline assembly unless absolutely necessary and you have mastered the EVM Yellow Paper. It bypasses compiler safety features and is a common source of critical bugs.
+
+## 4. Testing & Verification
+
+### 4.1 Comprehensive Unit Testing
+Write thorough unit tests covering all functions, edge cases, and failure conditions. Use modern frameworks like Foundry or Hardhat.
+
+### 4.2 Static Analysis & Fuzzing
+Integrate static analysis tools (Slither, Crytic) and fuzzing/property testing tools (Echidna, Manticore) into your CI pipeline. Address all reported issues.
+
+### 4.3 Security Audits
+Prioritize external security audits for all production-ready contracts. No amount of internal testing replaces a professional audit.
+
+### 4.4 Post-Deployment Monitoring
+Implement robust monitoring for deployed contracts, watching logs and being prepared to react to incidents. Maintain a clear incident response plan.

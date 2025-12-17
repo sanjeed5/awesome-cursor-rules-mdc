@@ -1,140 +1,193 @@
 ---
-description: This rule outlines the best practices and coding standards for developing with the vllm library, ensuring code quality, performance, and maintainability. It covers code organization, performance considerations, security, testing, and common pitfalls.
-globs: *.py
+description: Definitive guidelines for writing high-performance, maintainable, and production-ready LLM inference code using vLLM.
+globs: **/*.py
 ---
-- ## General
-  - Adhere to the Google Python Style Guide: vllm projects should strictly follow the Google Python Style Guide for consistency and readability.
-  - Adhere to the Google C++ Style Guide (where applicable, especially for backend components).
-  - Pass all linter checks: Ensure code passes all configured linter checks (e.g., pylint, flake8) before committing.
-  - Always use UV when installing dependencies.
-  - Always use Python 3.12 or higher.
-  - Prefer classes over bare functions for better code organization and state management (where appropriate).
+# vLLM Best Practices
 
-- ## Code Organization and Structure:
-  - **Directory Structure Best Practices:**
-    - `vllm/` (Root directory):
-      - `api/`: Contains API endpoints and related logic.
-      - `core/`: Core functionalities and algorithms.
-      - `layers/`: Custom layers for the models.
-      - `models/`: Model definitions and configurations.
-      - `sampling/`: Sampling algorithms.
-      - `sequence/`: Sequence management and data structures.
-      - `utils/`: Utility functions and helper modules.
-      - `tests/`: Unit and integration tests.
-      - `examples/`: Example usage and demonstrations.
-      - `docs/`: Documentation.
-    - Maintain clear separation of concerns.
-  - **File Naming Conventions:**
-    - Use descriptive and meaningful names for files and modules (e.g., `attention_layer.py`, `model_loader.py`).
-    - Follow snake_case for Python files and variables.
-  - **Module Organization:**
-    - Group related functionalities into modules.
-    - Use `__init__.py` files to define packages and control module imports.
-  - **Component Architecture:**
-    - Design components with clear interfaces and responsibilities.
-    - Favor composition over inheritance to promote flexibility and reusability.
-  - **Code Splitting Strategies:**
-    - Break down large modules into smaller, more manageable files.
-    - Utilize lazy loading or dynamic imports to reduce startup time.
+vLLM is the gold standard for high-throughput LLM inference. Adhere to these guidelines to maximize performance, ensure reproducibility, and maintain robust LLM services.
 
-- ## Common Patterns and Anti-patterns:
-  - **Design Patterns Specific to vllm:**
-    - **Model Abstraction:** Decouple the model implementation from the core engine.
-    - **Sequence Manager:** Centralized management of sequences and their states.
-    - **Asynchronous Execution:** Use asyncio to handle concurrent requests and I/O operations.
-  - **Recommended Approaches for Common Tasks:**
-    - **Model Loading:** Implement a robust model loading mechanism with caching and error handling.
-    - **Tokenization:** Use a dedicated tokenizer class to handle tokenization and detokenization.
-    - **Inference:** Design an efficient inference pipeline with batching and optimized tensor operations.
-  - **Anti-patterns and Code Smells to Avoid:**
-    - **God Classes:** Avoid creating large classes with too many responsibilities.
-    - **Code Duplication:** Refactor duplicated code into reusable functions or classes.
-    - **Magic Numbers:** Use named constants for configuration values.
-  - **State Management Best Practices:**
-    - Use immutable data structures to avoid unintended side effects.
-    - Manage state within dedicated classes or modules.
-    - Avoid global state where possible.
-  - **Error Handling Patterns:**
-    - Use exceptions to handle errors and unexpected conditions.
-    - Provide informative error messages.
-    - Implement retry mechanisms for transient errors.
+## 1. Environment & Installation
 
-- ## Performance Considerations:
-  - **Optimization Techniques:**
-    - **Tensor Optimization:** Use optimized tensor operations and data layouts (e.g., `torch.compile`).
-    - **Kernel Fusion:** Fuse multiple operations into a single kernel to reduce overhead.
-    - **Quantization:** Use quantization techniques to reduce model size and memory footprint.
-  - **Memory Management:**
-    - Minimize memory allocations and deallocations.
-    - Use memory pooling to reuse memory buffers.
-    - Profile memory usage to identify bottlenecks.
-  - **Bundle Size Optimization:**
-    - Remove unused dependencies.
-  - **Lazy Loading Strategies:**
-    - Use lazy loading for large modules or resources.
-    - Implement asynchronous loading for non-critical components.
+**Always use isolated `conda` environments and pin `vLLM` to your CUDA version.** This prevents binary incompatibilities and ensures reproducible deployments.
 
-- ## Security Best Practices:
-  - **Common Vulnerabilities and How to Prevent Them:**
-    - **Injection Attacks:** Sanitize user inputs to prevent injection attacks.
-    - **Denial of Service (DoS):** Implement rate limiting and resource management to protect against DoS attacks.
-    - **Data Breaches:** Protect sensitive data with encryption and access controls.
-  - **Input Validation:**
-    - Validate all user inputs before processing.
-    - Use regular expressions or schema validation to enforce input constraints.
-  - **Authentication and Authorization Patterns:**
-    - Implement authentication to verify user identities.
-    - Use authorization to control access to resources.
-  - **Data Protection Strategies:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use secure storage mechanisms.
-  - **Secure API Communication:**
-    - Use HTTPS for API communication.
-    - Implement API authentication and authorization.
+❌ BAD:
+```python
+# Unreliable global install, prone to CUDA/PyTorch mismatches
+pip install vllm
+```
 
-- ## Testing Approaches:
-  - **Unit Testing Strategies:**
-    - Write unit tests for individual functions and classes.
-    - Use mocking and stubbing to isolate units of code.
-  - **Integration Testing:**
-    - Test the interaction between different modules and components.
-  - **End-to-End Testing:**
-    - Test the entire system from end to end.
-  - **Test Organization:**
-    - Organize tests into separate directories.
-    - Use descriptive names for test files and functions.
-  - **Mocking and Stubbing:**
-    - Use mocking to replace external dependencies with controlled substitutes.
-    - Use stubbing to provide predefined responses for function calls.
+✅ GOOD:
+```bash
+# For NVIDIA GPUs (CUDA 12.1 is default, check vLLM docs for current default)
+conda create -n vllm_env python=3.10 -y
+conda activate vllm_env
+pip install vllm==0.5.2 # Pin the exact version in requirements.txt
 
-- ## Common Pitfalls and Gotchas:
-  - **Frequent Mistakes Developers Make:**
-    - **Incorrect Tensor Shapes:** Ensure tensor shapes are compatible for operations.
-    - **Memory Leaks:** Properly release allocated memory to prevent memory leaks.
-    - **Synchronization Issues:** Avoid race conditions and deadlocks in concurrent code.
-  - **Edge Cases to be Aware Of:**
-    - **Handling Empty Sequences:** Handle empty sequences gracefully.
-    - **Dealing with Unknown Tokens:** Implement a mechanism to handle unknown tokens.
-  - **Version-Specific Issues:**
-      - Keep dependencies up-to-date and be aware of breaking changes when upgrading.
-  - **Compatibility Concerns:**
-    - Ensure compatibility with different hardware platforms (CPU, GPU).
-    - Consider different versions of Python and PyTorch.
-  - **Debugging Strategies:**
-    - Use logging to track program execution.
-    - Use a debugger to step through code and inspect variables.
-    - Profile performance to identify bottlenecks.
+# For NVIDIA GPUs (CUDA 11.8 specific version, e.g., v0.4.0)
+conda create -n vllm_cu118 python=3.10 -y
+conda activate vllm_cu118
+export VLLM_VERSION=0.4.0
+export PYTHON_VERSION=310
+pip install https://github.com/vllm-project/vllm/releases/download/v${VLLM_VERSION}/vllm-${VLLM_VERSION}+cu118-cp${PYTHON_VERSION}-cp${PYTHON_VERSION}-manylinux1_x86_64.whl --extra-index-url https://download.pytorch.org/whl/cu118
+```
+*   **Action**: Ensure `requirements.txt` explicitly lists `vllm==X.Y.Z`.
+*   **Hardware**: Target GPUs with compute capability ≥ 7.0 (V100, A100, H100, etc.).
 
-- ## Tooling and Environment:
-  - **Recommended Development Tools:**
-    - **VS Code:** A popular code editor with Python and C++ support.
-    - **PyCharm:** An IDE specifically designed for Python development.
-  - **Build Configuration:**
-    - Use `setup.py` or `pyproject.toml` to define project dependencies and build configurations.
-  - **Linting and Formatting:**
-    - Use pylint, flake8, and black to enforce code style.
-  - **Deployment Best Practices:**
-    - Use Docker to containerize the application.
-    - Deploy to a cloud platform such as AWS, Google Cloud, or Azure.
-  - **CI/CD Integration:**
-    - Use a CI/CD pipeline to automate testing and deployment.
+## 2. Code Organization & Structure
+
+**Separate inference logic from data preprocessing and business logic.** Use a modular approach for clarity and testability.
+
+❌ BAD:
+```python
+# main.py - monolithic script, hard to test or scale
+from vllm import LLM, SamplingParams
+# ... data loading, preprocessing, model init, inference, postprocessing ...
+```
+
+✅ GOOD:
+```python
+# llm_service/inference_engine.py
+from vllm import LLM, SamplingParams
+from typing import List
+
+class InferenceEngine:
+    def __init__(self, model_path: str, **kwargs):
+        """Initializes the vLLM engine with specified model and configurations."""
+        self.llm = LLM(model=model_path, **kwargs)
+        self.sampling_params = SamplingParams(temperature=0.7, top_p=0.95, max_tokens=256)
+
+    def generate(self, prompts: List[str]) -> List[str]:
+        """Generates responses for a list of prompts using configured sampling parameters."""
+        outputs = self.llm.generate(prompts, self.sampling_params)
+        return [output.outputs[0].text for output in outputs]
+
+# llm_service/main.py (or API endpoint, e.g., with FastAPI)
+from .inference_engine import InferenceEngine
+from typing import Dict
+
+def serve_llm_request(request_data: Dict) -> Dict:
+    """Handles an incoming LLM request, orchestrating preprocessing, inference, and postprocessing."""
+    # 1. Preprocessing (e.g., validate input, format prompt from request_data)
+    prompts = [request_data["text"]] # Simplified example
+    
+    # 2. Inference
+    # Model path and parallelism should be loaded from config, not hardcoded here
+    engine = InferenceEngine(model_path="mistralai/Mistral-7B-Instruct-v0.2",
+                             tensor_parallel_size=2) # Explicitly configure parallelism
+    results = engine.generate(prompts)
+    
+    # 3. Postprocessing (e.g., format output for API response, add metadata)
+    return {"generated_text": results[0]}
+```
+*   **Action**: Define `LLM` engine parameters explicitly (e.g., `tensor_parallel_size` for distributed inference).
+
+## 3. Performance & Scalability
+
+**Leverage vLLM's core optimizations: continuous batching, parallel sampling, and quantization.**
+
+### 3.1 Continuous Batching & Parallel Sampling
+These are enabled by default in `vLLM`'s `LLM` class and `SamplingParams`. Ensure your client sends multiple requests or uses `n` for parallel sampling.
+
+✅ GOOD:
+```python
+from vllm import LLM, SamplingParams
+
+llm = LLM(model="meta-llama/Llama-2-7b-hf")
+
+# Use n > 1 for parallel sampling (generates multiple outputs per prompt)
+sampling_params = SamplingParams(
+    temperature=0.8,
+    top_p=0.95,
+    n=4, # Generate 4 independent samples per prompt for diversity/evaluation
+    max_tokens=128
+)
+
+prompts = ["Hello, my name is", "The capital of France is"]
+outputs = llm.generate(prompts, sampling_params)
+# outputs will contain multiple results for each prompt due to n=4
+```
+
+### 3.2 Quantization
+**Always use quantization for production deployments** unless specific precision is critical. FP8 KV-cache is highly recommended for memory efficiency.
+
+❌ BAD:
+```python
+# No quantization, higher memory/compute footprint, less throughput
+llm = LLM(model="meta-llama/Llama-2-7b-hf")
+```
+
+✅ GOOD:
+```python
+# Use FP8 KV-cache for significant memory efficiency and throughput gains
+llm = LLM(model="meta-llama/Llama-2-7b-hf", kv_cache_dtype="fp8")
+
+# Or load a pre-quantized model (e.g., AWQ) for further optimization
+llm_awq = LLM(model="casperhansen/llama-2-7b-chat-hf-awq", quantization="awq")
+```
+
+## 4. Observability
+
+**Instrument your vLLM services with OpenLIT for OpenTelemetry.** This is non-negotiable for production-grade LLM applications, providing crucial traces, metrics, and cost tracking.
+
+✅ GOOD:
+```python
+# Install: pip install openlit
+# Run your app with OpenLIT CLI for zero-code instrumentation (recommended for quick setup):
+# openlit-instrument --service-name my-vllm-app --environment production --otlp-endpoint http://localhost:4318 python your_vllm_app.py
+
+# Or initialize OpenLIT directly in your Python code for more programmatic control:
+from openlit import openlit
+from vllm import LLM
+
+# Initialize OpenLIT *before* any vLLM operations to ensure full instrumentation
+openlit.init(
+    service_name="my-vllm-service",
+    environment="production",
+    otlp_endpoint="http://localhost:4318" # Your OpenTelemetry Collector endpoint
+)
+
+llm = LLM(model="mistralai/Mistral-7B-Instruct-v0.2")
+# ... subsequent vLLM operations will now be automatically traced and monitored
+```
+*   **Action**: Ensure OpenLIT is initialized *before* `vllm.LLM` instantiation.
+
+## 5. Deployment & MLOps
+
+**Deploy vLLM using containerization (Docker) and orchestration (Kubernetes).** Automate CI/CD and track experiments for robust LLMOps.
+
+*   **Containerization**: Build Docker images with your specific `vLLM` installation and model weights. This ensures consistent, isolated, and reproducible environments across development and production.
+*   **Orchestration**: Use Kubernetes with GPU device plugins (e.g., AMD K8s device plugin for ROCm, NVIDIA device plugin for CUDA) for dynamic scaling, autoscaling, and high availability. Leverage Helm charts for declarative deployments.
+*   **Version Control**: Version all models, configurations, and inference code. Implement experiment tracking tools (e.g., MLflow, DVC) for model artifacts and metrics.
+*   **Testing**: Implement rigorous testing for model serving endpoints (latency, throughput, correctness, data sanity checks, and A/B testing in production).
+
+## 6. Type Hints
+
+**Use type hints extensively.** This improves code readability, maintainability, and enables static analysis, crucial for complex ML systems and team collaboration.
+
+❌ BAD:
+```python
+def process_output(output):
+    # What is 'output'? What does it contain? This is ambiguous.
+    return output.outputs[0].text
+```
+
+✅ GOOD:
+```python
+from vllm.outputs import RequestOutput
+
+def process_output(output: RequestOutput) -> str:
+    """Extracts the generated text from a vLLM RequestOutput object, handling empty outputs."""
+    if not output.outputs:
+        return "" # Handle cases with no generated text gracefully
+    return output.outputs[0].text
+```
+
+## 7. Cursor Interaction (Prompt Engineering)
+
+When interacting with Cursor for `vLLM` code generation or refactoring, apply prompt engineering best practices for optimal results:
+
+*   **Role**: "Act as a senior ML engineer specializing in vLLM inference and MLOps."
+*   **Context**: Provide relevant code snippets, `vLLM` version, GPU type, and the specific problem you're solving.
+*   **Task**: Be explicit: "Generate a `vLLM` inference script that loads `Llama-3-8B-Instruct` with FP8 KV-cache and serves it via an OpenAI-compatible API endpoint using FastAPI."
+*   **Format**: Specify desired output (e.g., "Provide a complete Python script," "Show only the `LLM` initialization block," "Include `requirements.txt`").
+*   **Constraints**: "Ensure `tensor_parallel_size` is set to 4," "Do not include any `transformers` code unless explicitly requested," "Prioritize `AsyncLLMEngine` for non-blocking operations."

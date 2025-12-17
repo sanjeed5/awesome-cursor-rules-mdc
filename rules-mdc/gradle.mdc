@@ -1,141 +1,230 @@
 ---
-description: Comprehensive rules for Gradle best practices, covering code organization, performance, security, testing, and more. Provides actionable guidance to improve Gradle project maintainability and efficiency.
-globs: *.gradle*
+description: Enforce modern Gradle build practices for Java and Android projects, focusing on Kotlin DSL, modularity, version catalogs, and performance optimizations.
+globs: **/*.java
 ---
-- **Use the Gradle Wrapper**: Always use the Gradle wrapper (`gradlew` and `gradlew.bat`) to ensure consistent Gradle versions across different environments. This avoids compatibility issues and simplifies collaboration.
-  - Command: `gradle wrapper` to generate the wrapper files.
+# Gradle Best Practices
 
-- **Organize Build Files**: Maintain a clear structure by separating project-level (`build.gradle` in the root) and module-level (`build.gradle` in each module) build files. Use `settings.gradle` (or `settings.gradle.kts` for Kotlin DSL) to define included modules.
-  - Improves performance by avoiding unnecessary directory searches.
-  - Ensures proper project inclusion in multi-module builds.
+This guide outlines the definitive best practices for building robust, maintainable, and performant Java and Android projects with Gradle, leveraging the Kotlin DSL and modern features.
 
-- **Optimize Build Performance**: Employ several strategies to improve build speed:
-  - **Enable parallel builds**: Add `org.gradle.parallel=true` to `gradle.properties`.
-  - **Use build caching**: Add `org.gradle.caching=true` to `gradle.properties`.
-  - **Configure daemon**: Add `org.gradle.daemon=true` to `gradle.properties` (typically enabled by default).
-  - **Minimize dynamic dependencies**: Use fixed versions instead of ranges or `latest.release`.
-  - **Configure JVM Memory**: Set appropriate JVM memory in `gradle.properties` like `org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g`
-  - **Incremental build**: Avoid `gradle clean` unless absolutely necessary to leverage incremental build feature.
-  - **Configure task inputs and outputs**:  Declare task inputs and outputs properly to enable up-to-date checks and caching.
+## 1. Adopt Kotlin DSL for Build Scripts
 
-- **Security Practices**: Protect sensitive information by:
-  - **Storing credentials in `gradle.properties`**: Exclude `gradle.properties` from version control (add it to `.gitignore`).
-  - **Using environment variables**: Access credentials from environment variables during the build process for CI/CD environments.
-  - **Avoiding hardcoding secrets**: Never hardcode API keys, passwords, or other sensitive data in build files or source code.
+Always use the Kotlin DSL (`build.gradle.kts`) for new projects and when refactoring existing Groovy DSL (`build.gradle`) scripts. It offers strict typing, superior IDE support, and a unified language stack for Kotlin projects.
 
-- **Automate Code Standards**: Implement custom Gradle tasks or plugins to enforce coding standards:
-  - **Use linting tools**: Integrate linters (e.g., Checkstyle, SpotBugs, PMD) into the build process.
-  - **Enforce code formatting**: Use code formatters (e.g., ktlint for Kotlin) and enforce formatting rules.
-  - **Create custom tasks**: Define custom tasks to check for specific code patterns or enforce project-specific rules.
+❌ BAD: Groovy DSL
+```groovy
+// build.gradle
+plugins {
+    id 'java-library'
+}
+dependencies {
+    implementation 'com.google.guava:guava:31.1-jre'
+}
+```
 
-- **Separate Source Files**: Organize source files by language (e.g., `src/main/java`, `src/main/kotlin`) and test type (e.g., `src/test/java`, `src/integrationTest/java`).
-  - Improves readability and maintainability.
-  - Enables independent execution of different test types.
+✅ GOOD: Kotlin DSL
+```kotlin
+// build.gradle.kts
+plugins {
+    `java-library`
+}
+dependencies {
+    implementation("com.google.guava:guava:31.1-jre")
+}
+```
 
-- **Use Standard Conventions**: Stick to Gradle's default conventions as much as possible.
-  - Simplifies project structure and reduces configuration overhead.
-  - Makes it easier for new developers to understand the project.
+## 2. Modularize Your Build Early and Aggressively
 
-- **Always Define a Settings File**: Include `settings.gradle` (or `settings.gradle.kts`) in the root directory to avoid performance impacts during project discovery.
-  - Explicitly defines the project name and included subprojects.
+Split your codebase into small, logical Gradle projects (modules) from the start. This is critical for leveraging Gradle's work avoidance, parallel execution, and minimizing compilation classpaths.
 
-- **Use `buildSrc` to Abstract Imperative Logic**: Encapsulate complex build logic in the `buildSrc` directory.
-  - `buildSrc` is treated as an included build, automatically compiled and added to the build script classpath.
-  - Provides a clean separation of concerns and improves code reusability.
-  - Easier to maintain, refactor, and test the code in `buildSrc`.
+❌ BAD: Monolithic `app` module
+```
+├── app
+│   ├── build.gradle.kts
+│   └── src/main/java/org/example/... (all code here)
+└── settings.gradle.kts
+    include("app")
+```
 
-- **Declare Properties in `gradle.properties` File**: Store build configuration properties in `gradle.properties` rather than in build scripts.
-  - Improves build script readability and maintainability.
-  - Allows for easy modification of build properties without changing the build script.
+✅ GOOD: Modularized structure
+```
+├── app
+│   └── build.gradle.kts
+├── features/feature-a
+│   └── build.gradle.kts
+├── core/domain
+│   └── build.gradle.kts
+└── settings.gradle.kts
+    include("app", "features:feature-a", "core:domain")
+```
+*   **Guideline**: Each module should have a clear, single responsibility (e.g., `api`, `implementation`, `feature`, `ui`, `core`).
 
-- **Avoid Overlapping Task Outputs**: Ensure that tasks write outputs to unique directories to prevent conflicts and ensure proper up-to-date checking.
-  - Prevents Gradle's build cache from being compromised.
+## 3. Centralize Dependencies with Version Catalogs
 
-- **Standardize Builds with a Custom Gradle Distribution**: Create a custom Gradle distribution with initialization scripts to enforce common conventions and rules across all projects in an organization.
-  - Ensures consistent build environments and simplifies maintenance.
+Manage all library versions in a single `gradle/libs.versions.toml` file. This eliminates duplication, simplifies upgrades, and ensures consistency across modules.
 
-- **Stop Cleaning Your Project (Unless Necessary)**: Avoid running `gradle clean` unnecessarily, as it prevents Gradle from using incremental build features and significantly slows down the build process.
+❌ BAD: Scattered versions or `ext` properties
+```kotlin
+// build.gradle.kts (multiple files)
+val guavaVersion = "31.1-jre" // Or hardcoded
+dependencies {
+    implementation("com.google.guava:guava:$guavaVersion")
+}
+```
 
-- **Move Tasks to `buildSrc`**: Move custom task definitions to the `buildSrc` directory to keep build scripts clean and reusable.
+✅ GOOD: `gradle/libs.versions.toml`
+```toml
+# gradle/libs.versions.toml
+[versions]
+guava = "31.1-jre"
+[libraries]
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
+```
+```kotlin
+// build.gradle.kts
+dependencies {
+    implementation(libs.guava)
+}
+```
+*   **Naming**: Use descriptive, hyphen-separated names in `libs.versions.toml` (e.g., `junit-jupiter`, `spring-boot-starter-web`). Convert internal dashes to camelCase for access in build scripts (e.g., `libs.spring.boot.starter.web`).
 
-- **Run Tests in Parallel**: Enable parallel test execution to reduce test execution time:
-  - Add `maxParallelForks = <number_of_cores>` to the `test` task configuration in `build.gradle`.
+## 4. Apply Plugins Using the `plugins {}` Block
 
-- **Version Your Project**: Use a versioning scheme (e.g., semantic versioning) to track changes and releases.
-  - Use plugins like `axion-release` to automate versioning based on Git tags.
+Always use the declarative `plugins {}` block for applying plugins. This is more concise, less error-prone, and allows Gradle to optimize plugin loading.
 
-- **Encapsulate Task Declarations in a Plugin**: Move task declarations into custom Gradle plugins to promote reusability and reduce duplication.
+❌ BAD: Legacy `apply` statements
+```groovy
+// build.gradle
+buildscript {
+    repositories { gradlePluginPortal() }
+    dependencies { classpath("com.google.protobuf:com.google.protobuf.gradle.plugin:0.9.4") }
+}
+apply plugin: "com.google.protobuf"
+```
 
-- **Use the Latest Gradle Version**: Keep Gradle updated to benefit from performance improvements, new features, and security patches.
+✅ GOOD: `plugins {}` block
+```kotlin
+// build.gradle.kts
+plugins {
+    id("java-library")
+    id("com.google.protobuf").version("0.9.4")
+}
+```
+*   **Note**: For plugins defined in your Version Catalog, use `alias(libs.plugins.myPlugin)`.
 
-- **Optimize Your Repositories**: Declare repositories in the correct order to avoid unnecessary network requests.
-  - List frequently accessed repositories first.
+## 5. Leverage the Configuration Cache
 
-- **Never Commit Passwords**: Externalize credentials using `gradle.properties` or environment variables.
+Enable the Configuration Cache to dramatically speed up build times, especially for large projects. This feature is moving towards default enablement in future Gradle versions.
 
-- **Adopt Kotlin DSL**: Favor Kotlin DSL (`build.gradle.kts`) over Groovy DSL (`build.gradle`). Kotlin DSL provides type safety, better IDE support, and improved code completion.
+```bash
+# Enable in gradle.properties (root project)
+org.gradle.configuration-cache=true
+```
+*   **Pitfall**: Ensure your build logic is compatible. Avoid global mutable state, direct file system access during configuration, and non-serializable objects. Debug with `./gradlew --configuration-cache-problems`.
 
-- **Dependency Management**: 
-   - **Use dependency catalogs**: Define dependencies in a central `libs.versions.toml` file for consistent dependency management across modules (available with Gradle 7.4+).
-   - **Avoid dynamic versions**: Always use explicit dependency versions to ensure reproducible builds.
-   - **Check for dependency updates**: Use dependency analysis tools to identify outdated dependencies and security vulnerabilities.
+## 6. Optimize CI Builds with Gradle Wrapper and Caching
 
-- **Code Organization and Structure (Expanded)**:
-   - **Directory Structure**:  Adhere to standard directory structures, such as `src/main/java` for Java source code, `src/main/resources` for resources, `src/test/java` for unit tests, and `src/integrationTest/java` for integration tests.
-   - **File Naming**: Follow consistent naming conventions for Gradle files (e.g., `build.gradle`, `settings.gradle`, `gradle.properties`).
-   - **Module Organization**: Organize projects into modules based on functionality or feature sets.  This promotes code reuse, improves build times, and allows for more granular dependency management.
-   - **Component Architecture**:  Consider using component-based architectures to isolate independent parts of your code.  Each component has its own build file, source folder, and dependencies. This promotes modularity and reusability.
-   - **Code Splitting**: Decompose complex build scripts and tasks into smaller, more manageable pieces.
+Use the Gradle Wrapper (`./gradlew`) for all CI builds to ensure consistent Gradle versions. Cache the Gradle user home directory (or use `gradle/actions/setup-gradle`) to speed up dependency resolution and build artifact caching.
 
-- **Common Patterns and Anti-patterns (Expanded)**:
-   - **Dependency Injection**: Leverage dependency injection frameworks (e.g., Dagger, Guice) to manage dependencies in custom tasks and plugins.
-   - **Declarative Configuration**: Prefer declarative configuration over imperative scripting. This promotes readability and simplifies maintenance.
-   - **Avoid Global State**:  Minimize the use of global state in custom tasks and plugins to prevent unintended side effects.
-   - **Tight Coupling**:  Avoid tight coupling between build logic and application code. This promotes modularity and testability.
+```yaml
+# .github/workflows/ci.yml (GitHub Actions example)
+steps:
+  - uses: actions/checkout@v4
+  - name: Set up JDK 17
+    uses: actions/setup-java@v4
+    with:
+      java-version: '17'
+      distribution: 'temurin'
+  - name: Setup Gradle
+    uses: gradle/actions/setup-gradle@v3 # Caches automatically
+  - name: Build with Gradle
+    run: ./gradlew build
+```
 
-- **Performance Considerations (Expanded)**:
-   - **Configuration Avoidance**: Use `afterEvaluate` sparingly, as it can delay configuration and impact build performance.  Consider using configuration caching instead.
-   - **Task Ordering**: Ensure tasks are executed in the correct order. Inappropriate task dependencies slow down the build process.
+## 7. Avoid Internal Gradle APIs
 
-- **Testing Approaches (Expanded)**:
-   - **Test Organization**: Organize tests in a clear and consistent manner. Follow a similar directory structure as source code (e.g., `src/test/java`).
-   - **Test Doubles**: Use mocking and stubbing techniques to isolate units of code for testing. Libraries like Mockito and PowerMock facilitate test double creation.  Use carefully PowerMock, as can be problematic.
+Never use APIs from packages containing `internal` or types with `Internal`/`Impl` suffixes. These APIs are unstable and subject to breaking changes without notice, causing build failures during Gradle upgrades.
 
-- **Tooling and Environment (Expanded)**:
-   - **Android Studio**: Use Android Studio as the primary IDE for Android projects. It offers excellent Gradle integration and debugging support.
-   - **CI/CD Integration**: Integrate Gradle builds with CI/CD systems (e.g., Jenkins, GitLab CI, GitHub Actions) to automate testing and deployment processes.
-   - **Code Analysis Tools**: Integrate code analysis tools (e.g., SonarQube) into the build process to identify code quality issues and security vulnerabilities.
-   - **IDE plugins**: Use IDE plugins, such as the Gradle build scan plugin, to analyze and optimize build performance.
+❌ BAD: Using `AttributeContainerInternal`
+```kotlin
+// build.gradle.kts
+import org.gradle.api.internal.attributes.AttributeContainerInternal // ❌ DANGER
+configurations.create("bad") {
+    val badMap = (attributes as AttributeContainerInternal).asMap()
+    // ...
+}
+```
 
-- **Common Pitfalls and Gotchas (Expanded)**:
-  - **Dependency Conflicts**: Be aware of potential dependency conflicts and use dependency resolution strategies to manage them.
-  - **Cache Invalidation**: Understand how Gradle's build cache works and how to invalidate it when necessary.
-  - **Plugin Compatibility**: Ensure compatibility between Gradle versions and plugins.  Upgrade plugins carefully.
-  - **Daemon issues**: The gradle daemon sometime cause unexplainable build errors. Restarting or stopping it can solve some build issues.
+✅ GOOD: Stick to public APIs
+*   **Guideline**: If a public API is missing functionality, submit a feature request to Gradle.
 
-- **Android Specific Best Practices**:
-  - **Resource Management**: Optimize image resources to reduce APK size. Use vector drawables where possible.
-  - **Proguard/R8**: Use Proguard (or R8) to shrink and obfuscate code in release builds.
-  - **APK Analyzer**: Use APK Analyzer to inspect the contents of APK files and identify areas for optimization.
-  - **Build variants**: Use build variants to create different versions of the app for different purposes (e.g., debug, release, flavor-specific).
+## 8. Maintain Latest Minor Gradle Version and Plugins
 
-- **Multi-project Builds**:
-   - **Centralized Dependency Management:**  Manage dependencies centrally within the root project or through a convention plugin, applying these dependencies to child modules.  This promotes consistency and simplifies dependency updates.
-   - **Convention Plugins:** Create custom plugins that apply common configurations (dependencies, plugins, settings) to all subprojects. This reduces code duplication and improves maintainability.
-   - **Composite Builds:** Use composite builds (including local projects in your build) for collaborative development or when working on multiple projects simultaneously.
+Regularly update Gradle to the latest minor version of your targeted major release. Update plugins to their latest compatible versions. This ensures access to performance improvements, bug fixes, and security patches.
 
-- **Kotlin DSL Specific Best Practices**:
-  - **Explicit Typing**: Use explicit typing to leverage Kotlin's type safety and improve code readability.
-  - **Extension Functions**: Define extension functions to extend the Gradle API and add custom functionality.
-  - **Coroutines:**  Utilize Kotlin coroutines for asynchronous operations in custom tasks and plugins.
+```bash
+# Update Gradle Wrapper
+./gradlew wrapper --gradle-version <latest-version> --distribution-type all
+```
+*   **Strategy**: Upgrade Gradle first, then plugins. Consult changelogs for compatibility.
 
-- **Monitoring and Observability**:
-  - **Gradle Build Scans:**  Use Gradle Build Scans (using `--scan`) to capture detailed build information, analyze performance bottlenecks, and identify areas for improvement.
-  - **Custom Metrics:** Implement custom metrics to track key build statistics (build duration, task execution times) and monitor build health.
+## 9. Centralize Repository Declarations in `settings.gradle.kts`
 
-- **Continuous Improvement:**
-   - **Regular Audits:**  Perform regular audits of Gradle build configurations and scripts to identify areas for optimization and improvement.
-   - **Stay Updated:**  Keep abreast of the latest Gradle releases, best practices, and community recommendations.
-   - **Share Knowledge:**  Document Gradle build configurations, custom tasks, and plugins. Share knowledge and best practices with other team members.
+Declare all dependency repositories in `settings.gradle.kts` to ensure consistency across all projects and subprojects.
 
-By adhering to these best practices, developers can create robust, maintainable, and efficient Android applications using Gradle as their build tool.
+❌ BAD: Repositories in `build.gradle.kts`
+```kotlin
+// app/build.gradle.kts
+repositories {
+    mavenCentral()
+    google()
+}
+```
+
+✅ GOOD: Repositories in `settings.gradle.kts`
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS) // Enforce
+    repositories {
+        mavenCentral()
+        google()
+    }
+}
+```
+*   **Note**: `repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)` prevents subprojects from declaring their own repositories.
+
+## 10. Use `java-library` Plugin for Library Modules
+
+For modules that produce a library (JAR) to be consumed by other modules, use the `java-library` plugin. It provides `api` and `implementation` configurations, promoting better encapsulation and faster compilation.
+
+```kotlin
+// core/domain/build.gradle.kts
+plugins {
+    `java-library`
+}
+dependencies {
+    api("org.slf4j:slf4j-api:2.0.13") // Public API
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.1") // Internal detail
+}
+```
+*   **Guideline**: Use `api` for dependencies that are part of your module's public API. Use `implementation` for internal dependencies.
+
+## 11. Do Not Put Source Files in the Root Project
+
+The root project should only contain build configuration (e.g., `settings.gradle.kts`, `build.gradle.kts` for global config, `gradle.properties`). All application source code belongs in subprojects.
+
+❌ BAD: Source in root
+```
+├── build.gradle.kts
+├── src/main/java/org/example/RootApp.java // ❌
+└── settings.gradle.kts
+```
+
+✅ GOOD: Source in dedicated subproject
+```
+├── build.gradle.kts
+├── app/build.gradle.kts
+├── app/src/main/java/org/example/App.java // ✅
+└── settings.gradle.kts
+    include("app")
+```

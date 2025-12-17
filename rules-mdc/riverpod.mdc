@@ -1,150 +1,440 @@
 ---
-description: Enforces Riverpod library best practices for Flutter applications.  This rule provides guidance on code organization, performance, testing, and common pitfalls when using Riverpod.
-globs: *.dart
+description: Definitive guidelines for using Riverpod in Flutter projects, focusing on modern, opinionated best practices for state management, code organization, performance, and testing.
+globs: **/*
 ---
-- **Core Principles:**
-  - **Provider Initialization:**  Avoid initializing providers within widgets. Providers should initialize themselves, managing their own state and dependencies independently.  This ensures proper lifecycle management and prevents unexpected behavior during widget rebuilds.  Specifically, do not initialize providers inside `build()` methods or widget constructors.
-  - **Provider Usage:** Primarily use `Provider` as the foundation for your state management.  Avoid legacy solutions like `ChangeNotifierProvider`, `StateNotifierProvider`, and `StateProvider` unless there are compelling reasons to use them, such as compatibility with existing code.  Prefer `StateProvider` or `NotifierProvider` (or `AsyncNotifierProvider`) for mutable state.
-  - **Immutability:** Strive for immutability in your state management where possible.  Immutable data structures simplify debugging and prevent unexpected side effects. Use `freezed` or similar libraries to help enforce immutability.
+# riverpod Best Practices
 
-- **Code Organization and Structure:**
-  - **Directory Structure:**  Adopt a feature-based directory structure.  Group related files (providers, widgets, models, services) into dedicated directories representing specific features or modules. For example:
+Riverpod is the definitive state management solution for modern Flutter applications. It provides compile-time safety, unparalleled testability, and a declarative API. This guide outlines our team's mandatory best practices for leveraging Riverpod effectively.
 
-    
-    lib/
-    ├── features/
-    │   ├── authentication/
-    │   │   ├── data/
-    │   │   │   ├── auth_repository.dart
-    │   │   │   └── models/
-    │   │   │       └── user.dart
-    │   │   ├── presentation/
-    │   │   │   ├── login_screen.dart
-    │   │   │   ├── login_controller.dart
-    │   │   │   └── providers.dart
-    │   ├── home/
-    │   │   ├── data/
-    │   │   ├── presentation/
-    │   │   └── providers.dart
-    ├── core/
-    │   ├── providers.dart  # Global providers
-    │   └── services/
-    │       └── api_service.dart
-    └── main.dart
-    
-  - **File Naming Conventions:**  Use descriptive and consistent file names. For example:
-    - `feature_name_screen.dart` (for widgets/screens)
-    - `feature_name_service.dart` (for services)
-    - `feature_name_repository.dart` (for repositories)
-    - `feature_name_provider.dart` (for provider definitions)
-  - **Module Organization:**  Break down your application into loosely coupled modules.  Each module should have a clear responsibility and a well-defined interface.  Use dependency injection to manage dependencies between modules, leveraging Riverpod's provider system.
-  - **Component Architecture:** Design your UI with reusable components.  Extract common UI elements into separate widgets to promote code reuse and maintainability. Favor composition over inheritance.
-  - **Code Splitting Strategies:**  Implement code splitting to reduce the initial load time of your application.  Use Flutter's lazy loading capabilities and consider splitting your application into smaller modules that can be loaded on demand.  Leverage `flutter_modular` or similar packages for advanced module management.
+## 1. Code Organization and Structure
 
-- **Common Patterns and Anti-patterns:**
-  - **Design Patterns:**
-    - **Repository Pattern:**  Abstract data access logic behind repositories.  Repositories handle data retrieval and persistence, isolating the rest of the application from the specifics of data sources (e.g., local storage, API).
-    - **Service Pattern:**  Encapsulate business logic into services.  Services perform specific tasks or operations, such as authentication, data processing, or API integration.  Providers can depend on services to provide data or perform actions.
-    - **Provider as State Holder:** Utilize Riverpod's providers to hold and manage application state.  Choose the appropriate provider type based on the state's characteristics (e.g., `StateProvider` for simple mutable state, `NotifierProvider` for complex state with side effects, `FutureProvider` or `StreamProvider` for asynchronous data).
-  - **Recommended Approaches:**
-    - **Asynchronous Data Handling:**  Use `FutureProvider` and `StreamProvider` to handle asynchronous data.  Display loading indicators while data is being fetched and handle errors gracefully.
-    - **State Updates:** Use `state = newState` for `StateProvider` and `NotifierProvider`. Use `AsyncValue` to represent the different states of an asynchronous operation (loading, data, error).  Use `.when()` to handle different states in your UI.
-    - **Side Effects:** Isolate side effects (e.g., API calls, database updates) in dedicated services or repositories.  Avoid performing side effects directly within widgets or providers.
-  - **Anti-patterns and Code Smells:**
-    - **Over-reliance on `ChangeNotifier`:** In most cases, `StateProvider` or `NotifierProvider` offer more straightforward and type-safe solutions than `ChangeNotifier`.
-    - **Initializing Providers in Widgets:** This leads to provider recreation on every widget rebuild, impacting performance and potentially causing unexpected behavior.
-    - **Directly Mutating State:**  Avoid directly mutating state managed by providers.  Instead, use the `state` setter for `StateProvider` or update the state within the `build` method of a `Notifier` / `AsyncNotifier`.
-    - **Complex Logic in Widgets:**  Keep widgets focused on UI rendering. Move complex logic to services, repositories, or providers.
-  - **State Management Best Practices:**
-    - **Single Source of Truth:** Ensure that each piece of state has a single, authoritative source. Avoid duplicating state across multiple providers or widgets.
-    - **Scoped Providers:** Use `providerScope` to scope providers to specific parts of the widget tree, avoiding unnecessary rebuilds. This also helps to manage the lifecycle of providers and prevent memory leaks.
-  - **Error Handling Patterns:**
-    - **Use `AsyncValue`'s `.when`:**  Handle different states of asynchronous operations, using `AsyncValue.when` to display loading indicators, data, and error messages.
-    - **Global Error Handling:** Implement a global error handling mechanism to catch and log unexpected errors.  Consider using a `ProviderListener` to listen for errors and display appropriate error messages.
+Organize providers by feature or domain, not by provider type. This enhances modularity and discoverability. Always use `@riverpod` for code generation.
 
-- **Performance Considerations:**
-  - **Optimization Techniques:**
-    - **`select`:** Use `.select` to only rebuild widgets when specific parts of a provider's state change.  This can significantly reduce unnecessary rebuilds.
-    - **`Consumer` Widget:** Use `Consumer` widgets to rebuild only the parts of the widget tree that depend on a specific provider.
-    - **`useProvider` Hook:**  Use the `useProvider` hook in functional components to access provider values efficiently.
-  - **Memory Management:**
-    - **Dispose Providers:** Ensure that providers are properly disposed of when they are no longer needed.  Use `ScopedProvider` to automatically dispose of providers when their scope is destroyed.
-    - **Avoid Memory Leaks:**  Be mindful of potential memory leaks, especially when using streams or listeners.  Cancel subscriptions and dispose of resources when they are no longer needed.
-  - **Rendering Optimization:**
-    - **Minimize Widget Rebuilds:**  Use techniques like `const` constructors, `shouldRepaint`, and `useMemoized` to minimize unnecessary widget rebuilds.
-    - **Optimize Image Loading:**  Use cached network images and optimize image sizes to improve rendering performance.
-  - **Bundle Size Optimization:**
-    - **Tree Shaking:**  Enable tree shaking to remove unused code from your application's bundle.  Use `flutter build apk --split-debug-info` for Android.
-    - **Code Splitting:** Implement code splitting to reduce the initial load time of your application.
-  - **Lazy Loading Strategies:** Load resources on demand to improve startup time and reduce memory consumption. Use `FutureProvider` and `StreamProvider` to load data lazily.
+### ✅ GOOD: Feature-based Provider Grouping
 
-- **Security Best Practices:**
-  - **Common Vulnerabilities:**
-    - **Data Injection:**  Sanitize user input to prevent data injection attacks.
-    - **Authentication Bypass:**  Implement robust authentication and authorization mechanisms to prevent unauthorized access.
-    - **Insecure Data Storage:**  Protect sensitive data by encrypting it and storing it securely.
-  - **Input Validation:**
-    - **Validate User Input:**  Validate all user input on both the client-side and the server-side to prevent invalid data from being processed.
-    - **Use Strong Data Types:**  Use strong data types to enforce data integrity and prevent type-related errors.
-  - **Authentication and Authorization Patterns:**
-    - **Secure Authentication:**  Use secure authentication protocols like OAuth 2.0 or JWT to authenticate users.
-    - **Role-Based Authorization:**  Implement role-based authorization to control access to resources based on user roles.
-  - **Data Protection Strategies:**
-    - **Encryption:**  Encrypt sensitive data both in transit and at rest.
-    - **Data Masking:**  Mask sensitive data in logs and error messages.
-  - **Secure API Communication:**
-    - **HTTPS:**  Use HTTPS to encrypt communication between the client and the server.
-    - **API Keys:**  Protect API keys and store them securely.
+```dart
+// features/auth/auth_providers.dart
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:your_app/features/auth/auth_service.dart';
 
-- **Testing Approaches:**
-  - **Unit Testing Strategies:**
-    - **Test Provider Logic:**  Write unit tests to verify the logic within your providers.
-    - **Mock Dependencies:**  Use mocking frameworks like `mockito` to isolate your providers from external dependencies.
-  - **Integration Testing:**
-    - **Test Provider Interactions:**  Write integration tests to verify how providers interact with each other and with other parts of the application.
-    - **Test Data Flow:**  Test the data flow through the application to ensure that data is being processed correctly.
-  - **End-to-End Testing:**
-    - **Test User Flows:**  Write end-to-end tests to simulate user interactions and verify that the application behaves as expected.
-    - **Automated UI Tests:**  Use tools like `flutter_driver` or `patrol` to automate UI tests.
-  - **Test Organization:**
-    - **Organize Tests by Feature:**  Organize your tests into directories that correspond to the features they test.
-    - **Use Descriptive Test Names:**  Use descriptive test names that clearly explain what each test is verifying.
-  - **Mocking and Stubbing:**
-    - **Use Mocking Frameworks:** Use mocking frameworks like `mockito` to create mock objects for testing purposes.
-    - **Create Test Doubles:** Create test doubles to replace real dependencies with simplified versions that are easier to test.
+part 'auth_providers.g.dart';
 
-- **Common Pitfalls and Gotchas:**
-  - **Frequent Mistakes:**
-    - **Forgetting to dispose of providers:**  Leads to memory leaks.
-    - **Incorrect provider scope:**  Leads to unexpected widget rebuilds.
-    - **Not handling asynchronous errors:** Leads to unhandled exceptions.
-  - **Edge Cases:**
-    - **Provider lifecycle management:** Understand when providers are created and disposed of.
-    - **Concurrency issues:**  Be aware of potential concurrency issues when working with asynchronous data.
-  - **Version-Specific Issues:**
-    - **Breaking changes:**  Be aware of breaking changes in new versions of Riverpod.
-    - **Deprecated features:**  Avoid using deprecated features.
-  - **Compatibility Concerns:**
-    - **Flutter version compatibility:**  Ensure that your version of Riverpod is compatible with your version of Flutter.
-    - **Package dependencies:** Resolve version conflicts between Riverpod and other packages.
-  - **Debugging Strategies:**
-    - **Use the Riverpod DevTools:**  Use the Riverpod DevTools to inspect provider state and dependencies.
-    - **Logging:** Add logging statements to your providers to track their behavior.
+@riverpod
+AuthService authService(AuthServiceRef ref) {
+  return AuthServiceImpl(); // Or mock in tests
+}
 
-- **Tooling and Environment:**
-  - **Recommended Development Tools:**
-    - **VS Code or IntelliJ IDEA:** Use a powerful IDE with Flutter and Dart support.
-    - **Riverpod DevTools:**  Install the Riverpod DevTools extension for your IDE to inspect provider state and dependencies.
-  - **Build Configuration:**
-    - **Use `flutter build`:**  Use the `flutter build` command to build your application.
-    - **Configure Build Flavors:**  Use build flavors to create different versions of your application for different environments (e.g., development, staging, production).
-  - **Linting and Formatting:**
-    - **Use `flutter analyze`:**  Use the `flutter analyze` command to analyze your code for potential problems.
-    - **Use `dart format`:**  Use the `dart format` command to format your code according to the Dart style guide.
-    - **Configure your linter**: Configure your linter to enforce Riverpod best practices.
-  - **Deployment Best Practices:**
-    - **Use CI/CD:** Use CI/CD pipelines to automate the build, test, and deployment process.
-    - **Configure your environments**: Configure your different environments (development, staging, production) and their secrets properly. Using `flutter_dotenv` or similar.
-  - **CI/CD Integration:**
-    - **Integrate with GitHub Actions or GitLab CI:**  Integrate your CI/CD pipeline with GitHub Actions or GitLab CI.
-    - **Automate Testing and Deployment:**  Automate the testing and deployment process to ensure that your application is always up-to-date.
+@riverpod
+class AuthNotifier extends _$AuthNotifier {
+  @override
+  bool build() {
+    // Initial auth state logic
+    return false;
+  }
+
+  void login() => state = true;
+  void logout() => state = false;
+}
+```
+
+### ❌ BAD: Generic or Type-based Grouping
+
+```dart
+// providers/auth_provider.dart (too generic)
+// providers/future_providers.dart (grouped by type, not feature)
+final authServiceProvider = Provider<AuthService>((ref) => AuthServiceImpl());
+final authNotifierProvider = StateNotifierProvider<AuthNotifier, bool>((ref) => AuthNotifier());
+```
+
+**Action**: Always run `dart run build_runner watch` during development to keep `.g.dart` files up-to-date.
+
+## 2. Provider Types and Usage
+
+Prefer generated `@riverpod` classes (`Notifier`, `AsyncNotifier`, `StreamNotifier`) for mutable state and `FutureProvider`/`StreamProvider` for immutable async data.
+
+### 2.1. Mutable State: `Notifier` and `AsyncNotifier`
+
+Use `Notifier` for synchronous mutable state and `AsyncNotifier` for asynchronous mutable state (e.g., API calls that modify state).
+
+### ✅ GOOD: `AsyncNotifier` for state with async operations
+
+```dart
+// features/todos/todo_providers.dart
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:your_app/features/todos/todo_repository.dart';
+import 'package:your_app/features/todos/todo_model.dart';
+
+part 'todo_providers.g.dart';
+
+@riverpod
+class TodoListNotifier extends _$TodoListNotifier {
+  @override
+  Future<List<Todo>> build() async {
+    // Initial fetch
+    return ref.watch(todoRepositoryProvider).fetchTodos();
+  }
+
+  Future<void> addTodo(Todo todo) async {
+    state = const AsyncValue.loading(); // Show loading state
+    state = await AsyncValue.guard(() async {
+      final newTodo = await ref.read(todoRepositoryProvider).addTodo(todo);
+      return [...state.value!, newTodo]; // Update state immutably
+    });
+  }
+}
+```
+
+### ❌ BAD: `StateProvider` for complex or async mutable state
+
+```dart
+// This quickly becomes unmanageable for complex logic or async operations
+final todoListProvider = StateProvider<List<Todo>>((ref) => []);
+// How to handle loading/error for addTodo? Manual boilerplate.
+```
+
+### 2.2. Immutable Async Data: `FutureProvider` and `StreamProvider`
+
+Use `FutureProvider` for one-off asynchronous data fetches and `StreamProvider` for real-time data streams.
+
+### ✅ GOOD: `FutureProvider` for fetching data
+
+```dart
+// features/products/product_providers.dart
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:your_app/features/products/product_repository.dart';
+import 'package:your_app/features/products/product_model.dart';
+
+part 'product_providers.g.dart';
+
+@riverpod
+Future<List<Product>> products(ProductsRef ref) async {
+  return ref.watch(productRepositoryProvider).getProducts();
+}
+
+// Parameterized provider using .family
+@riverpod
+Future<Product> product(ProductRef ref, String productId) async {
+  return ref.watch(productRepositoryProvider).getProductById(productId);
+}
+```
+
+### ❌ BAD: Manual `FutureBuilder` or `StreamBuilder`
+
+```dart
+// Avoid this boilerplate in UI when Riverpod can manage it
+class ProductScreen extends StatelessWidget {
+  final String productId;
+  ProductScreen(this.productId);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Product>(
+      future: ProductRepository().getProductById(productId), // No caching, no auto-dispose
+      builder: (context, snapshot) {
+        // Manual loading/error handling
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return CircularProgressIndicator();
+        } else if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        } else if (snapshot.hasData) {
+          return Text(snapshot.data!.name);
+        }
+        return SizedBox.shrink();
+      },
+    );
+  }
+}
+```
+
+## 3. `ref.watch`, `ref.read`, `ref.listen`
+
+Understand the distinct purposes of these methods to control reactivity and side effects.
+
+### 3.1. `ref.watch`: Reactive UI Updates
+
+Use `ref.watch` in `build` methods of `ConsumerWidget` or `ConsumerStatefulWidget` to rebuild the UI when a provider's state changes.
+
+### ✅ GOOD: Watching state for UI updates
+
+```dart
+class HomeScreen extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAuthenticated = ref.watch(authNotifierProvider); // UI rebuilds on auth state change
+    final todosAsync = ref.watch(todoListNotifierProvider); // UI rebuilds on todo list change
+
+    return todosAsync.when(
+      data: (todos) => ListView.builder(
+        itemCount: todos.length,
+        itemBuilder: (context, index) => Text(todos[index].title),
+      ),
+      loading: () => const CircularProgressIndicator(),
+      error: (err, stack) => Text('Error: $err'),
+    );
+  }
+}
+```
+
+### ❌ BAD: Using `ref.read` for reactive UI
+
+```dart
+class HomeScreen extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // This will NOT rebuild the UI when authNotifierProvider changes!
+    final isAuthenticated = ref.read(authNotifierProvider);
+    return Text('User is authenticated: $isAuthenticated');
+  }
+}
+```
+
+### 3.2. `ref.read`: One-off Actions
+
+Use `ref.read` for triggering actions (e.g., button presses, form submissions) that do not require the UI to react to the provider's state changes.
+
+### ✅ GOOD: Reading for actions
+
+```dart
+class LoginButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ElevatedButton(
+      onPressed: () {
+        // Triggers login without causing this widget to rebuild on auth state change
+        ref.read(authNotifierProvider.notifier).login();
+      },
+      child: const Text('Login'),
+    );
+  }
+}
+```
+
+### ❌ BAD: Watching for one-off actions
+
+```dart
+class LoginButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // This watches the provider, causing unnecessary rebuilds if the provider's state changes
+    // even if the button itself doesn't need to react.
+    final authNotifier = ref.watch(authNotifierProvider.notifier);
+    return ElevatedButton(
+      onPressed: () {
+        authNotifier.login();
+      },
+      child: const Text('Login'),
+    );
+  }
+}
+```
+
+### 3.3. `ref.listen`: Side Effects
+
+Use `ref.listen` for side effects like showing snackbars, navigating, or logging, which should not cause UI rebuilds.
+
+### ✅ GOOD: Listening for side effects
+
+```dart
+class AuthChecker extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<bool>(authNotifierProvider, (previous, next) {
+      if (next == true) {
+        // Navigate to home screen
+        Navigator.of(context).pushReplacementNamed('/home');
+      } else {
+        // Navigate to login screen
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    });
+    return const SizedBox.shrink(); // This widget doesn't render anything
+  }
+}
+```
+
+### ❌ BAD: Performing side effects in `build` or `ref.watch`
+
+```dart
+class AuthChecker extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAuthenticated = ref.watch(authNotifierProvider);
+    // This is problematic:
+    // 1. Causes navigation on every rebuild if isAuthenticated is true.
+    // 2. Can lead to "setState during build" errors.
+    if (isAuthenticated) {
+      Navigator.of(context).pushReplacementNamed('/home');
+    } else {
+      Navigator.of(context).pushReplacementNamed('/login');
+    }
+    return const SizedBox.shrink();
+  }
+}
+```
+
+## 4. Performance Considerations
+
+Optimize rebuilds and resource management.
+
+### 4.1. `autoDispose` for Transient State
+
+Always use `.autoDispose` for providers whose state is only needed temporarily (e.g., page-specific controllers, search results).
+
+### ✅ GOOD: Auto-disposing temporary state
+
+```dart
+@riverpod
+@Riverpod(keepAlive: false) // Explicitly autoDispose
+Future<List<SearchResult>> searchResults(SearchResultsRef ref, String query) async {
+  // Fetches search results, automatically disposed when not watched
+  return ref.watch(searchRepositoryProvider).search(query);
+}
+```
+
+### ❌ BAD: Not disposing temporary state
+
+```dart
+@riverpod // Defaults to keepAlive: true if not specified in older versions or without generator
+Future<List<SearchResult>> searchResults(SearchResultsRef ref, String query) async {
+  // This provider's state will persist in memory even if no longer used.
+  return ref.watch(searchRepositoryProvider).search(query);
+}
+```
+
+### 4.2. Selectors for Fine-Grained Rebuilds
+
+Use `.select` to watch only specific parts of a provider's state, preventing unnecessary widget rebuilds.
+
+### ✅ GOOD: Using selectors
+
+```dart
+class UserProfileHeader extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Only rebuilds if the user's name changes, not if other user properties change
+    final userName = ref.watch(userNotifierProvider.select((user) => user.name));
+    return Text('Welcome, $userName!');
+  }
+}
+```
+
+### ❌ BAD: Watching entire object for a single property
+
+```dart
+class UserProfileHeader extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Rebuilds if *any* property of the user object changes, even if only name is used.
+    final user = ref.watch(userNotifierProvider);
+    return Text('Welcome, ${user.name}!');
+  }
+}
+```
+
+## 5. Common Pitfalls and Gotchas
+
+### 5.1. Forgetting `build_runner`
+
+Always run `dart run build_runner watch` or `build_runner build` after modifying `@riverpod` annotated files.
+
+### ❌ BAD: Missing `.g.dart` file
+
+```dart
+// auth_providers.dart
+@riverpod
+class AuthNotifier extends _$AuthNotifier { /* ... */ }
+
+// main.dart
+// Error: 'authNotifierProvider' is not defined.
+// This happens if auth_providers.g.dart is not generated or imported.
+final authState = ref.watch(authNotifierProvider);
+```
+
+### ✅ GOOD: Generated and imported `.g.dart`
+
+```dart
+// auth_providers.dart
+part 'auth_providers.g.dart'; // Ensure this line is present
+@riverpod
+class AuthNotifier extends _$AuthNotifier { /* ... */ }
+
+// main.dart
+import 'package:your_app/features/auth/auth_providers.dart'; // Imports the generated provider
+final authState = ref.watch(authNotifierProvider);
+```
+
+### 5.2. Mutable State Outside Notifiers
+
+Always ensure state exposed by providers is immutable. Mutations should only occur within `Notifier` or `AsyncNotifier` classes.
+
+### ❌ BAD: Directly modifying state from UI
+
+```dart
+// In a widget:
+ElevatedButton(
+  onPressed: () {
+    // This is an anti-pattern: directly modifying a list watched by a provider
+    ref.read(todoListNotifierProvider.notifier).state.add(new Todo(...));
+  },
+  child: const Text('Add Todo'),
+);
+```
+
+### ✅ GOOD: Immutable state updates via Notifier methods
+
+```dart
+// In TodoListNotifier:
+void addTodo(Todo todo) {
+  state = AsyncValue.data([...state.value!, todo]); // Creates a new list
+}
+
+// In a widget:
+ElevatedButton(
+  onPressed: () {
+    ref.read(todoListNotifierProvider.notifier).addTodo(new Todo(...));
+  },
+  child: const Text('Add Todo'),
+);
+```
+
+## 6. Testing Approaches
+
+Riverpod makes testing straightforward by allowing providers to be overridden.
+
+### ✅ GOOD: Overriding providers in tests
+
+```dart
+// Mock implementation
+class MockAuthService implements AuthService {
+  @override
+  Future<bool> login(String email, String password) async => true;
+  @override
+  Future<void> logout() async {}
+}
+
+void main() {
+  testWidgets('Login screen shows home after successful login', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          // Override the real AuthService with a mock
+          authServiceProvider.overrideWithValue(MockAuthService()),
+          // Optionally override the notifier's initial state
+          authNotifierProvider.overrideWith((ref) => AuthNotifier()..state = false),
+        ],
+        child: MaterialApp(
+          home: LoginScreen(),
+          routes: {'/home': (context) => HomeScreen()},
+        ),
+      ),
+    );
+
+    // ... perform login actions and verify navigation
+  });
+}
+```
+
+### ❌ BAD: Relying on real services in tests
+
+```dart
+// This test will hit actual network requests or database, making it slow and flaky.

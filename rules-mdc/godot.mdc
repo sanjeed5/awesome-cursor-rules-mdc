@@ -1,358 +1,343 @@
 ---
-description: Comprehensive coding standards and best practices for Godot Engine development, covering code organization, performance, testing, and security to ensure maintainable, efficient, and secure game projects. These rules are primarily for GDScript but also reference relevant C# practices where applicable.
-globs: *.gd
+description: This guide provides opinionated, actionable best practices for Godot 4.x development, focusing on code organization, common patterns, performance, and avoiding pitfalls.
+globs: **/*
 ---
-# Godot Engine Best Practices and Coding Standards
+# godot Best Practices
 
-This document outlines best practices and coding standards for Godot Engine development using GDScript and C#. Adhering to these guidelines will lead to more maintainable, efficient, and secure game projects.
+This document outlines the definitive best practices for developing with Godot Engine 4.x. Adhere to these guidelines to ensure maintainable, performant, and collaborative projects.
 
 ## 1. Code Organization and Structure
 
-### 1.1. Directory Structure
+### 1.1. Scene-First Composition
+Always prefer composing scenes over deep inheritance hierarchies. Scenes are Godot's fundamental building blocks, promoting reusability and clear ownership.
 
-*   **`scenes/`**: Stores all `.tscn` (scene) and `.escn` (external scene) files. Organize scenes into subdirectories based on game areas, features, or entity types (e.g., `scenes/characters/`, `scenes/levels/`, `scenes/ui/`).
-*   **`scripts/`**: Contains all GDScript (`.gd`) and C# (`.cs`) scripts. Mirror the scene directory structure where applicable to maintain consistency (e.g., `scripts/characters/`, `scripts/levels/`).
-*   **`assets/` (or `art/` / `textures/` / `audio/`):** Stores all non-code assets like textures, audio files, models, animations, and fonts. Subdivide further based on asset type (e.g., `assets/textures/`, `assets/audio/`, `assets/models/`).
-*   **`addons/`**: Reserved for third-party addons and plugins.
-*   **`data/` (or `resources/`):** Holds data files like JSON, CSV, or custom resource files used for game configuration, localization, or level data.
-*   **`shaders/`**: Stores custom shader files (`.shader`).
-*   **`autoload/`**: If using autoloaded scripts (singletons), consider a dedicated folder.
+❌ **BAD:** Deep inheritance
+```gdscript
+# res://entities/base_enemy.gd
+class_name BaseEnemy extends CharacterBody2D
+# ... common enemy logic ...
 
+# res://entities/goblin.gd
+class_name Goblin extends BaseEnemy
+# ... goblin specific logic ...
 
-my_project/
-├── scenes/
-│   ├── characters/
-│   │   ├── player.tscn
-│   │   └── enemy.tscn
-│   ├── levels/
-│   │   ├── level_1.tscn
-│   │   └── level_2.tscn
-│   └── ui/
-│       └── main_menu.tscn
-├── scripts/
-│   ├── characters/
-│   │   ├── player.gd
-│   │   └── enemy.gd
-│   └── ui/
-│       └── main_menu.gd
-├── assets/
-│   ├── textures/
-│   │   ├── player.png
-│   │   └── enemy.png
-│   ├── audio/
-│   │   ├── background.ogg
-│   │   └── jump.wav
-│   └── models/
-│       └── character.glb
-├── addons/
-│   └── ...
-├── data/
-│   └── levels.json
-└── shaders/
-    └── water.shader
+# res://entities/orc.gd
+class_name Orc extends BaseEnemy
+# ... orc specific logic ...
+```
 
+✅ **GOOD:** Composition with specialized scenes
+```gdscript
+# res://components/health_component.gd
+class_name HealthComponent extends Node
+@export var max_health: int = 100
+# ... health logic, signals ...
 
-### 1.2. File Naming Conventions
+# res://components/movement_component.gd
+class_name MovementComponent extends Node
+@export var speed: float = 100.0
+# ... movement logic ...
 
-*   **Scenes:** Use PascalCase (e.g., `Player.tscn`, `MainMenu.tscn`).
-*   **Scripts (GDScript):** Use snake_case (e.g., `player_controller.gd`, `ui_manager.gd`).
-*   **Scripts (C#):** Use PascalCase (e.g., `PlayerController.cs`, `UIManager.cs`).
-*   **Assets:** Use descriptive names with appropriate extensions (e.g., `player_idle.png`, `background_music.ogg`, `sword.glb`). Consider using snake_case for assets as well to maintain consistency.
+# res://enemies/goblin.tscn (Root: CharacterBody2D)
+#   - HealthComponent
+#   - MovementComponent
+#   - Sprite2D (goblin_sprite.png)
+#   - CollisionShape2D
+# res://enemies/goblin.gd (attaches to goblin.tscn)
+class_name Goblin extends CharacterBody2D
+@onready var health_component: HealthComponent = $HealthComponent
+@onready var movement_component: MovementComponent = $MovementComponent
+# ... goblin specific logic using components ...
+```
 
-### 1.3. Module Organization
+### 1.2. Single Responsibility Principle (SRP)
+Each script and scene should have one, and only one, reason to change. This means a script should manage a single aspect of functionality (e.g., movement, health, inventory).
 
-*   **Separate Concerns:** Divide your project into logical modules based on functionality (e.g., player controller, AI, UI, physics, networking). Each module should have its own directory and scripts.
-*   **Autoloads (Singletons):** Use autoloads sparingly. Overuse can lead to tightly coupled code.  Good candidates are global managers like `GameManager`, `InputManager`, or `AudioManager`.
-*   **Custom Resources:** Create custom resource types for reusable data containers. This promotes data-driven design (e.g., `CharacterData`, `WeaponData`).
+❌ **BAD:** God object script
+```gdscript
+# player.gd
+extends CharacterBody2D
+var health = 100
+var speed = 150
+func _physics_process(delta):
+    # Movement logic
+    # Attack logic
+    # Inventory management
+    # Health updates
+```
 
-### 1.4. Component Architecture
+✅ **GOOD:** Delegated responsibilities
+```gdscript
+# player.tscn (Root: CharacterBody2D)
+#   - HealthComponent
+#   - MovementComponent
+#   - InventoryComponent
+#   - AttackComponent
+# player.gd (attaches to player.tscn)
+extends CharacterBody2D
+@onready var health_comp: HealthComponent = $HealthComponent
+@onready var movement_comp: MovementComponent = $MovementComponent
+@onready var inventory_comp: InventoryComponent = $InventoryComponent
+@onready var attack_comp: AttackComponent = $AttackComponent
 
-*   **Favor Composition over Inheritance:** Use nodes and scripts as components that can be attached to other nodes. This allows for more flexible and reusable code. Godot's scene system is built around this concept.
-*   **Signals:** Use signals for communication between nodes. This promotes loose coupling and allows nodes to react to events without knowing the details of other nodes.
+func _physics_process(delta):
+    movement_comp.handle_input(self, delta) # Player handles input, passes to component
+    attack_comp.update_cooldown(delta)
+```
 
-### 1.5. Code Splitting Strategies
+### 1.3. Autoloads for Global Services ONLY
+Autoloads (Singletons) are for truly global, project-wide services like event buses, game state managers, or save/load systems. Avoid using them for scene-specific logic or as a general "dumping ground."
 
-*   **Separate Logic from Presentation:** Keep scene files focused on visual representation and node hierarchy. Move game logic, input handling, and AI to separate scripts.
-*   **Helper Functions:** Create utility scripts with reusable functions to avoid code duplication.
-*   **Script Classes (GDScript):** Define classes within scripts to encapsulate related data and functions. Use `class_name` to register the class as a global type.
-*   **Partial Classes (C#):** Use partial classes to split a large class into multiple files, improving organization.
+❌ **BAD:** Autoload for player data
+```gdscript
+# Autoload: PlayerData.gd
+var player_health = 100
+var player_position = Vector2.ZERO
+# ... accessed globally from any scene ...
+```
+
+✅ **GOOD:** Autoload for event bus
+```gdscript
+# Autoload: EventBus.gd
+extends Node
+signal player_died
+signal score_updated(new_score)
+# ... other global events ...
+
+# In Player.gd:
+func take_damage(amount):
+    health -= amount
+    if health <= 0:
+        EventBus.player_died.emit()
+
+# In UI.gd:
+func _ready():
+    EventBus.player_died.connect(_on_player_died)
+```
+
+### 1.4. Consistent Naming Conventions
+Follow Godot's official style guides for GDScript and C#. Consistency is key for readability and maintainability.
+
+*   **GDScript (PEP 8 inspired):**
+    *   `class_name`: `PascalCase`
+    *   Variables, functions, signals: `snake_case`
+    *   Constants: `SCREAMING_SNAKE_CASE`
+    *   Private members (convention, not enforced): `_prefix_snake_case`
+
+*   **C# (Microsoft conventions):**
+    *   Namespaces, types, public members: `PascalCase`
+    *   Local variables, method arguments: `camelCase`
+    *   Private fields: `_camelCase` (with underscore prefix)
+
+❌ **BAD:** Mixed GDScript style
+```gdscript
+var MyVariable = 10
+func DoSomething(): pass
+const MY_CONSTANT = 5
+```
+
+✅ **GOOD:** Consistent GDScript style
+```gdscript
+var my_variable = 10
+func do_something(): pass
+const MY_CONSTANT = 5
+```
 
 ## 2. Common Patterns and Anti-patterns
 
-### 2.1. Design Patterns
+### 2.1. Resource Loading: `preload()` vs. `load()`
+Use `preload()` for resources needed at script load time (e.g., constants, exported PackedScenes). Use `load()` for dynamic, runtime loading, especially when the resource might change or be unloaded.
 
-*   **Singleton (Autoload):** As mentioned before, use autoloads for global managers.
-*   **Observer (Signals):** Use signals for event-driven communication between nodes.
-*   **State Machine:** Implement state machines to manage the behavior of game entities (e.g., player states: idle, walking, jumping, attacking).
-*   **Object Pool:** For frequently created and destroyed objects (e.g., bullets, particles), use an object pool to reduce memory allocation overhead.
-*   **Factory:** Use factories to create instances of objects based on certain conditions or configurations.
+❌ **BAD:** `load()` for constant scenes
+```gdscript
+# In a script that's always loaded
+var PlayerScene = load("res://scenes/player.tscn") # Loads every time script is instantiated
+```
 
-### 2.2. Recommended Approaches for Common Tasks
+✅ **GOOD:** `preload()` for constant scenes
+```gdscript
+# In a script that's always loaded
+const PLAYER_SCENE = preload("res://scenes/player.tscn") # Loads once when script object is loaded
 
-*   **Input Handling:** Use the `Input` singleton and input actions for consistent input handling. Define input maps in the project settings.
-*   **Scene Management:** Use `get_tree().change_scene_to_file()` or `get_tree().change_scene_to_packed()` for scene transitions.
-*   **Timers:** Use the `Timer` node for delayed execution or repeated events.  Avoid using `yield(get_tree().create_timer(time), "timeout")` unless absolutely necessary, prefer the Timer node and signals for readability.
-*   **Animation:** Utilize the `AnimationPlayer` node for complex animations. For simple animations, consider tweens.
-*   **Networking:** Use Godot's built-in networking API for multiplayer games. Consider using a higher-level networking library like ENet or Nakama for more advanced features.
+@export var enemy_scene: PackedScene = preload("res://scenes/enemy.tscn") # Preload for editor convenience
+```
 
-### 2.3. Anti-patterns and Code Smells
+### 2.2. Node Property Initialization
+Always set a node's properties *before* adding it to the scene tree. This avoids unnecessary recalculations and potential performance hits.
 
-*   **God Classes:** Avoid creating large classes that handle too many responsibilities. Break them down into smaller, more focused components.
-*   **Tight Coupling:** Minimize dependencies between nodes. Use signals and interfaces to promote loose coupling.
-*   **Spaghetti Code:** Avoid deeply nested conditional statements and loops. Use functions and classes to break down complex logic into smaller, more manageable pieces.
-*   **Magic Numbers:** Avoid using hardcoded numbers in your code. Use constants or variables instead.
-*   **Premature Optimization:** Don't optimize your code before you identify performance bottlenecks. Focus on writing clear and maintainable code first.
+❌ **BAD:** Setting properties after adding
+```gdscript
+var new_node = Node2D.new()
+add_child(new_node)
+new_node.position = Vector2(100, 50) # May trigger unnecessary updates
+new_node.name = "MyNode"
+```
 
-### 2.4. State Management
+✅ **GOOD:** Setting properties before adding
+```gdscript
+var new_node = Node2D.new()
+new_node.position = Vector2(100, 50)
+new_node.name = "MyNode"
+add_child(new_node) # Add to tree only after initial setup
+```
 
-*   **Finite State Machines (FSMs):** Use FSMs to manage the different states of game entities, such as player characters or AI agents. This helps to organize and control complex behavior.
-*   **State Design Pattern:** Implement the State design pattern to encapsulate the logic for each state in separate classes or scripts. This makes it easier to add, remove, or modify states without affecting other parts of the code.
-*   **Hierarchical State Machines (HSMs):** For more complex state management scenarios, consider using HSMs to create nested states. This allows you to define common behavior in parent states and override it in child states as needed.
+### 2.3. Signals for Loose Coupling
+Use Godot's signal system to communicate between unrelated nodes or components. Avoid direct method calls between distant nodes (`get_node("../../../SomeNode").do_something()`) as this creates tight coupling.
 
-### 2.5. Error Handling
+❌ **BAD:** Direct node access
+```gdscript
+# Player.gd
+func take_damage(amount):
+    # ...
+    get_node("/root/UI/HealthBar").update_health(health)
+```
 
-*   **`assert()`:** Use `assert()` for debugging to check for conditions that should always be true.  These checks are disabled in release builds.
-*   **`try...except` (GDScript) / `try...catch` (C#):** Use try-except/try-catch blocks to handle exceptions and prevent crashes. Handle expected errors gracefully (e.g., file not found).
-*   **Error Signals:** Emit custom signals to notify other nodes of errors.  This allows for centralized error handling and logging.
-*   **Return Values:** Use return values to indicate success or failure. For example, a function that loads a file could return `OK` or `ERR_FILE_NOT_FOUND`.
-*   **Logging:** Use `print()` (for debugging) and a dedicated logging system (for production) to track errors and warnings.  Use a custom logging system that can be disabled in release builds.
+✅ **GOOD:** Using signals
+```gdscript
+# Player.gd
+signal health_changed(new_health)
+func take_damage(amount):
+    health -= amount
+    health_changed.emit(health)
+
+# HealthBar.gd
+func _ready():
+    # Assuming Player is a sibling or accessible via a path
+    var player = get_node("../Player")
+    if player:
+        player.health_changed.connect(_on_player_health_changed)
+
+func _on_player_health_changed(new_health):
+    update_health_display(new_health)
+```
 
 ## 3. Performance Considerations
 
-### 3.1. Optimization Techniques
+### 3.1. Avoid Heavy Operations in `_process` / `_physics_process`
+These functions run every frame/physics frame. Offload complex calculations, file I/O, or network requests to separate threads, `await` for results, or run them less frequently.
 
-*   **Culling:** Use frustum culling and occlusion culling to reduce the number of objects that need to be rendered.
-*   **Level of Detail (LOD):** Use LOD to reduce the complexity of models and textures based on their distance from the camera.
-*   **Batching:** Batch multiple draw calls into a single draw call to reduce the overhead of rendering.
-*   **Object Pooling:** Reuse objects instead of creating and destroying them frequently.
-*   **Optimized Data Structures:** Use appropriate data structures for your data (e.g., dictionaries for fast lookups, arrays for ordered data).
-*   **Profiling:** Use Godot's built-in profiler to identify performance bottlenecks.
-*   **Multi-threading:** Utilize multi-threading for long running operations.
-*   **Avoid `get_node()` in Loops:** Cache node references to avoid repeated calls to `get_node()` within loops.
-*   **Use Typed Arrays:** In GDScript, use Typed Arrays (e.g., `PackedByteArray`, `PackedFloat32Array`) for efficient storage and manipulation of large amounts of data.
+❌ **BAD:** Complex raycasting every frame
+```gdscript
+func _process(delta):
+    var space_state = get_world_2d().direct_space_state
+    var query = PhysicsRayQueryParameters2D.create(...)
+    var result = space_state.intersect_ray(query)
+    # ... heavy processing ...
+```
 
-### 3.2. Memory Management
+✅ **GOOD:** Event-driven or throttled operations
+```gdscript
+func _input(event):
+    if event.is_action_pressed("interact"):
+        _perform_interaction_raycast()
 
-*   **Resource Management:** Load resources only when needed and unload them when they are no longer used. Use `ResourceLoader.load()` and `Resource.free()`.
-*   **Circular References:** Avoid circular references between objects, as this can prevent them from being garbage collected.
-*   **Object Pooling:** As mentioned before, use object pooling to reduce memory allocation overhead.
-*   **Weak References:**  If you need to reference an object without preventing it from being garbage collected, use a `WeakRef`.
+func _perform_interaction_raycast():
+    var space_state = get_world_2d().direct_space_state
+    var query = PhysicsRayQueryParameters2D.create(...)
+    var result = space_state.intersect_ray(query)
+    # ... process result ...
+```
 
-### 3.3. Rendering Optimization
+### 3.2. Dynamic Level Loading for Large Worlds
+For large, open worlds, load and unload level sections dynamically. Don't load the entire world at once. Use `Area2D` or `CollisionShape3D` triggers to manage chunk loading/unloading.
 
-*   **Reduce Draw Calls:** Minimize the number of draw calls by using techniques such as batching and instancing.
-*   **Optimize Shaders:** Write efficient shaders that use the minimum number of instructions.
-*   **Texture Compression:** Use compressed textures to reduce memory usage and improve performance.
-*   **Mipmaps:** Use mipmaps to improve texture filtering quality and reduce aliasing.
-*   **Limit Overdraw:** Reduce overdraw by avoiding overlapping transparent objects.
-*   **CanvasItem Z Index:** Group similar Z index values to improve rendering performance.
+```gdscript
+# LevelChunkLoader.gd
+extends Area2D
+@export var chunk_scene: PackedScene
+var loaded_chunk: Node = null
 
-### 3.4. Bundle Size Optimization
+func _on_body_entered(body):
+    if body.name == "Player" and loaded_chunk == null:
+        loaded_chunk = chunk_scene.instantiate()
+        get_parent().add_child(loaded_chunk)
+        # Position chunk relative to loader
 
-*   **Compress Textures:** Use compressed textures to reduce the size of your textures.
-*   **Optimize Audio Files:** Use compressed audio formats such as OGG Vorbis or MP3.
-*   **Remove Unused Assets:** Remove any unused assets from your project.
-*   **Use Asset Packs:** Use asset packs to share assets between multiple projects.
-*   **Enable Texture Compression:**  In project settings, enable texture compression for release builds.
+func _on_body_exited(body):
+    if body.name == "Player" and loaded_chunk != null:
+        loaded_chunk.queue_free()
+        loaded_chunk = null
+```
 
-### 3.5. Lazy Loading
+## 4. Common Pitfalls and Gotchas
 
-*   **Load Scenes Asynchronously:** Load scenes in the background to prevent the game from freezing during scene transitions.  Use `ResourceLoader.load_interactive()`.
-*   **Stream Audio:** Stream audio files instead of loading them into memory all at once.
-*   **Load Resources on Demand:** Load resources only when they are needed, such as when a player enters a new area.
+### 4.1. Over-reliance on `get_node()`
+Hardcoding node paths (`get_node("Path/To/Node")`) is fragile. If the scene structure changes, these paths break.
 
-## 4. Security Best Practices
+✅ **GOOD:** Use `@export` or `@onready` with direct references
+```gdscript
+# Use @export for editor assignment
+@export var target_node: Node2D
 
-### 4.1. Common Vulnerabilities
+# Use @onready for children/known paths
+@onready var sprite: Sprite2D = $Sprite2D
+@onready var health_component: HealthComponent = %HealthComponent # Use % for unique name in scene
+```
 
-*   **Injection Attacks:** Prevent SQL injection, code injection, and other injection attacks by validating all user inputs.
-*   **Cross-Site Scripting (XSS):**  Not typically a concern for standalone games, but relevant if integrating web-based content or APIs.
-*   **Denial of Service (DoS):** Protect your game from DoS attacks by limiting the number of requests that can be made from a single IP address.
-*   **Data Tampering:** Prevent players from tampering with game data by encrypting sensitive data and validating it on the server.
-*   **Reverse Engineering:**  Obfuscate your code to make it more difficult for players to reverse engineer your game.
+### 4.2. Not Using `class_name`
+`class_name` registers your script globally, allowing type-hinting, autocompletion, and easier referencing without `preload()`.
 
-### 4.2. Input Validation
+❌ **BAD:** Referencing scripts by path
+```gdscript
+# OtherScript.gd
+var player_script = preload("res://player.gd")
+var player_instance = player_script.new()
+```
 
-*   **Validate All Inputs:** Validate all user inputs, including text fields, number fields, and dropdown menus.
-*   **Use Regular Expressions:** Use regular expressions to validate input formats.
-*   **Sanitize Inputs:** Sanitize inputs to remove potentially harmful characters.
-*   **Limit Input Length:** Limit the length of input fields to prevent buffer overflows.
-*   **Client-Side and Server-Side Validation:** Implement both client-side and server-side validation to prevent malicious users from bypassing client-side checks.
+✅ **GOOD:** Using `class_name`
+```gdscript
+# player.gd
+class_name Player extends CharacterBody2D
 
-### 4.3. Authentication and Authorization
+# OtherScript.gd
+var player_instance = Player.new()
+```
 
-*   **Use Secure Authentication Protocols:** Use secure authentication protocols such as OAuth 2.0 or JWT.
-*   **Store Passwords Securely:** Store passwords using a strong hashing algorithm such as Argon2 or bcrypt.
-*   **Implement Role-Based Access Control (RBAC):** Use RBAC to control access to different parts of your game based on user roles.
-*   **Two-Factor Authentication (2FA):** Implement 2FA to add an extra layer of security to user accounts.
-
-### 4.4. Data Protection
-
-*   **Encrypt Sensitive Data:** Encrypt sensitive data such as passwords, API keys, and user data using a strong encryption algorithm such as AES.
-*   **Use HTTPS:** Use HTTPS to encrypt communication between your game and your server.
-*   **Protect API Keys:** Protect your API keys from being exposed by storing them securely on the server.
-*   **Secure Local Storage:** If storing data locally, encrypt it to prevent unauthorized access.
-
-### 4.5. Secure API Communication
-
-*   **Use HTTPS:** Always use HTTPS for all API communication.
-*   **Validate API Responses:** Validate API responses to ensure that they are valid and haven't been tampered with.
-*   **Rate Limiting:** Implement rate limiting to prevent abuse of your API.
-*   **API Key Rotation:** Rotate your API keys regularly to prevent them from being compromised.
-*   **Proper Error Handling:** Implement proper error handling to prevent sensitive information from being leaked in error messages.
+### 4.3. Ignoring GDScript Warnings
+Godot's editor provides excellent warnings. Treat them as errors and fix them. They often point to potential bugs or performance issues.
 
 ## 5. Testing Approaches
 
-### 5.1. Unit Testing
+### 5.1. Scene-Based Testing
+Create dedicated test scenes for isolated components or specific game mechanics. This allows you to quickly iterate and verify functionality without running the entire game.
 
-*   **Test Individual Components:** Write unit tests to test individual components of your game, such as functions, classes, and nodes.
-*   **Use a Testing Framework:** Use a testing framework such as Gut (Godot Unit Testing) to write and run your unit tests.
-*   **Mock Dependencies:** Mock external dependencies to isolate the component being tested.
-*   **Test Boundary Conditions:** Test boundary conditions and edge cases to ensure that your code handles them correctly.
+```gdscript
+# res://tests/test_player_movement.tscn (Root: Node)
+#   - Player (instantiated from res://scenes/player.tscn)
+#   - Camera2D
+#   - TestScript.gd (attached to root Node)
 
-### 5.2. Integration Testing
+# test_player_movement.gd
+extends Node
+@onready var player = $Player
 
-*   **Test Interactions Between Components:** Write integration tests to test the interactions between different components of your game.
-*   **Use Realistic Scenarios:** Use realistic scenarios to test how the components work together in real-world situations.
-*   **Verify Data Flow:** Verify that data flows correctly between the components being tested.
+func _ready():
+    # Simulate input, check player position, etc.
+    print("Running player movement test...")
+    player.position = Vector2.ZERO
+    # Simulate a key press or call player's movement function directly
+    # Assert player.position is as expected
+    print("Player movement test complete.")
+```
 
-### 5.3. End-to-End Testing
+### 5.2. Unit Testing with GDUnit
+For more rigorous unit testing of pure GDScript logic (e.g., utility functions, data structures), integrate a community-driven framework like GDUnit.
 
-*   **Test the Entire Game:** Write end-to-end tests to test the entire game from start to finish.
-*   **Automate Testing:** Automate your end-to-end tests to ensure that they are run regularly.
-*   **Use a Testing Tool:** Use a testing tool such as Selenium or Appium to automate your end-to-end tests.
+1.  **Install GDUnit:** Follow GDUnit's official installation guide.
+2.  **Write Tests:**
+    ```gdscript
+    # res://tests/gdunit/test_math_utils.gd
+    extends GDUnitTestSuite
 
-### 5.4. Test Organization
+    func test_add_numbers():
+        assert_eq(2 + 2, 4)
+        assert_eq(10 + 5, 15)
 
-*   **Create a `test/` Directory:** Create a `test/` directory in your project to store your tests.
-*   **Mirror the Source Code Structure:** Mirror the source code structure in your test directory to make it easier to find the tests for a given component.
-*   **Use Descriptive Names:** Use descriptive names for your tests to make it clear what they are testing.
-*   **Keep Tests Short and Focused:** Keep your tests short and focused on testing a single aspect of the code.
+    func test_subtract_numbers():
+        assert_eq(5 - 3, 2)
+        assert_eq(10 - 20, -10)
+    ```
+3.  **Run Tests:** Use the GDUnit test runner scene.
 
-### 5.5. Mocking and Stubbing
-
-*   **Use Mocks to Isolate Components:** Use mocks to replace external dependencies with controlled test doubles.
-*   **Use Stubs to Provide Predefined Responses:** Use stubs to provide predefined responses to external dependencies.
-*   **Use a Mocking Framework:** Use a mocking framework such as Moq or NSubstitute to create mocks and stubs easily.
-
-## 6. Common Pitfalls and Gotchas
-
-### 6.1. Frequent Mistakes
-
-*   **Forgetting to Connect Signals:**  Ensure that you connect signals to their handlers correctly. A common mistake is to connect the signal within the editor but forget to connect dynamically created signals in code.
-*   **Incorrect Node Paths:** Double-check node paths when using `get_node()`. Incorrect paths will lead to `null` references and errors.
-*   **Not Freeing Resources:** Remember to free resources when they are no longer needed to prevent memory leaks.
-*   **Using Global Variables Excessively:** Avoid using global variables excessively, as this can make your code difficult to maintain and debug.
-*   **Ignoring the Godot Documentation:** The Godot documentation is a valuable resource. Consult it frequently to learn about new features and best practices.
-
-### 6.2. Edge Cases
-
-*   **Floating-Point Precision:** Be aware of floating-point precision issues when comparing floating-point numbers. Use `is_equal_approx()` instead of `==`.
-*   **Race Conditions:** Be aware of race conditions when using threads. Use locks and other synchronization primitives to prevent data corruption.
-*   **Resource Loading Errors:** Handle resource loading errors gracefully.  Use `is_valid()` to check if a resource loaded successfully.
-*   **Input Events:**  Understand the difference between different input event types (e.g., `InputEventKey`, `InputEventMouseButton`) and handle them accordingly.
-
-### 6.3. Version-Specific Issues
-
-*   **API Changes:** Be aware of API changes between Godot versions. Consult the changelog when upgrading to a new version.
-*   **GDScript Compatibility:** Ensure that your GDScript code is compatible with the Godot version you are using.
-*   **C# Version Compatibility:** Be aware of the C# version supported by your Godot version. Ensure your code is compatible. Older versions of Godot are tied to older C# versions, new versions are tied to .NET.
-
-### 6.4. Compatibility Concerns
-
-*   **Platform-Specific Code:** Use platform-specific code sparingly. Use conditional compilation or separate scripts for platform-specific functionality.
-*   **Graphics Driver Compatibility:** Test your game on different graphics drivers to ensure that it works correctly.
-*   **Hardware Compatibility:** Test your game on different hardware configurations to ensure that it runs smoothly.
-
-### 6.5. Debugging Strategies
-
-*   **Use the Godot Editor Debugger:** Use the Godot editor debugger to step through your code and inspect variables.
-*   **Use `print()` Statements:** Use `print()` statements to log information to the console.
-*   **Use the Remote Debugger:** Use the remote debugger to debug your game on a different device.
-*   **Attach a C# Debugger:** Attach a C# debugger (e.g., Visual Studio Debugger) to your project to debug C# code.
-
-## 7. Tooling and Environment
-
-### 7.1. Recommended Development Tools
-
-*   **Godot Editor:** The official Godot Engine editor.
-*   **Visual Studio Code:** A popular code editor with excellent support for GDScript and C#.
-*   **Visual Studio:** A powerful IDE for C# development, commonly used for Godot C# projects.
-*   **Git:** A version control system for tracking changes to your code.
-*   **GitHub/GitLab/Bitbucket:** Online repositories for storing and collaborating on your code.
-
-### 7.2. Build Configuration
-
-*   **Project Settings:** Configure your project settings carefully, including input maps, rendering settings, and export settings.
-*   **Custom Build Steps:** Use custom build steps to automate tasks such as asset processing and code generation.
-*   **Export Templates:** Create export templates for different platforms to optimize your game for each platform.
-
-### 7.3. Linting and Formatting
-
-*   **GDScript Linter:** Use a GDScript linter to check your code for style errors and potential problems.  Consider creating a custom linter rule set.
-*   **C# Code Style:** Configure Visual Studio or VS Code to automatically format your C# code according to the C# coding conventions.
-*   **EditorConfig:** Use an EditorConfig file to define coding style settings for your project.
-
-### 7.4. Deployment
-
-*   **Exporting:** Use Godot's export functionality to create builds for different platforms.
-*   **Distribution Platforms:** Distribute your game through platforms such as Steam, Itch.io, Google Play Store, and Apple App Store.
-*   **Consider platform-specific requirements:** Each platform has specific requirements for builds. For example, you will need developer accounts, store assets, and signed builds.
-*   **Auto-updating:** Using auto-updating on desktop builds can improve the player experience for long running projects.
-
-### 7.5. CI/CD Integration
-
-*   **Automated Builds:** Set up a CI/CD pipeline to automatically build and test your game whenever you commit changes to your code repository.
-*   **Automated Testing:** Integrate your unit tests, integration tests, and end-to-end tests into your CI/CD pipeline.
-*   **Automated Deployment:** Automate the deployment of your game to different distribution platforms.
-*   **Use cloud build services:** Services such as GitHub actions, GitLab CI, and cloud build are capable of fully automating the deployment process.
-
-## 8. GDScript Style Guide Summary
-
-This section summarizes key GDScript style guide recommendations.
-
-*   **Formatting:**
-    *   Use LF line endings, UTF-8 encoding, and tabs for indentation (editor default).
-    *   Limit line length to 100 characters (preferably 80).
-    *   Use one statement per line.
-    *   Format multiline statements for readability using parentheses.
-    *   Avoid unnecessary parentheses.
-    *   Use plain English boolean operators (`and`, `or`, `not`).
-    *   Use whitespace around operators and after commas.
-    *   Use double quotes for strings unless single quotes avoid escapes.
-    *   Don't omit leading or trailing zeros in floating-point numbers.
-    *   Use lowercase for letters in hexadecimal numbers.
-    *   Use underscores in literals for large numbers.
-*   **Naming Conventions:**
-    *   Files: `snake_case.gd`
-    *   Classes: `PascalCase`
-    *   Nodes: `PascalCase`
-    *   Functions: `snake_case`
-    *   Variables: `snake_case`
-    *   Signals: `snake_case` (past tense)
-    *   Constants: `CONSTANT_CASE`
-    *   Enums: `PascalCase` (names), `CONSTANT_CASE` (members)
-*   **Code Order (within a script):**
-    1.  `@tool`
-    2.  `class_name`
-    3.  `extends`
-    4.  Docstring (`## comment`)
-    5.  Signals
-    6.  Enums
-    7.  Constants
-    8.  `@export` variables
-    9.  Public variables
-    10. Private variables
-    11. `@onready` variables
-    12. `_init()`
-    13. `_enter_tree()`
-    14. `_ready()`
-    15. Other virtual methods
-    16. Public methods
-    17. Private methods
-    18. Subclasses
-*   **Static Typing:**
-    *   Use explicit type hints (`: Type`) when the type is ambiguous or for clarity.
-    *   Use inferred types (`:=`) when the type is obvious from the assignment.
-
-By following these best practices and coding standards, you can create more maintainable, efficient, and secure Godot Engine projects.
+### 5.3. Design for Testability
+Adhere to SRP and loose coupling (using signals) to make your code easier to test. Components with clear inputs and outputs are simpler to isolate and verify. Avoid global state where possible.

@@ -1,148 +1,339 @@
 ---
-description: Comprehensive best practices for developing with MongoDB, covering schema design, code organization, performance optimization, security considerations, and testing strategies. This rule provides actionable guidance to help developers build robust and scalable MongoDB applications.
-globs: *.js,*.ts,*.mongodb
+description: This guide provides definitive best practices for designing, querying, and maintaining MongoDB databases to ensure high performance, scalability, and maintainability in cloud-native applications.
+globs: **/*
 ---
-- **Understand Schema Differences Between Relational and Document-based Databases:**  Recognize that MongoDB's document-oriented model differs significantly from relational databases. Design schemas that reflect the relationships within the data itself, rather than relying on joins.
-- **Embed Your Data Instead of Relying on Joins:** Favor embedding related data within a single document to minimize the need for costly join operations. This approach can significantly improve read performance.
-- **Use Indexes For Frequent Operations:**  Create indexes on fields that are frequently queried to optimize performance. Carefully consider the types of queries your application will perform and create indexes accordingly. Compound indexes are beneficial for queries involving multiple fields.
-- **Properly Size Your Servers:** Ensure that your MongoDB server resources are adequately sized for your workload. Monitor resource utilization and scale as needed to maintain optimal performance. Consider CPU, memory, and disk I/O.
-- **Use Replication or Sharding:** Implement replication or sharding to enhance scalability and reliability. Replication provides data redundancy and high availability, while sharding distributes data across multiple servers to handle larger datasets and higher traffic volumes.
+# mongodb Best Practices
 
-### 1. Code Organization and Structure:
+MongoDB's flexible schema is a superpower, but with great power comes great responsibility. This guide cuts through the noise to give you the definitive, opinionated best practices for building robust, high-performance applications with MongoDB. Follow these rules to avoid common pitfalls and leverage MongoDB effectively.
 
-- **Directory Structure Best Practices:**
-    - `config/`: Contains configuration files for database connections, authentication, and other settings.
-    - `models/`: Defines data models using Mongoose or other ODM libraries. Each model represents a MongoDB collection.
-    - `routes/`: Handles API endpoints and routes for interacting with the database.
-    - `controllers/`: Implements the logic for handling requests, interacting with models, and returning responses.
-    - `services/`: Contains reusable business logic related to data access and manipulation.
-    - `utils/`: Provides utility functions for common tasks such as validation, formatting, and error handling.
-    - `tests/`: Includes unit, integration, and end-to-end tests.
-- **File Naming Conventions:**
-    - Use descriptive names that reflect the purpose of the file (e.g., `user.model.js`, `auth.controller.ts`, `product.service.js`).
-    - Follow a consistent naming convention across the project (e.g., camelCase or snake_case).
-- **Module Organization:**
-    - Organize code into modules based on functionality or domain (e.g., `user` module, `product` module).
-    - Use ES modules or CommonJS modules to encapsulate code and manage dependencies.
-- **Component Architecture:**
-    - Design reusable components for common tasks such as data validation, error handling, and authentication.
-    - Follow the principles of separation of concerns and single responsibility.
-- **Code Splitting Strategies:**
-    - Implement lazy loading of modules or components to improve initial load time.
-    - Use code splitting to break down large bundles into smaller chunks.
+## 1. Data Modeling: Store Data Accessed Together, Together
 
-### 2. Common Patterns and Anti-patterns:
+The cardinal rule: embed data that is accessed together within a single document. This minimizes joins and maximizes read performance. Use referencing for many-to-many relationships or when embedded data would exceed the 16MB document limit or grow unboundedly.
 
-- **Design Patterns Specific to MongoDB:**
-    - **Embedded Document Pattern:** Embed related data within a single document to minimize the need for joins.
-    - **Polymorphic Pattern:** Store different types of documents in the same collection using a common base schema and discriminator fields.
-    - **Bucket Pattern:** Group data into buckets based on time or other criteria for efficient querying and aggregation.
-- **Recommended Approaches for Common Tasks:**
-    - Use Mongoose or other ODM libraries to simplify data modeling and validation.
-    - Implement pagination for large result sets.
-    - Use aggregation pipelines for complex queries and data transformations.
-- **Anti-patterns and Code Smells to Avoid:**
-    - **Over-indexing:** Creating too many indexes can degrade write performance.
-    - **Ignoring Performance:** Neglecting to analyze query performance can lead to slow response times.
-    - **Schema Violations:** Allowing inconsistent data to be stored in collections can cause unexpected errors.
-- **State Management Best Practices:**
-    - Use a state management library such as Redux or Zustand to manage application state.
-    - Store state in a centralized store to ensure consistency and predictability.
-- **Error Handling Patterns:**
-    - Implement robust error handling to catch and handle exceptions gracefully.
-    - Use try-catch blocks to handle potential errors.
-    - Log errors for debugging and monitoring.
+### 1.1. Embed for Read Performance
 
-### 3. Performance Considerations:
+✅ **GOOD**: Embed tightly coupled, frequently accessed data.
+```json
+// User document with embedded preferences
+{
+    "_id": ObjectId("656e2c0e8a7b9c1d2e3f4a5b"),
+    "username": "johndoe",
+    "email": "john.doe@example.com",
+    "preferences": {
+        "theme": "dark",
+        "notifications": {
+            "email": true,
+            "sms": false
+        }
+    }
+}
+```
+❌ **BAD**: Separating tightly coupled data into multiple collections, forcing `$lookup` for common reads.
+```json
+// User document
+{ "_id": ObjectId("656e2c0e8a7b9c1d2e3f4a5b"), "username": "johndoe", "email": "john.doe@example.com" }
+// UserPreferences document (separate collection)
+{ "_id": ObjectId("656e2c0e8a7b9c1d2e3f4a5c"), "userId": ObjectId("656e2c0e8a7b9c1d2e3f4a5b"), "theme": "dark", "notifications": { "email": true, "sms": false } }
+// Requires a join to get user with preferences.
+```
 
-- **Optimization Techniques:**
-    - Use indexes to optimize query performance.
-    - Avoid using `$where` operator, as it can be slow.
-    - Use projection to retrieve only the necessary fields.
-- **Memory Management:**
-    - Monitor memory usage and identify potential memory leaks.
-    - Use connection pooling to reuse database connections.
-- **Rendering Optimization:** (If applicable for UI-based apps using MongoDB data)
-    - Implement virtualization for large lists.
-    - Use memoization to avoid unnecessary re-renders.
-- **Bundle Size Optimization:** (If applicable)
-    - Minify and compress JavaScript and CSS files.
-    - Remove unused code.
-- **Lazy Loading Strategies:** (If applicable)
-    - Lazy load images and other resources.
-    - Use code splitting to load modules on demand.
+### 1.2. Reference for Unbounded Growth or Many-to-Many
 
-### 4. Security Best Practices:
+Use referencing when a sub-document array could grow indefinitely (e.g., comments on a blog post) or when documents are frequently updated independently.
 
-- **Common Vulnerabilities and How to Prevent Them:**
-    - **NoSQL Injection:** Sanitize user inputs to prevent injection attacks.
-    - **Authentication Bypass:** Implement strong authentication and authorization mechanisms.
-    - **Data Exposure:** Protect sensitive data by encrypting it and controlling access.
-- **Input Validation:**
-    - Validate all user inputs to prevent malicious data from being stored in the database.
-    - Use a validation library such as Joi or Yup to define validation schemas.
-- **Authentication and Authorization Patterns:**
-    - Use a secure authentication protocol such as OAuth 2.0 or JWT.
-    - Implement role-based access control (RBAC) to restrict access to sensitive data and functionality.
-- **Data Protection Strategies:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use data masking to protect personally identifiable information (PII).
-- **Secure API Communication:**
-    - Use HTTPS to encrypt communication between the client and server.
-    - Implement rate limiting to prevent abuse.
+✅ **GOOD**: Reference comments from a blog post.
+```json
+// Post document
+{
+    "_id": ObjectId("post123"),
+    "title": "My Awesome Post",
+    "content": "...",
+    "authorId": ObjectId("user456"),
+    "commentCount": 5 // Denormalized for quick access
+}
+// Comment document (separate collection)
+{
+    "_id": ObjectId("comment789"),
+    "postId": ObjectId("post123"),
+    "authorId": ObjectId("user987"),
+    "text": "Great post!",
+    "createdAt": ISODate("2025-01-01T10:00:00Z")
+}
+```
+❌ **BAD**: Embedding an unbounded array of comments within the post document. This risks exceeding the 16MB document limit and makes updates inefficient.
+```json
+// Post document with embedded comments
+{
+    "_id": ObjectId("post123"),
+    "title": "My Awesome Post",
+    "content": "...",
+    "authorId": ObjectId("user456"),
+    "comments": [ // This array can grow indefinitely!
+        {"authorId": ObjectId("user987"), "text": "Great post!", "createdAt": ISODate("2025-01-01T10:00:00Z")},
+        {"authorId": ObjectId("user111"), "text": "I agree!", "createdAt": ISODate("2025-01-01T10:05:00Z")}
+    ]
+}
+```
 
-### 5. Testing Approaches:
+### 1.3. Enforce Schema with Validation
 
-- **Unit Testing Strategies:**
-    - Write unit tests to verify the functionality of individual modules and components.
-    - Use a testing framework such as Jest or Mocha.
-- **Integration Testing:**
-    - Write integration tests to verify the interaction between different modules and components.
-    - Test the integration between the application and the database.
-- **End-to-End Testing:**
-    - Write end-to-end tests to verify the functionality of the entire application.
-    - Use a testing framework such as Cypress or Playwright.
-- **Test Organization:**
-    - Organize tests into separate directories based on functionality or module.
-    - Use descriptive names for test files and test cases.
-- **Mocking and Stubbing:**
-    - Use mocking and stubbing to isolate units of code during testing.
-    - Use a mocking library such as Sinon or Jest's built-in mocking.
+While MongoDB is schema-less, enforce expected field types and presence using schema validation rules at the collection level. This improves data consistency and prevents application errors.
 
-### 6. Common Pitfalls and Gotchas:
+✅ **GOOD**: Use schema validation to ensure `username` is a string and `email` is required.
+```javascript
+// In MongoDB shell or Compass
+db.createCollection("users", {
+    validator: {
+        $jsonSchema: {
+            bsonType: "object",
+            required: ["username", "email"],
+            properties: {
+                username: {
+                    bsonType: "string",
+                    description: "must be a string and is required"
+                },
+                email: {
+                    bsonType: "string",
+                    pattern: "^.+@.+\\..+$",
+                    description: "must be a valid email address and is required"
+                }
+            }
+        }
+    }
+})
+```
+❌ **BAD**: Relying solely on application-level validation, leading to inconsistent data in the database.
 
-- **Frequent Mistakes Developers Make:**
-    - **Not Understanding MongoDB's Query Language:**  Failing to grasp the nuances of MongoDB's query language can lead to inefficient queries.
-    - **Ignoring Indexes:**  Neglecting to create indexes on frequently queried fields can significantly impact performance.
-    - **Not Handling Errors Properly:**  Failing to handle errors gracefully can lead to unexpected application behavior.
-- **Edge Cases to Be Aware Of:**
-    - **Data Type Mismatches:** Ensure that data types are consistent across the application and the database.
-    - **Concurrency Issues:**  Handle concurrency issues carefully to prevent data corruption.
-- **Version-Specific Issues:**
-    - Be aware of compatibility issues between different versions of MongoDB and related libraries.
-    - Consult the documentation for the specific version you are using.
-- **Compatibility Concerns:**
-    - Ensure that the application is compatible with different operating systems and browsers.
-    - Test the application on different devices and screen sizes.
-- **Debugging Strategies:**
-    - Use logging to track the execution flow and identify potential issues.
-    - Use a debugger to step through the code and inspect variables.
+## 2. Query Optimization: Fetch Only What You Need
 
-### 7. Tooling and Environment:
+Efficient queries are critical. Always project fields, avoid slow operators, and leverage the aggregation pipeline.
 
-- **Recommended Development Tools:**
-    - **MongoDB Compass:** A GUI tool for exploring and managing MongoDB databases.
-    - **MongoDB Shell:** A command-line interface for interacting with MongoDB.
-    - **VS Code Extension for MongoDB:** Provides syntax highlighting, code completion, and other features for MongoDB development.
-- **Build Configuration:**
-    - Use a build tool such as Webpack or Parcel to bundle and optimize the application.
-    - Configure the build tool to minify and compress JavaScript and CSS files.
-- **Linting and Formatting:**
-    - Use a linter such as ESLint to enforce coding standards.
-    - Use a formatter such as Prettier to automatically format code.
-- **Deployment Best Practices:**
-    - Use a containerization technology such as Docker to package the application and its dependencies.
-    - Deploy the application to a cloud platform such as AWS, Azure, or Google Cloud.
-- **CI/CD Integration:**
-    - Integrate the application with a CI/CD pipeline to automate the build, test, and deployment process.
-    - Use a CI/CD tool such as Jenkins, Travis CI, or CircleCI.
+### 2.1. Use Projections to Limit Returned Fields
+
+Always specify which fields to return. Retrieving entire documents when only a few fields are needed wastes network bandwidth and memory.
+
+✅ **GOOD**: Fetch only `username` and `email`.
+```python
+from pymongo import MongoClient
+from bson.objectid import ObjectId
+
+client = MongoClient("mongodb://localhost:27017/")
+users_collection = client.mydatabase.users
+
+user_data = users_collection.find_one(
+    {"_id": ObjectId("656e2c0e8a7b9c1d2e3f4a5b")},
+    {"username": 1, "email": 1, "_id": 0} # Exclude _id explicitly if not needed
+)
+```
+❌ **BAD**: Fetching the entire document unnecessarily.
+```python
+user_data = users_collection.find_one({"_id": ObjectId("656e2c0e8a7b9c1d2e3f4a5b")}) # Returns all fields
+```
+
+### 2.2. Avoid `$where` and JavaScript in Queries
+
+`$where` requires MongoDB to execute JavaScript for each document, preventing index usage and severely impacting performance. Use native query operators instead.
+
+✅ **GOOD**: Use native operators for filtering.
+```python
+from datetime import datetime, timedelta
+
+users_collection.find({"createdAt": {"$lt": datetime.now() - timedelta(days=30)}})
+```
+❌ **BAD**: Using `$where` for date comparison.
+```python
+users_collection.find({"$where": "this.createdAt < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)"})
+```
+
+### 2.3. Leverage the Aggregation Pipeline
+
+For complex data transformations, reporting, or analytics, use the aggregation pipeline. It processes data efficiently on the server, minimizing data transfer.
+
+✅ **GOOD**: Aggregate user activity.
+```python
+pipeline = [
+    {"$match": {"status": "active"}},
+    {"$group": {"_id": "$country", "totalUsers": {"$sum": 1}}},
+    {"$sort": {"totalUsers": -1}}
+]
+result = list(users_collection.aggregate(pipeline))
+```
+❌ **BAD**: Fetching large datasets and performing complex aggregations in application code.
+
+## 3. Indexing: Speed Up Your Reads
+
+Indexes are your best friend for query performance. Use them strategically.
+
+### 3.1. Index Frequently Queried Fields
+
+Create indexes on fields used in `find()` queries, `sort()` operations, and aggregation pipeline stages like `$match` or `$sort`.
+
+✅ **GOOD**: Index `email` for fast lookups.
+```python
+from pymongo import ASCENDING
+
+users_collection.create_index([("email", ASCENDING)], unique=True)
+```
+❌ **BAD**: No index on a frequently queried field, leading to collection scans.
+
+### 3.2. Prefer Compound Indexes for Multi-Field Queries
+
+If you frequently query on multiple fields, a compound index can cover multiple query patterns efficiently. Order fields in the compound index by cardinality and query selectivity.
+
+✅ **GOOD**: Compound index for `status` and `createdAt`.
+```python
+from pymongo import DESCENDING
+
+posts_collection = client.mydatabase.posts
+posts_collection.create_index([("status", ASCENDING), ("createdAt", DESCENDING)])
+# This index supports queries like:
+# find({"status": "published", "createdAt": {"$gt": some_date}})
+# find({"status": "published"})
+# find({}, sort=[("status", 1), ("createdAt", -1)])
+```
+❌ **BAD**: Separate single-field indexes for `status` and `createdAt` when they are often queried together.
+
+### 3.3. Use `explain()` to Validate Index Usage
+
+Always use `explain()` to understand how MongoDB executes your queries and confirm that indexes are being used effectively.
+
+✅ **GOOD**: Analyze query plan.
+```python
+query_plan = users_collection.find({"email": "john.doe@example.com"}).explain()
+# Look for "IXSCAN" in the winning plan's "stage" field.
+```
+❌ **BAD**: Assuming indexes are working without verification, leading to hidden performance bottlenecks.
+
+## 4. Code Organization: Use ODMs, Fallback to Driver
+
+For most CRUD operations, use an Object Document Mapper (ODM) for schema validation and cleaner code. For complex or highly optimized operations, use the native driver.
+
+### 4.1. Use an ODM for Schema-Driven Development (e.g., MongoEngine for Python)
+
+ODMs provide a layer of abstraction, define schemas, and handle common operations, making your code more maintainable and less error-prone.
+
+✅ **GOOD**: Define models with MongoEngine.
+```python
+from mongoengine import Document, StringField, EmailField, DateTimeField
+from datetime import datetime
+
+class User(Document):
+    username = StringField(required=True, unique=True)
+    email = EmailField(required=True, unique=True)
+    created_at = DateTimeField(default=datetime.now)
+
+# Usage (after connecting MongoEngine):
+# user = User(username="janedoe", email="jane.doe@example.com")
+# user.save()
+```
+❌ **BAD**: Manually managing document structure and validation with raw PyMongo for every operation.
+
+### 4.2. Fallback to Native Driver for Fine-Grained Control
+
+When an ODM's abstraction limits performance or expressiveness for a specific complex query (e.g., advanced aggregation pipelines or bulk writes), use the native driver directly.
+
+✅ **GOOD**: Use PyMongo for a complex aggregation.
+```python
+from pymongo import MongoClient
+
+client = MongoClient("mongodb://localhost:27017/")
+db = client.mydatabase
+users_collection = db.users
+
+pipeline = [
+    {"$match": {"status": "active"}},
+    {"$group": {"_id": "$country", "totalUsers": {"$sum": 1}}}
+]
+result = list(users_collection.aggregate(pipeline))
+```
+❌ **BAD**: Forcing complex operations into an ODM's ORM-like syntax, potentially leading to inefficient queries or verbose code.
+
+## 5. Security Best Practices: Lock It Down
+
+Security is paramount. Implement role-based access control, enable TLS, and manage read/write concerns.
+
+### 5.1. Implement Role-Based Access Control (RBAC)
+
+Grant users and applications the minimum necessary privileges. Never use root or administrative credentials for application-level access.
+
+✅ **GOOD**: Create specific roles.
+```javascript
+// In MongoDB shell
+db.createUser(
+   {
+     user: "appUser",
+     pwd: passwordPrompt(), // Use a strong password
+     roles: [ { role: "readWrite", db: "mydatabase" } ]
+   }
+)
+```
+❌ **BAD**: Using a single user with `dbAdmin` or `readWriteAnyDatabase` for all application interactions.
+
+### 5.2. Enable TLS/SSL for All Connections
+
+Encrypt all data in transit between your application and MongoDB.
+
+✅ **GOOD**: Connect with TLS enabled.
+```python
+client = MongoClient("mongodb://localhost:27017/", tls=True, tlsCAFile="path/to/ca.pem")
+```
+❌ **BAD**: Connecting without TLS, exposing sensitive data to eavesdropping.
+
+## 6. Common Pitfalls & Gotchas: Avoid These Traps
+
+### 6.1. Avoid Multi-Document Transactions Unless Absolutely Necessary
+
+Single-document operations in MongoDB are atomic. Multi-document transactions add overhead and complexity. Only use them when atomicity across multiple documents or collections is a strict requirement.
+
+✅ **GOOD**: Rely on single-document atomicity for most updates.
+```python
+users_collection.update_one({"_id": ObjectId("656e2c0e8a7b9c1d2e3f4a5b")}, {"$set": {"status": "inactive"}}) # Atomic
+```
+❌ **BAD**: Wrapping simple, single-document updates in a multi-document transaction for no real benefit.
+
+### 6.2. Manage Cursor Lifecycles
+
+Ensure cursors are closed or fully iterated, especially in long-running processes, to prevent resource leaks on the server.
+
+✅ **GOOD**: Iterate fully or close explicitly.
+```python
+cursor = users_collection.find({"status": "active"})
+for user in cursor:
+    process_user(user)
+cursor.close() # Explicitly close if not fully iterated
+```
+❌ **BAD**: Leaving cursors open indefinitely, consuming server resources.
+
+## 7. Testing Approaches: Isolate Your Database
+
+Focus on integration tests for database interactions and mock the database for unit tests.
+
+### 7.1. Use an In-Memory Mock for Unit Tests
+
+For unit testing business logic that interacts with MongoDB, mock the database client or ODM to ensure tests are fast and isolated.
+
+✅ **GOOD**: Mock `find_one` for a unit test.
+```python
+from unittest.mock import MagicMock, patch
+from bson.objectid import ObjectId
+
+# Assume get_user_by_id is a function in my_app.py that uses users_collection
+# from pymongo.collection import Collection
+# users_collection: Collection = ... # Initialized elsewhere
+
+def get_user_by_id(user_id: ObjectId):
+    return users_collection.find_one({"_id": user_id})
+
+def test_get_user_by_id_mocked():
+    mock_user_data = {"_id": ObjectId("656e2c0e8a7b9c1d2e3f4a5b"), "username": "testuser"}
+    mock_collection = MagicMock()
+    mock_collection.find_one.return_value = mock_user_data
+
+    with patch('__main__.users_collection', mock_collection): # Adjust patch path as needed
+        user = get_user_by_id(ObjectId("656e2c0e8a7b9c1d2e3f4a5b"))
+        assert user["username"] == "testuser"
+        mock_collection.find_one.assert_called_once()
+```
+❌ **BAD**: Connecting to a real (even local) MongoDB instance for every unit test, making tests slow and brittle.
+
+By adhering to these best practices, you'll build performant, scalable, and maintainable applications with MongoDB.

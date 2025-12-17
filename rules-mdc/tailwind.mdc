@@ -1,101 +1,176 @@
 ---
-description: Comprehensive guide for Tailwind CSS best practices, covering code organization, performance optimization, security considerations, and common pitfalls. This rule provides actionable guidance for developers to build scalable and maintainable Tailwind CSS projects.
-globs: *.html,*.js,*.jsx,*.ts,*.tsx,*.vue
+description: Provides definitive best practices for using Tailwind CSS, focusing on maintainability, performance, and scalability in modern web development.
+globs: **/*.{css,html,jsx,tsx,vue}
 ---
-- Leverage Tailwind's PurgeCSS to remove unused styles in production. Configure `purge` in `tailwind.config.js` to specify files to scan for Tailwind classes.  Example:
-  javascript
-  module.exports = {
-    purge: ['./src/*.js,*.jsx,*.ts,*.tsx', './public/index.html'],
-    darkMode: false, // or 'media' or 'class'
-    theme: {
-      extend: {},
+# tailwind Best Practices
+
+Tailwind CSS is a powerful utility-first framework. These rules ensure our projects leverage Tailwind effectively, promoting consistency, performance, and maintainability across the team.
+
+## 1. Design System Configuration
+
+**Always define your design system in `tailwind.config.js`.** Avoid arbitrary values in markup unless absolutely necessary for unique, non-reusable styles. This ensures UI consistency and enables efficient PurgeCSS tree-shaking.
+
+❌ BAD: Arbitrary values in markup
+```html
+<div class="bg-[#1a2b3c] text-[15px] p-[1.25rem] rounded-[8px]">...</div>
+```
+
+✅ GOOD: Configured design tokens
+```js
+// tailwind.config.js
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        brand: { 500: '#1a2b3c' },
+      },
+      fontSize: {
+        'body-md': '15px',
+      },
+      spacing: {
+        'layout-sm': '1.25rem',
+      },
+      borderRadius: {
+        'card': '8px',
+      },
     },
-    variants: {
-      extend: {},
+  },
+};
+```
+```html
+<div class="bg-brand-500 text-body-md p-layout-sm rounded-card">...</div>
+```
+
+## 2. Component Abstraction
+
+**Extract reusable UI patterns into framework-specific components.** This keeps your markup clean, promotes reusability, and centralizes complex styling logic. Use libraries like `clsx` or `cva` for dynamic class composition.
+
+**Avoid `@apply` for general component styling.** It creates custom CSS that hides Tailwind's utility-first nature, making refactoring harder and reducing clarity. Reserve `@apply` for very specific, non-reusable base styles (e.g., resetting browser defaults) or legacy migrations.
+
+❌ BAD: Duplicated utility soup in every instance
+```html
+<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-blue-500/50">
+  Submit
+</button>
+<!-- ... many more buttons with the exact same classes ... -->
+```
+
+✅ GOOD: Reusable component (React example)
+```jsx
+// components/Button.jsx
+import clsx from 'clsx';
+
+export function Button({ variant = 'primary', size = 'md', className, ...props }) {
+  const baseStyles = 'font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2';
+  const variantStyles = {
+    primary: 'bg-blue-500 hover:bg-blue-700 text-white focus:ring-blue-500/50',
+    secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-800 focus:ring-gray-300/50',
+  };
+  const sizeStyles = {
+    sm: 'text-sm',
+    md: 'text-base',
+  };
+
+  return (
+    <button
+      className={clsx(baseStyles, variantStyles[variant], sizeStyles[size], className)}
+      {...props}
+    />
+  );
+}
+```
+```jsx
+// Usage
+<Button>Submit</Button>
+<Button variant="secondary">Cancel</Button>
+```
+
+## 3. Class Ordering & Readability
+
+**Group utility classes logically for improved readability.** While Tailwind doesn't enforce an order, a consistent pattern makes scanning classes easier and reduces cognitive load. We recommend:
+`Layout` > `Flexbox` > `Grid` > `Box Model (p, m, w, h)` > `Typography` > `Backgrounds` > `Borders` > `Effects` > `Interactivity` > `States (hover, focus, active, responsive)`
+
+❌ BAD: Random order
+```html
+<div class="text-lg flex shadow-md p-4 items-center bg-white rounded-lg">...</div>
+```
+
+✅ GOOD: Consistent order
+```html
+<div class="flex items-center p-4 bg-white rounded-lg shadow-md text-lg">...</div>
+```
+
+## 4. Mobile-First & Responsive Design
+
+**Adopt a mobile-first approach.** Design for the smallest screen first, then use responsive prefixes (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`) to adapt styles for larger viewports. This is the default and most efficient way to build responsive UIs with Tailwind.
+
+```html
+<!-- Default (mobile) is stacked, medium screens and up are side-by-side -->
+<div class="flex flex-col md:flex-row items-center md:items-start gap-4">
+  <img class="w-24 h-24 rounded-full md:w-32 md:h-32" src="..." alt="Profile">
+  <div class="text-center md:text-left">
+    <h2 class="text-xl md:text-2xl font-bold">John Doe</h2>
+    <p class="text-gray-600 md:text-lg">Software Engineer</p>
+  </div>
+</div>
+```
+
+## 5. Performance Optimization
+
+**Configure `content` for PurgeCSS and leverage JIT.** Ensure your `tailwind.config.js` accurately lists *all* files containing Tailwind classes. This is critical for PurgeCSS to tree-shake unused CSS, keeping your bundle size minimal. Tailwind v4 uses the Just-In-Time (JIT) engine by default, providing fast compilation.
+
+```js
+// tailwind.config.js
+module.exports = {
+  content: [
+    './src/**/*.{js,jsx,ts,tsx,vue,html}', // Your source files
+    './public/index.html', // Any raw HTML files
+  ],
+  theme: { extend: {} },
+  plugins: [],
+};
+```
+
+**Keep Tailwind updated.** Use `npx @tailwindcss/upgrade` to migrate from v3 to v4, benefiting from performance improvements and modern CSS features. Be aware of v4's modern browser requirements (Safari 16.4+, Chrome 111+, Firefox 128+).
+
+## 6. Accessibility
+
+**Prioritize semantic HTML.** Tailwind styles should enhance, not replace, proper HTML structure. Ensure all interactive elements have clear, visible focus states.
+
+**`outline-hidden` vs `outline-none` (Tailwind v4):**
+*   **`outline-hidden`**: Sets an invisible outline that *still shows in forced colors mode* for accessibility. **Prefer this for interactive elements** when you want to hide the default browser outline but ensure accessibility.
+*   **`outline-none`**: Sets `outline-style: none`, completely removing the outline. **Avoid this for interactive elements** unless you provide a custom, accessible focus indicator (e.g., `focus:ring-2`).
+
+❌ BAD: Removing focus entirely
+```html
+<button class="focus:outline-none">Click me</button>
+```
+
+✅ GOOD: Accessible focus state
+```html
+<button class="focus:outline-hidden focus:ring-2 focus:ring-blue-500/50">Click me</button>
+```
+
+## 7. Theming & Dark Mode
+
+**Extend your `tailwind.config.js` for custom themes.** Define custom colors, fonts, spacing, and other design tokens to match your brand. Leverage the `dark:` variant for built-in dark mode support.
+
+```js
+// tailwind.config.js
+module.exports = {
+  darkMode: 'class', // or 'media'
+  theme: {
+    extend: {
+      colors: {
+        'primary-light': '#f0f9ff',
+        'primary-dark': '#0c4a6e',
+      },
     },
-    plugins: [],
-  }
-  
-- Use Tailwind's Configuration File (`tailwind.config.js`) to customize the theme, colors, spacing, breakpoints, and other design tokens.  This promotes consistency and maintainability across the project.  Avoid hardcoding values directly in the HTML or components.
-- Adopt a Mobile-First Approach: Design for smaller screens first and then use Tailwind's responsive modifiers (e.g., `md:`, `lg:`) to adapt the layout and styles for larger screens.  This improves the user experience on mobile devices and reduces the amount of CSS needed.
-- Utilize Tailwind UI or other component libraries built with Tailwind CSS to accelerate development and maintain a consistent design language.  Customize the components as needed to fit the specific requirements of the project.  Alternatively, create your own reusable components.
-- Optimize for Performance:  Be mindful of the number of Tailwind classes used on each element.  Consider using `@apply` in CSS or extracting common styles into custom CSS classes to reduce duplication and improve performance. Use `content` variants when needed instead of the `DEFAULT` to control when generated classes are added.  For instance, use `content-[url(..)]` instead of `content-[url(..)]`. Configure the JIT mode for faster build times during development.
-- Stay Organized with Components: Break down the UI into smaller, reusable components.  Use a consistent naming convention for components and Tailwind classes.  Consider using a component library like Storybook to document and showcase the components.
-- Integrate with a Design System: Define a clear design system with consistent colors, typography, and spacing.  Map the design system tokens to Tailwind's configuration file.  This ensures that the UI is consistent and aligned with the brand guidelines.
-- Use semantic class names: While Tailwind promotes utility-first CSS, consider using semantic class names in conjunction with Tailwind classes to improve readability and maintainability. For example, instead of `<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">`, you could use `<button class="primary-button">` and define the corresponding styles in your CSS file using `@apply`. This allows you to update the button styles in one place without having to modify the HTML.
-- Create Custom Utilities: Extend Tailwind's functionality by creating custom utilities for frequently used CSS patterns. Add these utilities to `tailwind.config.js` under the `extend.utilities` section. This will allow you to apply these patterns with a single class name.
-- Use the Theme Function:  Leverage the `theme()` function in your CSS or JavaScript files to access values defined in `tailwind.config.js`. This ensures that you are using consistent values throughout your project and that changes to the theme are reflected everywhere.
-- Avoid Inline Styles: Refrain from using inline styles as much as possible. Tailwind provides a comprehensive set of utility classes, so most styling needs can be met without resorting to inline styles. Inline styles can make it harder to maintain and update the styles in your project.
-- Use Layer Directives: Use `@layer` directives in your CSS to organize your styles and ensure that Tailwind's base styles are applied correctly. This can help prevent conflicts between your custom styles and Tailwind's default styles.
-- Be Careful with Arbitrary Values: While Tailwind allows you to use arbitrary values with square bracket notation (e.g., `w-[23px]`), use this feature sparingly. Overuse of arbitrary values can make your code less readable and harder to maintain. Prefer using values defined in your `tailwind.config.js` file whenever possible.
-- Utilize Variants Effectively: Understand and use Tailwind's variants (e.g., `hover:`, `focus:`, `active:`) to create interactive and dynamic styles. Customize the variants in `tailwind.config.js` to match the specific needs of your project.
-- Code Organization and Structure:
-  - Directory structure: Organize your Tailwind CSS files into a logical directory structure. Common approaches include:
-    - `src/css/`: Contains `tailwind.css` (input file) and other custom CSS files.
-    - `src/components/`: Contains reusable UI components.
-    - `src/layout/`: Contains layout components (e.g., header, footer, navigation).
-  - File naming conventions: Use descriptive and consistent file names. For example:
-    - `button.css`: Styles for a button component.
-    - `header.js`: JavaScript file for a header component.
-  - Module organization: Break down your CSS into smaller, manageable modules. Use `@import` in your `tailwind.css` file to import these modules. This improves code organization and maintainability.
-  - Component architecture: Design your UI with a component-based architecture. Each component should have its own CSS file that defines the styles for that component.
-  - Code splitting strategies: Consider using code splitting to reduce the initial load time of your application. This can be achieved by splitting your CSS into smaller chunks and loading them on demand.
-- Common Patterns and Anti-patterns:
-  - Design patterns: 
-    - Atomic CSS: Tailwind promotes the atomic CSS approach, where styles are applied using small, single-purpose utility classes.
-    - Utility-first CSS: Prioritize using utility classes over custom CSS classes.
-    - Component-based styling: Encapsulate styles within components.
-  - Recommended approaches: 
-    - Use a consistent naming convention for your components and CSS classes.
-    - Document your components and styles.
-    - Test your components and styles.
-  - Anti-patterns: 
-    - Overusing custom CSS classes: Try to use Tailwind's utility classes as much as possible.
-    - Hardcoding values: Use the theme configuration instead of hardcoding values.
-    - Not using PurgeCSS: This can lead to a large CSS file in production.
-  - State management: Use a state management library like Redux or Zustand to manage the state of your application. Apply tailwind classes based on state changes.
-  - Error handling: Implement proper error handling to catch and handle errors gracefully.
-- Performance Considerations:
-  - Optimization techniques: 
-    - Use PurgeCSS to remove unused styles.
-    - Enable JIT mode.
-    - Optimize images.
-  - Memory management: Be mindful of memory usage, especially when dealing with large datasets or complex UIs.
-  - Rendering optimization: Use techniques like virtualization and memoization to optimize rendering performance.
-  - Bundle size optimization: Reduce the size of your CSS and JavaScript bundles.
-  - Lazy loading: Load resources on demand to improve initial load time.
-- Security Best Practices:
-  - Common vulnerabilities: 
-    - Cross-site scripting (XSS)
-    - Cross-site request forgery (CSRF)
-    - Injection attacks
-  - Input validation: Validate all user input to prevent malicious data from being injected into your application.
-  - Authentication and authorization: Implement proper authentication and authorization mechanisms to protect your application from unauthorized access.
-  - Data protection: Protect sensitive data by encrypting it and storing it securely.
-  - Secure API communication: Use HTTPS to encrypt communication between your application and the server.
-- Testing Approaches:
-  - Unit testing: Test individual components and functions in isolation.
-  - Integration testing: Test the interaction between different components and modules.
-  - End-to-end testing: Test the entire application from start to finish.
-  - Test organization: Organize your tests into a logical directory structure.
-  - Mocking and stubbing: Use mocking and stubbing to isolate your tests and avoid dependencies on external resources.
-- Common Pitfalls and Gotchas:
-  - Frequent mistakes: 
-    - Not configuring PurgeCSS properly.
-    - Overriding Tailwind's styles without understanding the consequences.
-    - Using arbitrary values excessively.
-  - Edge cases: 
-    - Handling different screen sizes and devices.
-    - Dealing with complex layouts and interactions.
-    - Supporting older browsers.
-  - Version-specific issues: Be aware of any version-specific issues and compatibility concerns.
-  - Debugging strategies: Use browser developer tools to inspect the CSS and debug any issues.
-- Tooling and Environment:
-  - Recommended tools: 
-    - Visual Studio Code with the Tailwind CSS IntelliSense extension.
-    - PostCSS with the autoprefixer plugin.
-    - ESLint with the eslint-plugin-tailwindcss plugin.
-  - Build configuration: Configure your build process to use PurgeCSS and optimize your CSS.
-  - Linting and formatting: Use a linter and formatter to enforce code style and catch errors.
-  - Deployment: Deploy your application to a production environment that is optimized for performance and security.
-  - CI/CD: Integrate your application with a CI/CD pipeline to automate the build, test, and deployment process.
+  },
+};
+```
+```html
+<div class="bg-primary-light dark:bg-primary-dark text-gray-900 dark:text-gray-100">
+  Hello, world!
+</div>
+```

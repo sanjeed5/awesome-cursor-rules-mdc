@@ -1,227 +1,350 @@
 ---
-description: Comprehensive best practices for using the Axios HTTP client library, covering code organization, common patterns, performance, pitfalls, and testing.
-globs: **/*.{js,jsx,ts,tsx}
+description: Definitive guidelines for using axios to build robust, maintainable, and performant HTTP clients in JavaScript/React applications.
+globs: **/*.{js,jsx}
 ---
-# Axios Best Practices
+# axios Best Practices
 
-Axios is a powerful, promise-based HTTP client for browsers and Node.js. Adhering to best practices ensures maintainable, performant, and robust API interactions in your applications.
+`axios` is the go-to HTTP client for modern JavaScript applications due to its robust features and promise-based API. These guidelines ensure your team leverages `axios` effectively, promoting clean code, centralized logic, and predictable error handling.
 
-## 1. Code Organization and Structure
+## 1. Centralize Your `axios` Instance
 
--   **Centralize Configuration with Axios Instances:** Always create dedicated Axios instances using `axios.create()` to centralize common configurations like `baseURL`, `timeout`, and default `headers`. This reduces boilerplate and ensures consistency across your application.
+Always create a single, pre-configured `axios` instance for your application. This centralizes `baseURL`, `timeout`, and default headers, adhering to the DRY principle and simplifying configuration changes.
 
-    javascript
-    // api.js or http-client.js
-    import axios from 'axios';
+❌ BAD: Scattered `axios` calls
+```javascript
+// In component A
+axios.get('https://api.example.com/users', { timeout: 5000 });
 
-    export const apiClient = axios.create({
-      baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-      timeout: 8000, // Request timeout in milliseconds
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
+// In component B
+axios.post('https://api.example.com/products', data, { headers: { 'Content-Type': 'application/json' } });
+```
 
--   **Dedicated API Modules/Services:** Organize your API calls into separate modules or service files, following the Single Responsibility Principle. Each module should handle requests for a specific resource or feature.
+✅ GOOD: Dedicated `apiClient` instance
+```javascript
+// src/api/apiClient.js
+import axios from 'axios';
 
-    javascript
-    // services/userService.js
-    import { apiClient } from '../api';
+const apiClient = axios.create({
+  baseURL: process.env.REACT_APP_API_BASE_URL || 'https://api.example.com',
+  timeout: 10000, // 10 seconds
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+});
 
-    export const userService = {
-      getAllUsers: () => apiClient.get('/users'),
-      getUserById: (id) => apiClient.get(`/users/${id}`),
-      createUser: (userData) => apiClient.post('/users', userData),
-      updateUser: (id, userData) => apiClient.put(`/users/${id}`, userData),
-      deleteUser: (id) => apiClient.delete(`/users/${id}`),
+export default apiClient;
+```
+
+## 2. Abstract API Endpoints into Modules
+
+Encapsulate each API endpoint or resource into its own module. This promotes the single-responsibility principle, making your API calls testable, reusable, and easy to understand.
+
+❌ BAD: API logic directly in components
+```javascript
+// src/components/UserList.jsx
+import React, { useEffect, useState } from 'react';
+import axios from 'axios'; // Direct axios import
+
+function UserList() {
+  const [users, setUsers] = useState([]);
+  useEffect(() => {
+    axios.get('https://api.example.com/users') // Hardcoded URL
+      .then(response => setUsers(response.data))
+      .catch(error => console.error(error));
+  }, []);
+  // ...
+}
+```
+
+✅ GOOD: Dedicated API service modules
+```javascript
+// src/api/users.js
+import apiClient from './apiClient'; // Use the centralized instance
+
+export const getUsers = async () => {
+  const response = await apiClient.get('/users');
+  return response.data;
+};
+
+export const createUser = async (userData) => {
+  const response = await apiClient.post('/users', userData);
+  return response.data;
+};
+
+// src/components/UserList.jsx
+import React, { useEffect, useState } from 'react';
+import { getUsers } from '../api/users'; // Import specific API functions
+
+function UserList() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const data = await getUsers();
+        setUsers(data);
+      } catch (err) {
+        setError('Failed to fetch users.'); // User-friendly error
+        console.error(err); // Log original error for debugging
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  if (loading) return <div>Loading users...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <ul>
+      {users.map(user => (
+        <li key={user.id}>{user.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+## 3. Leverage Interceptors for Global Logic
+
+Use `axios` interceptors for cross-cutting concerns like authentication, global error handling, logging, or request/response transformations. This keeps your API functions clean and focused on data fetching.
+
+### Request Interceptors (e.g., Auth Tokens)
+
+Inject authentication tokens automatically into every request.
+
+```javascript
+// src/api/apiClient.js (continued)
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken'); // Or from a state management solution
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+```
+
+### Response Interceptors (e.g., Global Error Handling)
+
+Handle common error statuses (e.g., 401 Unauthorized, 500 Server Error) globally. Map raw errors to user-friendly messages.
+
+```javascript
+// src/api/apiClient.js (continued)
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Handle 401 Unauthorized globally
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      // Example: Redirect to login page or attempt token refresh
+      console.warn('Unauthorized request, redirecting to login...');
+      // window.location.href = '/login'; // Or dispatch a global event
+      return Promise.reject(new Error('Session expired. Please log in again.')); // Return a user-friendly error
+    }
+
+    // Map other HTTP errors to user-friendly messages
+    let errorMessage = 'An unexpected error occurred.';
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        // Server responded with a status other than 2xx
+        errorMessage = error.response.data?.message || `Server Error: ${error.response.status}`;
+      } else if (error.request) {
+        // Request was made but no response received
+        errorMessage = 'No response from server. Please check your internet connection.';
+      } else {
+        // Something else happened while setting up the request
+        errorMessage = error.message;
+      }
+    } else {
+      errorMessage = error.message || 'An unknown error occurred.';
+    }
+
+    console.error('API Error:', error); // Log full error for debugging
+    return Promise.reject(new Error(errorMessage)); // Propagate user-friendly error
+  }
+);
+```
+
+## 4. Implement Request Cancellation with `AbortController`
+
+Prevent memory leaks and unnecessary network activity, especially in React components that might unmount before a request completes. Always use `AbortController` for cancellation; `CancelToken` is deprecated.
+
+❌ BAD: Ignoring cancellation or using deprecated `CancelToken`
+```javascript
+// In a React component
+useEffect(() => {
+  axios.get('/long-running-data').then(...); // Request might complete after component unmounts
+}, []);
+
+// Using deprecated CancelToken
+const CancelToken = axios.CancelToken;
+const source = CancelToken.source();
+axios.get('/data', { cancelToken: source.token });
+source.cancel('Operation cancelled.');
+```
+
+✅ GOOD: Using `AbortController` in `useEffect` cleanup
+```javascript
+// src/components/DataFetcher.jsx
+import React, { useEffect, useState } from 'react';
+import apiClient from '../api/apiClient';
+import axios from 'axios'; // Import axios to use axios.isCancel
+
+function DataFetcher() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const controller = new AbortController(); // Create AbortController
+    const signal = controller.signal;
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await apiClient.get('/some-data', { signal }); // Pass signal to axios
+        setData(response.data);
+      } catch (err) {
+        if (axios.isCancel(err)) {
+          console.log('Request cancelled:', err.message);
+        } else {
+          setError(err.message); // Use the user-friendly message from interceptor
+          console.error('Fetch error:', err);
+        }
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // In a component or business logic:
-    // import { userService } from '../services/userService';
-    // const users = await userService.getAllUsers();
-    
+    fetchData();
 
--   **Leverage Interceptors for Global Logic:** Use request and response interceptors to centralize cross-cutting concerns like authentication, logging, error handling, and data transformation.
+    return () => {
+      controller.abort('Component unmounted'); // Abort request on cleanup
+    };
+  }, []);
 
-    javascript
-    // In api.js or http-client.js, after creating apiClient
+  if (loading) return <div>Loading data...</div>;
+  if (error) return <div>Error: {error}</div>;
+  return <div>{JSON.stringify(data)}</div>;
+}
+```
 
-    // Request Interceptor: Add authentication token
-    apiClient.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem('jwt');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        // Log outgoing request (optional)
-        console.log(`[Axios] ${config.method.toUpperCase()} ${config.url}`);
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
+## 5. Validate Payloads Before Sending
 
-    // Response Interceptor: Unified error handling and response transformation
-    apiClient.interceptors.response.use(
-      (response) => {
-        // You can transform response data here if needed
-        return response;
-      },
-      (error) => {
-        if (error.response) {
-          // The request was made and the server responded with a status code
-          // that falls out of the range of 2xx
-          console.error('[Axios Error] Status:', error.response.status, 'Data:', error.response.data);
-          if (error.response.status === 401) {
-            // Handle unauthorized errors, e.g., redirect to login
-            console.error('Unauthorized: Redirecting to login...');
-            // window.location.href = '/login';
-          }
-          // You can throw a custom error here for more specific handling in components
-          return Promise.reject(new Error(error.response.data.message || 'An API error occurred.'));
-        } else if (error.request) {
-          // The request was made but no response was received
-          console.error('[Axios Error] No response received:', error.request);
-          return Promise.reject(new Error('No response from server. Please check your network connection.'));
-        } else {
-          // Something happened in setting up the request that triggered an Error
-          console.error('[Axios Error] Request setup error:', error.message);
-          return Promise.reject(new Error('An unexpected error occurred.'));
-        }
-      }
-    );
-    
+Always validate request payloads on the client-side before sending them to the server. This reduces unnecessary network requests and provides immediate feedback to the user.
 
-## 2. Common Patterns and Anti-patterns
+❌ BAD: Sending potentially invalid data
+```javascript
+const handleSubmit = async (formData) => {
+  // No client-side validation
+  await createUser(formData);
+};
+```
 
--   **Pattern: Use `async/await`:** Prefer `async/await` for cleaner, more readable asynchronous code over `.then().catch()` chains, especially when dealing with multiple sequential requests or complex logic.
+✅ GOOD: Client-side validation
+```javascript
+import { createUser } from '../api/users';
 
-    javascript
-    // Good: Using async/await
-    async function fetchUserData(userId) {
-      try {
-        const response = await apiClient.get(`/users/${userId}`);
-        return response.data;
-      } catch (error) {
-        console.error('Failed to fetch user data:', error.message);
-        throw error; // Re-throw to allow further handling
-      }
-    }
-    
+const handleSubmit = async (formData) => {
+  if (!formData.name || formData.name.length < 3) {
+    alert('Name must be at least 3 characters.');
+    return;
+  }
+  if (!formData.email || !/^\S+@\S+\.\S+$/.test(formData.email)) {
+    alert('Please enter a valid email address.');
+    return;
+  }
 
--   **Pattern: Request Cancellation with `AbortController`:** For long-running requests or when a component might unmount before a request completes, use `AbortController` to cancel requests. This prevents memory leaks and unnecessary network activity.
+  try {
+    await createUser(formData);
+    alert('User created successfully!');
+  } catch (error) {
+    alert(`Failed to create user: ${error.message}`); // Display user-friendly error
+  }
+};
+```
 
-    javascript
-    // In a React component's useEffect or similar lifecycle hook
-    useEffect(() => {
-      const controller = new AbortController();
-      const signal = controller.signal;
+## 6. Use TypeScript for API Contracts
 
-      async function fetchData() {
-        try {
-          const response = await apiClient.get('/data', { signal });
-          console.log(response.data);
-        } catch (error) {
-          if (axios.isCancel(error)) {
-            console.log('Request cancelled:', error.message);
-          } else {
-            console.error('Error fetching data:', error.message);
-          }
-        }
-      }
+Define explicit TypeScript interfaces for your request payloads and response data. This improves maintainability, provides compile-time safety, and enhances developer experience with autocompletion.
 
-      fetchData();
+```typescript
+// src/types/api.ts
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+}
 
-      return () => {
-        // Abort the request if the component unmounts
-        controller.abort();
-      };
-    }, []);
-    
+export interface CreateUserPayload {
+  name: string;
+  email: string;
+  password?: string;
+}
 
--   **Anti-pattern: Direct `axios` calls everywhere:** Avoid `import axios from 'axios';` and then calling `axios.get()` directly in multiple places without using a configured instance. This leads to scattered configuration and makes global changes difficult.
+// src/api/users.ts (example with TypeScript)
+import apiClient from './apiClient';
+import { User, CreateUserPayload } from '../types/api';
 
--   **Anti-pattern: Ignoring errors:** Always include `catch` blocks or implement comprehensive error handling via response interceptors. Unhandled promise rejections can lead to silent failures or crashes.
+export const getUsers = async (): Promise<User[]> => {
+  const response = await apiClient.get<User[]>('/users');
+  return response.data;
+};
 
--   **Anti-pattern: Hardcoding sensitive information:** Never hardcode `baseURL`, API keys, or other sensitive credentials directly in your code. Use environment variables (e.g., `process.env.VITE_API_URL` for Vite, `process.env.REACT_APP_API_URL` for Create React App, or `.env` files for Node.js).
+export const createUser = async (userData: CreateUserPayload): Promise<User> => {
+  const response = await apiClient.post<User>('/users', userData);
+  return response.data;
+};
+```
 
-## 3. Performance Considerations
+## 7. Test API Interactions with Mocking
 
--   **Set Request Timeouts:** Always configure a `timeout` on your Axios instances or individual requests. This prevents requests from hanging indefinitely, especially in cases of network issues or unresponsive servers.
+For unit and integration tests, mock `axios` requests to avoid making actual network calls. This makes tests faster, more reliable, and independent of external API availability. `axios-mock-adapter` is a common choice.
 
-    javascript
-    const apiClient = axios.create({
-      timeout: 10000, // 10 seconds
-    });
-    
+```javascript
+// src/api/users.test.js
+import MockAdapter from 'axios-mock-adapter';
+import apiClient from './apiClient';
+import { getUsers, createUser } from './users';
 
--   **Combine `timeout` with `AbortSignal`:** Understand that `timeout` handles the time until a response is received, while `AbortSignal` allows for explicit cancellation of the underlying connection. For robust control, use both.
+const mock = new MockAdapter(apiClient);
 
-    javascript
-    axios.get('/long-request', {
-      timeout: 5000, // Response timeout
-      signal: AbortSignal.timeout(10000) // Connection timeout after 10 seconds (Node.js 17.3+)
-    });
-    
+describe('users API', () => {
+  afterEach(() => {
+    mock.reset(); // Reset mocks after each test
+  });
 
--   **Client-Side Caching:** For frequently accessed data that doesn't change often, consider implementing client-side caching strategies (e.g., using libraries like `React Query`, `SWR`, or a custom in-memory cache). This reduces redundant network requests and improves perceived performance.
+  it('should fetch users successfully', async () => {
+    const mockUsers = [{ id: 1, name: 'Alice', email: 'alice@example.com' }];
+    mock.onGet('/users').reply(200, mockUsers);
 
--   **Request Throttling/Debouncing:** For user interactions that trigger frequent API calls (e.g., search input, scroll events), implement throttling or debouncing to limit the rate of requests sent to the server. This prevents overloading the backend and improves client-side responsiveness.
+    const users = await getUsers();
+    expect(users).toEqual(mockUsers);
+  });
 
--   **Minimize Bundle Size (Contextual):** While Axios is generally lightweight, for extremely small applications where every byte counts, the native `Fetch API` might be considered. However, Axios's features (interceptors, automatic JSON parsing, error handling) often justify its inclusion for most projects.
+  it('should create a user successfully', async () => {
+    const newUserPayload = { name: 'Bob', email: 'bob@example.com' };
+    const createdUser = { id: 2, ...newUserPayload };
+    mock.onPost('/users').reply(201, createdUser);
 
-## 4. Common Pitfalls and Gotchas
+    const user = await createUser(newUserPayload);
+    expect(user).toEqual(createdUser);
+  });
 
--   **Forgetting to Return in Interceptors:** Request and response interceptors *must* return the `config` or `response` object, respectively, or a `Promise.reject(error)` for error handlers. Failing to do so will halt the request/response chain.
+  it('should handle API errors gracefully', async () => {
+    mock.onGet('/users').reply(500, { message: 'Internal Server Error' });
 
--   **`cancelToken` is Deprecated:** Avoid using `axios.CancelToken`. The modern and recommended approach for request cancellation is `AbortController`.
-
--   **Misunderstanding `timeout` vs. `AbortSignal`:** As mentioned, `timeout` is for response time, `AbortSignal` is for connection cancellation. Use both for comprehensive control.
-
--   **CORS Issues:** Cross-Origin Resource Sharing (CORS) errors are common when the frontend and backend are on different domains. While primarily a backend configuration issue, ensure your frontend sends necessary headers (e.g., `Authorization`) that the backend expects for CORS preflight requests.
-
--   **Incorrect `Content-Type` for `POST`/`PUT`:** Axios automatically sets `Content-Type: application/json` for plain JavaScript objects. However, for other data types (e.g., `FormData` for file uploads), ensure you explicitly set the correct `Content-Type` header if Axios doesn't handle it automatically.
-
--   **Handling Different Error Structures:** APIs can return errors in various formats. Your response interceptor should be robust enough to parse different error structures (e.g., `error.response.data.message`, `error.response.data.errors`).
-
-## 5. Testing Approaches
-
--   **Mocking API Responses:** For unit and integration tests, avoid making actual network requests. Use mocking libraries to simulate API responses.
-
-    -   **`axios-mock-adapter`:** A popular library specifically designed for mocking Axios requests. It allows you to define expected requests and return mock responses.
-
-        javascript
-        import axios from 'axios';
-        import MockAdapter from 'axios-mock-adapter';
-        import { userService } from '../services/userService'; // Your API service
-
-        const mock = new MockAdapter(axios); // Or new MockAdapter(apiClient);
-
-        describe('User Service', () => {
-          afterEach(() => {
-            mock.reset(); // Reset mocks after each test
-          });
-
-          test('should fetch all users', async () => {
-            const mockUsers = [{ id: 1, name: 'Alice' }];
-            mock.onGet('/users').reply(200, mockUsers);
-
-            const users = await userService.getAllUsers();
-            expect(users.data).toEqual(mockUsers);
-          });
-
-          test('should handle fetch error', async () => {
-            mock.onGet('/users').reply(500, { message: 'Server Error' });
-
-            await expect(userService.getAllUsers()).rejects.toThrow('An API error occurred.');
-          });
-        });
-        
-
-    -   **`MSW (Mock Service Worker)`:** A more powerful alternative that intercepts network requests at the service worker level (browser) or Node.js level. This allows for realistic mocking that works across different HTTP clients (Axios, Fetch, etc.) and is great for end-to-end testing scenarios.
-
--   **Unit Test API Service Functions:** Write tests for your individual API service functions to ensure they construct the correct URLs, methods, and data payloads.
-
--   **Test Interceptors:** Ensure your request and response interceptors behave as expected, e.g., that authentication tokens are added, and error responses are handled gracefully.
+    await expect(getUsers()).rejects.toThrow('Server Error: 500'); // Based on interceptor error message
+  });
+});
+```

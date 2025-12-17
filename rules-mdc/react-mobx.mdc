@@ -1,203 +1,429 @@
 ---
-description: This rule provides comprehensive best practices for developing React applications with Mobx, covering code organization, performance, testing, and security considerations. It aims to guide developers in building robust and maintainable applications using React-Mobx.
-globs: *.js,*.jsx,*.ts,*.tsx
+description: This guide provides opinionated, actionable best practices for building scalable and performant React applications using MobX, focusing on modern patterns and React Compiler compatibility.
+globs: **/*.{js,jsx,ts,tsx}
 ---
-# React-Mobx Best Practices
+# react-mobx Best Practices
 
-This document outlines best practices for developing React applications with Mobx. Following these guidelines will help you build robust, maintainable, and performant applications.
+MobX, paired with React, offers a powerful and low-boilerplate approach to state management. By adhering to these guidelines, your team will build predictable, scalable applications ready for React 19 and the React Compiler.
 
-## 1. Core Principles
+## 1. Store Design and Organization
 
-- **Model observable state:**  Define the source of truth in your Mobx stores and make them observable.
-- **Use derived state (computed properties):**  Derive data from your observable state using `computed` properties to avoid unnecessary re-renders and ensure data consistency.
-- **Embrace mutability:** Mobx encourages direct mutation of observable state within actions.
-- **Use strict mode:** Enforce predictable state changes by using `use strict` or enabling strict mode in Mobx to ensure all state modifications happen within actions.
-- **Keep actions in MobX stores:** Encapsulate state mutations within Mobx actions to ensure data integrity and simplify debugging.
-- **Prefer class vs object syntax:** Use class syntax for creating stores as it offers better structure, inheritance, and maintainability.
-- **Inject store rather than importing:**  Use dependency injection (e.g., React Context) to provide stores to components instead of importing them directly to improve testability and reduce tight coupling.
+Organize your application state into domain-specific stores, composed into a single root store.
 
-## 2. Code Organization and Structure
+### 1.1. Class-Based Stores with `makeObservable`
 
-- **Directory Structure:**
-    - `/src`:
-        - `/components`: React components (presentational and container components).
-        - `/stores`: Mobx stores containing observable state and actions.
-        - `/models`: Data models and types definitions.
-        - `/services`: API clients and other services.
-        - `/utils`: Utility functions.
-        - `/hooks`: Custom React hooks.
-        - `/constants`: Application-wide constants.
-    - `/test`: Unit, integration, and end-to-end tests.
+Define each domain area as a class. Use `makeObservable` in the constructor to explicitly declare observables, computed values, and actions. This is the modern, explicit way to define your reactive state.
 
-- **File Naming Conventions:**
-    - Components: `ComponentName.jsx` or `ComponentName.tsx`
-    - Stores: `StoreName.store.js` or `StoreName.store.ts`
-    - Models: `ModelName.model.js` or `ModelName.model.ts`
-    - Services: `ServiceName.service.js` or `ServiceName.service.ts`
-    - Hooks: `useHookName.js` or `useHookName.ts`
+❌ **BAD: Implicit MobX decorators (legacy)**
+```javascript
+// src/stores/UserStore.js
+import { observable, action, computed } from 'mobx';
 
-- **Module Organization:**
-    - Group related components, stores, and models into modules.
-    - Use clear and descriptive module names.
-    - Avoid circular dependencies between modules.
+class UserStore {
+  @observable users = [];
+  @observable isLoading = false;
 
-- **Component Architecture:**
-    - **Presentational Components:**  Responsible for rendering UI and receiving data via props.
-    - **Container Components:**  Connect presentational components to Mobx stores and manage state updates.
-    - Use the `observer` decorator/function from `mobx-react-lite` to make components react to observable changes.
+  @computed get activeUsers() {
+    return this.users.filter(u => u.isActive);
+  }
 
-- **Code Splitting Strategies:**
-    - Use React's `lazy` and `Suspense` components for lazy loading routes or components.
-    - Implement route-based code splitting to load only necessary code for the current route.
-    - Consider using `dynamic imports` for on-demand loading of modules.
+  @action addUser(user) {
+    this.users.push(user);
+  }
+}
+```
 
-## 3. Common Patterns and Anti-patterns
+✅ **GOOD: Explicit `makeObservable` (modern)**
+```typescript
+// src/stores/UserStore.ts
+import { makeObservable, observable, action, computed } from 'mobx';
 
-- **Design Patterns:**
-    - **Observer Pattern:** Mobx uses the observer pattern to automatically update components when observable state changes.
-    - **Dependency Injection:** Use React Context to inject stores into components, making them more testable and reusable.
-    - **Provider Pattern:** Use a Provider component to make stores available to the component tree.
+interface User {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
 
-- **Recommended Approaches:**
-    - **Form Handling:** Use Mobx to manage form state and validation.
-    - **Asynchronous Operations:** Use Mobx actions to handle asynchronous operations and update the state accordingly.
-    - **List Rendering:** Optimize list rendering using `key` props and `React.memo`.
+export class UserStore {
+  users: User[] = [];
+  isLoading: boolean = false;
 
-- **Anti-patterns and Code Smells:**
-    - **Modifying State Outside Actions:** Always modify observable state within Mobx actions to ensure data consistency.
-    - **Deeply Nested Observables:** Avoid deeply nested observable objects as they can impact performance.
-    - **Computing Data in Components:**  Use `computed` properties in stores to derive data instead of computing it directly in components.
-    - **Over-Observing:** Only observe the specific parts of the store that a component needs.
+  constructor() {
+    makeObservable(this, {
+      users: observable,
+      isLoading: observable,
+      activeUsers: computed,
+      addUser: action,
+      fetchUsers: action,
+    });
+  }
 
-- **State Management Best Practices:**
-    - **Single Source of Truth:** Keep the application state in Mobx stores and avoid duplicating data.
-    - **Normalization:** Normalize data to reduce redundancy and improve data consistency.
-    - **Immutability (with Mutation):**  While Mobx encourages mutation, treat observable state as immutable from the perspective of components (i.e., components shouldn't directly mutate the store).
+  get activeUsers(): User[] {
+    return this.users.filter(u => u.isActive);
+  }
 
-- **Error Handling Patterns:**
-    - Implement centralized error handling using a dedicated error store.
-    - Use try-catch blocks within actions to handle potential errors.
-    - Display user-friendly error messages to the user.
+  addUser(user: User) {
+    this.users.push(user);
+  }
 
-## 4. Performance Considerations
+  async fetchUsers() {
+    this.isLoading = true;
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 500));
+    this.users = [{ id: '1', name: 'Alice', isActive: true }];
+    this.isLoading = false;
+  }
+}
+```
 
-- **Optimization Techniques:**
-    - **`React.memo`:**  Wrap components with `React.memo` to prevent unnecessary re-renders when props haven't changed.
-    - **`useMemo` and `useCallback`:**  Use `useMemo` and `useCallback` hooks to memoize values and callbacks, preventing unnecessary re-renders of child components.
-    - **Computed Properties:**  Use `computed` properties to derive data from observable state and cache the results.
-    - **Optimize List Rendering:**  Use `key` props when rendering lists and consider using virtualized lists for large datasets.
+### 1.2. Root Store Composition
 
-- **Memory Management:**
-    - **Dispose of Observers:**  Dispose of observers when components unmount to prevent memory leaks.
-    - **Avoid Retaining Large Data Sets:**  Remove or release references to large data sets when they are no longer needed.
+Create a `RootStore` that instantiates and holds references to all other stores. This provides a single entry point for your application's state and facilitates inter-store communication.
 
-- **Rendering Optimization:**
-    - **Minimize Re-renders:**  Optimize component rendering by using `React.memo` and avoiding unnecessary state updates.
-    - **Use ShouldComponentUpdate (if needed):** In class components, use `shouldComponentUpdate` lifecycle method to control when a component should re-render.  This is less common with `observer`.  Be careful, can lead to bugs.
+```typescript
+// src/stores/RootStore.ts
+import { UserStore } from './UserStore';
+import { AuthStore } from './AuthStore';
 
-- **Bundle Size Optimization:**
-    - **Code Splitting:** Implement code splitting to reduce the initial bundle size.
-    - **Tree Shaking:**  Use a bundler that supports tree shaking to remove unused code.
-    - **Minification:**  Minify your code to reduce the bundle size.
+export class RootStore {
+  userStore: UserStore;
+  authStore: AuthStore;
 
-- **Lazy Loading Strategies:**
-    - **React.lazy and Suspense:** Use React's built-in lazy loading mechanism.
-    - **Dynamic Imports:** Use dynamic imports to load modules on demand.
+  constructor() {
+    this.authStore = new AuthStore(this); // Pass root store for cross-store access
+    this.userStore = new UserStore();
+  }
+}
 
-## 5. Security Best Practices
+// Export a singleton instance for convenience, or create one in your app entry.
+export const rootStore = new RootStore();
+```
 
-- **Common Vulnerabilities:**
-    - **Cross-Site Scripting (XSS):** Sanitize user inputs to prevent XSS attacks.
-    - **Cross-Site Request Forgery (CSRF):** Implement CSRF protection mechanisms.
-    - **Injection Attacks:**  Validate user inputs to prevent SQL injection and other injection attacks.
+### 1.3. Consistent Naming Conventions
 
-- **Input Validation:**
-    - **Server-Side Validation:**  Always validate user inputs on the server-side.
-    - **Client-Side Validation:**  Implement client-side validation to provide immediate feedback to the user.
+Maintain clear naming for stores, observables, and actions.
 
-- **Authentication and Authorization Patterns:**
-    - **JSON Web Tokens (JWT):**  Use JWTs for authentication and authorization.
-    - **Role-Based Access Control (RBAC):**  Implement RBAC to control access to different parts of the application.
+*   **Stores**: PascalCase (e.g., `UserStore`, `ProductStore`).
+*   **Observable Fields**: camelCase (e.g., `users`, `isLoading`).
+*   **Computed Values**: camelCase, often prefixed with `get` if a getter (e.g., `get activeUsers`).
+*   **Actions**: Verb-prefixed camelCase (e.g., `addUser`, `fetchUsers`).
 
-- **Data Protection Strategies:**
-    - **Encryption:**  Encrypt sensitive data both in transit and at rest.
-    - **Data Masking:**  Mask sensitive data to protect user privacy.
+## 2. Context-Based Store Injection
 
-- **Secure API Communication:**
-    - **HTTPS:**  Use HTTPS for all API communication.
-    - **Rate Limiting:**  Implement rate limiting to prevent abuse.
+Avoid prop-drilling by providing your root store via React Context and consuming it with a custom hook.
 
-## 6. Testing Approaches
+```typescript
+// src/contexts/StoreContext.ts
+import React, { createContext, useContext } from 'react';
+import { RootStore, rootStore as defaultRootStore } from '../stores/RootStore';
 
-- **Unit Testing Strategies:**
-    - Test individual components and stores in isolation.
-    - Mock dependencies to isolate the unit under test.
-    - Use testing libraries like Jest and React Testing Library.
+export const StoreContext = createContext<RootStore>(defaultRootStore);
 
-- **Integration Testing:**
-    - Test the interaction between different components and stores.
-    - Use a testing environment that closely resembles the production environment.
+export const StoreProvider: React.FC<{ store?: RootStore }> = ({ children, store }) => {
+  return (
+    <StoreContext.Provider value={store || defaultRootStore}>
+      {children}
+    </StoreContext.Provider>
+  );
+};
 
-- **End-to-End Testing:**
-    - Test the entire application flow from the user's perspective.
-    - Use testing frameworks like Cypress or Selenium.
+export const useStore = (): RootStore => {
+  const store = useContext(StoreContext);
+  if (!store) {
+    throw new Error('useStore must be used within a StoreProvider.');
+  }
+  return store;
+};
+```
 
-- **Test Organization:**
-    - Organize tests into separate directories for unit, integration, and end-to-end tests.
-    - Use descriptive test names.
+**Usage in `App.tsx`:**
+```typescript
+// src/App.tsx
+import React from 'react';
+import { StoreProvider } from './contexts/StoreContext';
+import { rootStore } from './stores/RootStore';
+import UserList from './components/UserList';
 
-- **Mocking and Stubbing:**
-    - Use mocking libraries to mock dependencies in unit tests.
-    - Use stubbing to replace complex dependencies with simpler implementations.
+function App() {
+  return (
+    <StoreProvider store={rootStore}>
+      <div className="App">
+        <h1>My MobX App</h1>
+        <UserList />
+      </div>
+    </StoreProvider>
+  );
+}
 
-## 7. Common Pitfalls and Gotchas
+export default App;
+```
 
-- **Frequent Mistakes:**
-    - Forgetting to decorate components with `observer`.
-    - Modifying state outside of actions.
-    - Not disposing of observers properly.
-    - Over-observing state.
+## 3. Observer Integration and Component Granularity
 
-- **Edge Cases:**
-    - Handling large datasets efficiently.
-    - Dealing with complex asynchronous operations.
-    - Managing nested observable objects.
+Wrap components that read observable data with `observer` to enable automatic re-rendering. Design small, focused components to maximize MobX's fine-grained reactivity.
 
-- **Version-Specific Issues:**
-    - Be aware of breaking changes in Mobx and React versions.
-    - Consult the Mobx and React documentation for migration guides.
+### 3.1. Wrap Components with `observer`
 
-- **Compatibility Concerns:**
-    - Ensure compatibility with different browsers and devices.
-    - Test your application on different platforms.
+Use the `observer` HOC (or `useObserver` if preferred) to make your functional components react to observable changes.
 
-- **Debugging Strategies:**
-    - Use the Mobx devtools to inspect observable state and track changes.
-    - Use browser developer tools to debug React components.
-    - Add logging statements to track the flow of data and execution.
+```typescript
+// src/components/UserList.tsx
+import React, { useEffect } from 'react';
+import { observer } from 'mobx-react-lite'; // Use mobx-react-lite for functional components
+import { useStore } from '../contexts/StoreContext';
 
-## 8. Tooling and Environment
+const UserList: React.FC = observer(() => {
+  const { userStore } = useStore();
 
-- **Recommended Development Tools:**
-    - **VS Code:**  A popular code editor with excellent support for React and Mobx.
-    - **Mobx Devtools:**  A browser extension for inspecting Mobx state.
-    - **React Devtools:**  A browser extension for inspecting React components.
+  useEffect(() => {
+    userStore.fetchUsers();
+  }, [userStore]);
 
-- **Build Configuration:**
-    - **Webpack:**  A popular module bundler for React applications.
-    - **Parcel:**  A zero-configuration bundler that's easy to use.
-    - **Rollup:** A bundler focused on creating libraries and smaller bundles.
+  if (userStore.isLoading) {
+    return <div>Loading users...</div>;
+  }
 
-- **Linting and Formatting:**
-    - **ESLint:**  A JavaScript linter for enforcing code style and preventing errors.
-    - **Prettier:**  A code formatter for automatically formatting code.
-    - **Husky/lint-staged:** Tools to automatically lint code before commits
+  return (
+    <div>
+      <h2>Users ({userStore.activeUsers.length} active)</h2>
+      <ul>
+        {userStore.users.map(user => (
+          <UserItem key={user.id} user={user} />
+        ))}
+      </ul>
+    </div>
+  );
+});
 
-- **Deployment Best Practices:**
-    - **Continuous Integration/Continuous Deployment (CI/CD):** Automate the build, test, and deployment process.
-    - **Caching:**  Use caching to improve performance.
-    - **Content Delivery Network (CDN):**  Use a CDN to serve static assets.
+export default UserList;
+```
 
-- **CI/CD Integration:**
-    - Integrate your application with a CI/CD pipeline to automate the build, test, and deployment process.
-    - Use tools like Jenkins, Travis CI, or CircleCI.
+### 3.2. Small, Focused `observer` Components
+
+Break down your UI into many small `observer` components. This limits the re-render surface, allowing MobX to optimize updates efficiently.
+
+```typescript
+// src/components/UserItem.tsx
+import React from 'react';
+import { observer } from 'mobx-react-lite';
+
+interface UserItemProps {
+  user: { id: string; name: string; isActive: boolean };
+}
+
+const UserItem: React.FC<UserItemProps> = observer(({ user }) => {
+  console.log(`Rendering UserItem: ${user.name}`); // Observe re-renders
+  return (
+    <li>
+      {user.name} {user.isActive ? '(Active)' : ''}
+    </li>
+  );
+});
+
+export default UserItem;
+```
+
+### 3.3. De-reference Observables as Late as Possible
+
+Access observable properties inside the `observer` component's render function (or JSX) rather than in intermediate variables outside of it. This allows MobX to track dependencies more precisely.
+
+❌ **BAD: Early de-referencing**
+```typescript
+const UserProfile: React.FC = observer(({ user }) => {
+  const userName = user.name; // De-referenced too early
+  return <div>Name: {userName}</div>;
+});
+```
+
+✅ **GOOD: Late de-referencing**
+```typescript
+const UserProfile: React.FC = observer(({ user }) => {
+  return <div>Name: {user.name}</div>; // De-referenced inside JSX
+});
+```
+
+### 3.4. Use Stable Keys for Lists
+
+Always provide a stable, unique `key` prop for elements in lists. Never use array indexes as keys, as this leads to incorrect re-rendering behavior when items are added, removed, or reordered.
+
+❌ **BAD: Array index as key**
+```typescript
+<ul>
+  {userStore.users.map((user, index) => (
+    <UserItem key={index} user={user} />
+  ))}
+</ul>
+```
+
+✅ **GOOD: Unique ID as key**
+```typescript
+<ul>
+  {userStore.users.map(user => (
+    <UserItem key={user.id} user={user} />
+  ))}
+</ul>
+```
+
+## 4. MobX-State-Tree (MST) Specifics
+
+If using MobX-State-Tree, most MobX principles apply. However, there's one critical anti-pattern to avoid.
+
+### 4.1. Never Spread MST Models as Props
+
+Passing an MST model instance directly is crucial for MobX's tracking. Spreading an MST model (`{...model}`) breaks reactivity and should be strictly avoided.
+
+❌ **BAD: Spreading an MST model**
+```typescript
+// Assuming 'user' is an MST model instance
+<UserProfile {...user} />
+```
+
+✅ **GOOD: Passing an MST model instance directly**
+```typescript
+// Assuming 'user' is an MST model instance
+<UserProfile user={user} />
+```
+
+## 5. Type Safety with TypeScript
+
+Leverage TypeScript interfaces to define the shape of your stores and models. This catches errors at compile time and improves developer experience.
+
+```typescript
+// src/stores/AuthStore.ts
+import { makeObservable, observable, action } from 'mobx';
+import { RootStore } from './RootStore'; // Import RootStore for type safety
+
+export interface IAuthStore {
+  token: string | null;
+  isAuthenticated: boolean;
+  login(username: string, password: string): Promise<void>;
+  logout(): void;
+}
+
+export class AuthStore implements IAuthStore {
+  token: string | null = null;
+  isAuthenticated: boolean = false;
+  private rootStore: RootStore; // Reference to root store
+
+  constructor(rootStore: RootStore) {
+    makeObservable(this, {
+      token: observable,
+      isAuthenticated: observable,
+      login: action,
+      logout: action,
+    });
+    this.rootStore = rootStore;
+  }
+
+  async login(username: string, password: string) {
+    // ... API call ...
+    this.token = 'some-jwt-token';
+    this.isAuthenticated = true;
+    // Example of cross-store action
+    // this.rootStore.userStore.fetchCurrentUser();
+  }
+
+  logout() {
+    this.token = null;
+    this.isAuthenticated = false;
+  }
+}
+```
+
+## 6. Testing
+
+Unit test your stores independently and use React Testing Library for components, mocking the store context.
+
+### 6.1. Store Unit Tests (Jest)
+
+```typescript
+// src/stores/UserStore.test.ts
+import { UserStore } from './UserStore';
+
+describe('UserStore', () => {
+  let userStore: UserStore;
+
+  beforeEach(() => {
+    userStore = new UserStore();
+  });
+
+  it('should initialize with empty users and not loading', () => {
+    expect(userStore.users).toEqual([]);
+    expect(userStore.isLoading).toBe(false);
+  });
+
+  it('should add a user', () => {
+    const newUser = { id: '2', name: 'Bob', isActive: false };
+    userStore.addUser(newUser);
+    expect(userStore.users).toEqual([newUser]);
+  });
+
+  it('should compute active users correctly', () => {
+    userStore.addUser({ id: '1', name: 'Alice', isActive: true });
+    userStore.addUser({ id: '2', name: 'Bob', isActive: false });
+    expect(userStore.activeUsers).toEqual([{ id: '1', name: 'Alice', isActive: true }]);
+  });
+
+  it('should set isLoading during fetch and update users', async () => {
+    const promise = userStore.fetchUsers();
+    expect(userStore.isLoading).toBe(true);
+    await promise;
+    expect(userStore.isLoading).toBe(false);
+    expect(userStore.users.length).toBeGreaterThan(0);
+  });
+});
+```
+
+### 6.2. Component Tests (React Testing Library)
+
+Mock the `useStore` hook to provide controlled store instances for component tests.
+
+```typescript
+// src/components/UserList.test.tsx
+import React from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
+import UserList from './UserList';
+import { useStore } from '../contexts/StoreContext';
+import { UserStore } from '../stores/UserStore';
+import { RootStore } from '../stores/RootStore';
+
+// Mock the useStore hook
+jest.mock('../contexts/StoreContext', () => ({
+  useStore: jest.fn(),
+}));
+
+describe('UserList', () => {
+  let mockUserStore: UserStore;
+  let mockRootStore: RootStore;
+
+  beforeEach(() => {
+    mockUserStore = new UserStore();
+    mockRootStore = new RootStore();
+    mockRootStore.userStore = mockUserStore; // Inject the mock user store
+
+    (useStore as jest.Mock).mockReturnValue(mockRootStore); // Return the mock root store
+  });
+
+  it('renders loading state initially', () => {
+    mockUserStore.isLoading = true;
+    render(<UserList />);
+    expect(screen.getByText('Loading users...')).toBeInTheDocument();
+  });
+
+  it('renders users after loading', async () => {
+    mockUserStore.isLoading = false;
+    mockUserStore.users = [{ id: '1', name: 'Alice', isActive: true }];
+    mockUserStore.fetchUsers = jest.fn(() => {
+      mockUserStore.users = [{ id: '1', name: 'Alice', isActive: true }];
+      return Promise.resolve();
+    });
+
+    render(<UserList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Users (1 active)')).toBeInTheDocument();
+      expect(screen.getByText('Alice (Active)')).toBeInTheDocument();
+    });
+  });
+});
+```

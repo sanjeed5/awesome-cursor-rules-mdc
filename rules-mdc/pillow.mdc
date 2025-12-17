@@ -1,169 +1,209 @@
 ---
-description: This rule provides best practices for using the Pillow image processing library in Python, covering code organization, performance, security, testing, and common pitfalls. It aims to help developers write maintainable, efficient, and secure image processing applications.
-globs: *.py
+description: Definitive guidelines for using Pillow (Python Imaging Library) effectively, focusing on modern best practices, performance, and maintainability.
+globs: **/*.py
 ---
-# Pillow Library Best Practices and Coding Standards
+# Pillow Best Practices
 
-This document outlines the recommended best practices and coding standards for effectively using the Pillow library in Python for image processing tasks. These guidelines aim to promote maintainable, efficient, and secure applications.
+Pillow is the definitive image processing library for Python. Adhere to these guidelines to ensure your image manipulation code is robust, performant, and maintainable.
 
-## 1. Installation and Setup
+## Critical Guidelines:
 
-- **Use a Virtual Environment:** Always create a virtual environment for your Pillow projects to isolate dependencies and avoid conflicts. Use `python -m venv .venv` and activate it.
-- **Install with pip:** Install Pillow using `pip install Pillow`.  Consider using `pip install -U Pillow` for upgrades.
-- **Verify Installation:**  Verify the installation using `python -c "from PIL import Image; print(Image.VERSION)"`. This also serves as a smoke test for the library.
-- **Pin Dependencies:** Specify Pillow and other dependencies in a `requirements.txt` file, pinning the versions for reproducible builds. Use `pip freeze > requirements.txt`.
-- **Install dependencies with UV:** Use the uv package manager when installing dependencies: `pip install uv` then `uv pip install -r requirements.txt`.
+### 1. Resource Management: Always Use Context Managers
 
-## 2. Code Organization and Structure
+Images opened from files consume system resources. Ensure they are properly closed using `with` statements.
 
-- **Directory Structure:** Organize your project into logical directories. A typical structure might include:
-  
-  project_name/
-  ├── src/
-  │   ├── __init__.py
-  │   ├── image_processing.py  # Pillow-related functions
-  │   ├── utils.py            # Helper functions
-  ├── tests/
-  │   ├── __init__.py
-  │   ├── test_image_processing.py
-  ├── data/                   # Input and output images
-  ├── notebooks/              # Jupyter notebooks for experimentation
-  ├── requirements.txt
-  ├── pyproject.toml         # Optional: For poetry or flit
-  ├── README.md
-  
-- **File Naming Conventions:** Use descriptive and consistent file names:
-  - Python modules: `image_utils.py`, `image_filters.py`
-  - Test files: `test_image_utils.py`, `test_image_filters.py`
-  - Image data: `input_image.jpg`, `output_image.png`
-- **Module Organization:** Group related functions and classes into modules. For example:
-  - `image_processing.py`: Contains functions for core image manipulations (resizing, cropping, color conversions).
-  - `image_filters.py`:  Contains functions for applying image filters (blur, sharpen, edge detection).
-  - `image_io.py`: Contains functions for image loading and saving.
-- **Component Architecture:** Consider using a component-based architecture for larger projects:
-  - **Data Access Layer:**  Handles image loading and saving.
-  - **Business Logic Layer:**  Implements image processing algorithms.
-  - **Presentation Layer:**  Provides a user interface (if applicable) or API endpoint.
-- **Code Splitting:** For large image processing pipelines, split the code into smaller, manageable functions. Use generators for lazy processing of large image datasets.
+❌ BAD:
+```python
+from PIL import Image
 
-## 3. Coding Standards and Best Practices
+im = Image.open("input.jpg")
+# ... process im ...
+# Resource might leak if not explicitly closed or on error
+# im.close() # Often forgotten, especially on exceptions
+```
 
-- **Importing:** Always import Pillow using `from PIL import Image`. This is the standard and recommended way.
-- **Explicit Imports:** Use explicit imports (`from PIL import Image, ImageFilter`) rather than wildcard imports (`from PIL import *`). This improves code readability and avoids namespace pollution.
-- **Clear Naming:** Use descriptive variable and function names:
-  - `image = Image.open("input.jpg")`
-  - `resized_image = image.resize((width, height))`
-- **Error Handling:** Use `try...except` blocks to handle potential errors, such as `FileNotFoundError` when opening images or `IOError` when saving images.
-- **Context Managers:** Use `with` statements to ensure proper resource management (especially file closing) when working with images:
-  python
-  try:
-    with Image.open("input.jpg") as image:
-        # Process the image
-        image.save("output.png")
-  except FileNotFoundError:
-      print("Error: Input image not found.")
-  except IOError:
-      print("Error: Could not save the image.")
-  
-- **Image Modes:** Be mindful of image modes (RGB, RGBA, L, CMYK) and convert images to the appropriate mode when necessary using `image.convert("RGB")`.
-- **Resampling Filters:**  Choose appropriate resampling filters for resizing operations:
-  - `Image.LANCZOS`: High-quality resampling for downscaling.
-  - `Image.NEAREST`: Fastest resampling, but lowest quality.
-  - `Image.BILINEAR`, `Image.BICUBIC`: Intermediate quality and speed.
-  - Use `Image.Resampling.LANCZOS` (or `Image.Resampling.BOX`, `Image.Resampling.NEAREST`, etc.) if using Pillow 9.2.0 or newer.
-- **Saving Images:** Always specify the format when saving images, especially if the filename extension is ambiguous. Use `image.save("output.png", format="PNG")`.
-- **Documentation:** Write clear and concise docstrings for all functions and classes, explaining their purpose, arguments, and return values.
-- **Type Hints:** Use type hints to improve code readability and help catch errors early.
-  python
-  from PIL import Image
+✅ GOOD:
+```python
+from PIL import Image
 
-def resize_image(image_path: str, width: int, height: int) -> Image.Image:
-    """Resizes an image to the specified dimensions."""
-    with Image.open(image_path) as image:
-      resized_image = image.resize((width, height))
-      return resized_image
-  
-- **Linting and Formatting:** Use a linter (e.g., pylint, flake8) and a formatter (e.g., black, autopep8) to maintain consistent code style.
+def process_image_with_thumbnail(path: str) -> None:
+    with Image.open(path) as im:
+        # Image is automatically closed when exiting the 'with' block
+        im.thumbnail((128, 128))
+        im.save("thumbnail.jpg")
+```
 
-## 4. Common Patterns and Anti-patterns
+### 2. Prefer High-Level API for Common Operations
 
-- **Factory Pattern:** Use a factory pattern to create different types of image objects based on input data.
-- **Strategy Pattern:** Implement different image processing algorithms as strategies, allowing you to easily switch between them.
-- **Anti-pattern: Ignoring Errors:** Avoid ignoring exceptions without proper handling.  Always log errors or raise them appropriately.
-- **Anti-pattern: Excessive Memory Usage:** Avoid loading entire image datasets into memory at once. Use generators or iterators for large datasets.
-- **State Management:** For applications with image editing features, use a state management system to track changes and enable undo/redo functionality. Redux, Zustand, or custom state management are possibilities.
-- **Error Handling Patterns:** Use specific exception types (e.g., `FileNotFoundError`, `ValueError`) to handle different error scenarios. Provide informative error messages to the user or log them for debugging.
+Pillow provides a rich, high-level API for most common image transformations. Use these methods instead of manual pixel manipulation or low-level `ImageFile` operations.
 
-## 5. Performance Considerations
+❌ BAD:
+```python
+from PIL import Image
+# Avoid manual pixel access for transformations; it's inefficient and error-prone
+def resize_manual(im: Image.Image, size: tuple[int, int]) -> Image.Image:
+    new_im = Image.new(im.mode, size)
+    # ... complex, slow loop to copy pixels ...
+    return new_im
+```
 
-- **Optimize Image Formats:** Choose the appropriate image format for your needs. JPEG is good for photographs, PNG is good for images with transparency or sharp edges, and WebP offers good compression and quality.
-- **Image Optimization Libraries:** Utilize libraries like `optipng` or `jpegoptim` to further optimize images for web delivery. These tools can reduce file size without significant quality loss.
-- **Lazy Loading:** Load images only when they are needed, especially for web applications. Use placeholders or low-resolution previews while the full image is loading.
-- **Caching:** Cache frequently accessed images to reduce loading times. Use a memory-based cache (e.g., `functools.lru_cache`) or a disk-based cache (e.g., `diskcache`).
-- **Thumbnail Generation:** Generate thumbnails for large images to improve performance in image galleries or previews. Use `image.thumbnail()`.
-- **Efficient Resizing:**  Use `image.thumbnail()` when creating thumbnails as it preserves aspect ratio. If ignoring aspect ratio, use `image.resize()` but be mindful of performance implications.
-- **Memory Management:**
-  - **Use `del` to release memory:** Explicitly delete large image objects when they are no longer needed using `del image`.
-  - **Limit Image Size:** Avoid loading extremely large images that can consume excessive memory.  Consider resizing images to a reasonable size before processing.
-  - **Chunked Processing:** For very large images, process them in chunks to reduce memory usage.
-- **Rendering Optimization:**  When displaying images in a GUI application, use optimized rendering techniques to improve performance.  Consider using hardware acceleration if available.
-- **Asynchronous Processing:**  Offload image processing tasks to separate threads or processes to avoid blocking the main thread.  Use `threading` or `multiprocessing` modules.
-- **Numpy integration:** Convert Pillow images to NumPy arrays for faster calculations.
+✅ GOOD:
+```python
+from PIL import Image, ImageFilter
 
-## 6. Security Best Practices
+def apply_common_transforms(im: Image.Image) -> Image.Image:
+    # Use built-in methods for efficiency and correctness
+    im_resized = im.resize((256, 256), Image.Resampling.LANCZOS)
+    im_rotated = im_resized.rotate(45, expand=True)
+    im_blurred = im_rotated.filter(ImageFilter.BLUR)
+    return im_blurred
+```
 
-- **Input Validation:** Validate all image file names and paths to prevent directory traversal attacks and other security vulnerabilities. Use `os.path.abspath()` and `os.path.normpath()` to sanitize paths.
-- **File Extension Validation:** Verify that the file extension matches the actual image format.  Don't rely solely on the extension.
-- **Limit File Size:**  Limit the maximum file size of uploaded images to prevent denial-of-service attacks.
-- **Prevent Image Bomb Attacks:** Implement checks to prevent image bomb attacks, which involve maliciously crafted images designed to consume excessive resources.
-- **Use a Security Linter:**  Incorporate a security linter (e.g., bandit) into your CI/CD pipeline to identify potential security vulnerabilities in your code.
-- **Authentication and Authorization:**  Implement proper authentication and authorization mechanisms to protect access to image processing services.
-- **Data Protection:**  Encrypt sensitive image data at rest and in transit.
-- **Avoid Executing Untrusted Code:** Be cautious when using Pillow to process images from untrusted sources, as vulnerabilities in the library could be exploited. Regularly update Pillow to the latest version.
-- **Regularly Update Pillow:** Stay up-to-date with the latest Pillow releases to patch security vulnerabilities.
-- **Safe Image Handling:** Consider using a sandboxed environment to handle untrusted images, further isolating potential security risks.
+### 3. Explicitly Import Custom Plugins
 
-## 7. Testing Approaches
+Pillow no longer auto-loads plugins (since 2.1.0). If you're using a custom image format or a third-party plugin, you *must* import it explicitly before use.
 
-- **Unit Testing:** Write unit tests for individual functions and classes in your Pillow-related code. Use a testing framework like `pytest` or `unittest`.
-  - **Test Image Transformations:** Verify that image transformations (resizing, cropping, color conversions) produce the expected results.
-  - **Test Error Handling:** Ensure that your code handles errors gracefully (e.g., invalid image files, incorrect parameters).
-- **Integration Testing:** Test the interaction between different components of your image processing pipeline.
-- **End-to-End Testing:** Verify that the entire application works as expected, including image loading, processing, and saving.
-- **Test Organization:** Organize your tests into logical directories that mirror your code structure.
-- **Mocking and Stubbing:** Use mocking and stubbing to isolate components during testing.  For example, mock the `Image.open()` function to avoid accessing real image files during unit tests.
-- **Property-based Testing:** Use property-based testing (e.g., Hypothesis) to automatically generate test cases and verify that your code satisfies certain properties.
-- **Golden Image Tests:** Compare the output of your image processing functions with known "golden" images to ensure that the results are consistent.
+❌ BAD:
+```python
+from PIL import Image
+# Assuming 'MyCustomImagePlugin.py' is on PYTHONPATH
+# This will fail if MyCustomImagePlugin is not explicitly imported
+try:
+    with Image.open("custom.myformat") as im:
+        im.save("output.png")
+except Exception as e:
+    print(f"Error: {e}") # Likely 'cannot identify image file'
+```
 
-## 8. Common Pitfalls and Gotchas
+✅ GOOD:
+```python
+from PIL import Image
+import MyCustomImagePlugin # Explicitly import your plugin
 
-- **Incorrect Image Mode:** Forgetting to convert images to the correct mode (e.g., RGB) before performing certain operations can lead to unexpected results.
-- **Integer Division:**  Be aware of integer division in Python 2. Use `from __future__ import division` to ensure that division always returns a float.
-- **File Closing:**  Forgetting to close image files after processing can lead to resource leaks. Use `with` statements to ensure that files are closed automatically.
-- **Out-of-Memory Errors:** Processing extremely large images can lead to out-of-memory errors.  Use techniques like chunked processing and lazy loading to avoid this.
-- **Color Profile Issues:** Be aware of color profile issues when working with images that have embedded color profiles.  Consider using `image.convert('RGB')` to strip color profiles or use a color management library like `littlecms`.
-- **Pillow Version Compatibility:** Be aware of compatibility issues between different Pillow versions.  Check the Pillow documentation for version-specific changes and bug fixes.
-- **Floating point errors:** Be aware of the loss of precision due to floating point math and how to properly fix it.
+def load_custom_image(path: str) -> Image.Image:
+    with Image.open(path) as im:
+        return im.copy() # Return a copy if further processing is needed outside the 'with' block
+```
 
-## 9. Tooling and Environment
+### 4. Optimize Image Saving for Web/Performance
 
-- **Development Tools:**
-  - **IDE:** Use a powerful IDE like VS Code with the Python extension or PyCharm.
-  - **Debugging:** Use a debugger to step through your code and identify errors.
-  - **Profiling:** Use a profiler to identify performance bottlenecks.
-- **Build Configuration:**
-  - **`setup.py`:** Use `setup.py` or `pyproject.toml` to manage your project's dependencies and build process.
-  - **Virtual Environments:** Use virtual environments to isolate your project's dependencies.
-- **Linting and Formatting:**
-  - **Pylint:** Use Pylint to check your code for style errors and potential problems.
-  - **Black:** Use Black to automatically format your code to a consistent style.
-  - **Flake8:** Use Flake8 to check your code for style errors and potential problems.
-- **Deployment:**
-  - **Docker:** Use Docker to containerize your application and ensure consistent deployment across different environments.
-  - **Cloud Platforms:** Deploy your application to a cloud platform like AWS, Google Cloud, or Azure.
-- **CI/CD Integration:**
-  - **GitHub Actions:** Use GitHub Actions to automate your build, test, and deployment process.
-  - **Jenkins:** Use Jenkins for continuous integration and continuous delivery.
-  - **CircleCI:** Use CircleCI for continuous integration and continuous delivery.
+When saving images, especially for web use, optimize for file size and quality. Always convert to `RGB` for JPEG to avoid issues with alpha channels.
 
-By following these best practices and coding standards, you can create robust, efficient, and secure image processing applications using the Pillow library in Python.
+❌ BAD:
+```python
+from PIL import Image
+# Default JPEG quality (often 75) might not be optimal, no explicit optimization
+with Image.open("input.png") as im:
+    im.save("output.jpg")
+```
+
+✅ GOOD:
+```python
+from PIL import Image
+
+def save_optimized_jpeg(im: Image.Image, path: str, quality: int = 85) -> None:
+    # Convert to RGB if not already, as JPEG doesn't support RGBA
+    if im.mode == 'RGBA':
+        im = im.convert('RGB')
+    im.save(path, quality=quality, optimize=True)
+
+def save_optimized_png(im: Image.Image, path: str, compress_level: int = 9) -> None:
+    # PNG compression level 0-9 (9 is highest compression, slowest)
+    im.save(path, compress_level=compress_level)
+```
+
+### 5. Use Type Hints for Clarity and Maintainability
+
+Always type-hint Pillow objects, especially `Image.Image`, to improve code readability and enable static analysis.
+
+❌ BAD:
+```python
+from PIL import Image
+
+def process_img(img_obj, scale): # What is img_obj? What does it return?
+    return img_obj.resize((img_obj.width // scale, img_obj.height // scale))
+```
+
+✅ GOOD:
+```python
+from PIL import Image
+
+def process_img(img_obj: Image.Image, scale: int) -> Image.Image:
+    """Resizes an image by a given scale factor."""
+    new_size = (img_obj.width // scale, img_obj.height // scale)
+    return img_obj.resize(new_size, Image.Resampling.BICUBIC)
+```
+
+### 6. Manage Dependencies with Virtual Environments
+
+Always install Pillow within an isolated virtual environment to prevent dependency conflicts and ensure reproducible builds.
+
+❌ BAD:
+```bash
+pip install Pillow # Global installation, pollutes system Python
+```
+
+✅ GOOD:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate # or .venv\Scripts\activate on Windows
+pip install --upgrade pip
+pip install --upgrade Pillow defusedxml olefile # Include optional dependencies for broader format support
+```
+
+### 7. Test Image Operations Rigorously
+
+Write unit tests for functions that process images. Use small, controlled input images and assert expected output properties or pixel differences.
+
+❌ BAD:
+```python
+# No tests for image processing logic, leading to potential regressions
+def watermark_image(im: Image.Image, watermark_text: str) -> Image.Image:
+    # ... complex drawing logic ...
+    return im
+```
+
+✅ GOOD:
+```python
+from PIL import Image, ImageDraw, ImageChops
+import io
+
+def watermark_image(im: Image.Image, watermark_text: str) -> Image.Image:
+    draw = ImageDraw.Draw(im)
+    draw.text((10, 10), watermark_text, fill=(255, 255, 255))
+    return im
+
+# Example test function (integrate into your test suite, e.g., pytest)
+def test_watermark_image():
+    original_image = Image.new("RGB", (100, 100), "blue")
+    watermarked_image = watermark_image(original_image.copy(), "TEST")
+
+    # Create a reference image with the expected watermark
+    expected_image = Image.new("RGB", (100, 100), "blue")
+    draw_expected = ImageDraw.Draw(expected_image)
+    draw_expected.text((10, 10), "TEST", fill=(255, 255, 255))
+
+    # Assert that the images are identical using ImageChops.difference
+    diff = ImageChops.difference(watermarked_image, expected_image)
+    assert not diff.getbbox(), "Watermarked image does not match expected output"
+```
+
+### 8. Stay Current with Pillow Releases
+
+Regularly update Pillow to benefit from performance improvements, bug fixes, and new features, and to avoid deprecated APIs. Always check release notes for breaking changes (e.g., the 12.x series deprecates older `ImageFile` shortcuts).
+
+❌ BAD:
+```python
+# Sticking to an old version (e.g., < 7.0)
+# Relying on auto-loading plugins or deprecated ImageFile shortcuts
+```
+
+✅ GOOD:
+```bash
+# Periodically update your environment to the latest stable version
+pip install --upgrade Pillow
+```
+```python
+# Consult release notes (e.g., Pillow 12.1.0.dev0) and adapt code
+# to new APIs and deprecation warnings as they arise.
+```

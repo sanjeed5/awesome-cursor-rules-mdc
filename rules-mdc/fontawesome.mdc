@@ -1,163 +1,326 @@
 ---
-description: This rule file provides comprehensive guidelines for using Font Awesome effectively, covering setup, styling, accessibility, performance, and security best practices. It ensures consistent and optimized usage across projects.
-globs: *.html,*.css,*.js,*.jsx,*.ts,*.tsx
+description: This guide provides definitive rules for integrating and utilizing Font Awesome 7 icons, focusing on accessibility, performance, and maintainability through Kit-based setup and modern best practices.
+globs: **/*
 ---
-# Font Awesome Best Practices
+# fontawesome Best Practices
 
-This document outlines best practices for using Font Awesome in web development projects. These guidelines cover setup, styling, accessibility, performance, security, and common pitfalls.
+Font Awesome 7 is the definitive source for scalable UI icons in our web applications. Leveraging its power correctly ensures visual consistency, accessibility, and optimal performance. This guide outlines our team's mandatory best practices for Font Awesome integration.
 
-## 1. Setup and Usage
+## 1. Code Organization and Structure
 
-*   **Font Awesome Kits (Recommended):**
-    *   Use Font Awesome Kits for easy customization and automatic updates.
-    *   Add the Kit's embed code ( `<script>` tag) to the `<head>` of your HTML document.
-    *   Example:
-        html
-        <script src="https://kit.fontawesome.com/<your_kit_code>.js" crossorigin="anonymous"></script>
-        
-*   **Package Manager (npm, yarn):**
-    *   Install Font Awesome as a dependency:
-        bash
-        npm install @fortawesome/fontawesome-free
-        # or
-        yarn add @fortawesome/fontawesome-free
-        
-    *   Import the necessary CSS or JavaScript files in your application.
-*   **CDN (Content Delivery Network):**
-    *   Use a CDN for quick setup, but be aware of potential performance implications and dependency on external services.
-    *   Include the CDN link in your HTML:
-        html
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="..." crossorigin="anonymous" />
-        
-*   **Icon Usage:**
-    *   Use CSS classes to insert icons into your project.
-        html
-        <i class="fas fa-heart"></i>  <!-- Solid heart icon -->
-        <i class="far fa-heart"></i>  <!-- Regular heart icon -->
-        <i class="fab fa-github"></i> <!-- GitHub icon -->
-        
+Always use a Font Awesome Kit for integration. It's the most robust and feature-rich method, providing auto-accessibility and simplified management.
 
-## 2. Code Organization and Structure
+### 1.1 Kit-Based Setup
 
-*   **Directory Structure:**
-    *   Place Font Awesome CSS and font files in a dedicated directory (e.g., `assets/fontawesome`). This is less relevant when using kits or CDNs.
-*   **File Naming Conventions:**
-    *   Stick to the default file names provided by Font Awesome (e.g., `fontawesome.min.css`, `fontawesome.js`).
-*   **Module Organization:**
-    *   When using a package manager, import Font Awesome modules in your application's entry point or relevant components.
-    *   Example (JavaScript):
-        javascript
-        import '@fortawesome/fontawesome-free/css/all.min.css';
-        
-*   **Component Architecture:**
-    *   Create reusable icon components in your UI framework (e.g., React, Vue, Angular) to encapsulate Font Awesome usage and styling.
-    *   Example (React):
-        jsx
-        import React from 'react';
+**Always embed your Font Awesome Kit script in the `<head>` of every page.** This ensures icons load early, prevents FOUT (Flash of Unstyled Text/Icons), and enables critical auto-accessibility features.
 
-        const Icon = ({ name, style }) => (
-          <i className={`fa${style ? 'b' : 's'} fa-${name}`}></i>
-        );
+❌ **BAD: Script in `<body>` or via local files (unless explicitly self-hosting)**
+```html
+<body>
+  <!-- ... other content ... -->
+  <script src="https://kit.fontawesome.com/[YOUR_KIT_CODE].js" crossorigin="anonymous"></script>
+</body>
+```
 
-        export default Icon;
-        
-*   **Code Splitting:**
-    *   When using a package manager, ensure your build tool (e.g., Webpack, Parcel) correctly bundles Font Awesome files and supports code splitting if needed.
+✅ **GOOD: Script in `<head>`**
+```html
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Awesome App</title>
+  <!-- Font Awesome Kit must be here -->
+  <script src="https://kit.fontawesome.com/[YOUR_KIT_CODE].js" crossorigin="anonymous"></script>
+  <!-- ... other head elements ... -->
+</head>
+```
 
-## 3. Styling and Accessibility
+### 1.2 Icon Markup
 
-*   **Styling:**
-    *   Use Font Awesome's styling options to customize icon size, color, and animations.
-    *   Use CSS classes for styling (e.g., `fa-xs`, `fa-sm`, `fa-lg`, `fa-2x`, `fa-spin`, `fa-pulse`).
-    *   Example:
-        html
-        <i class="fas fa-heart fa-2x" style="color: red;"></i>
-        
-*   **Accessibility (Crucial):**
-    *   **Decorative Icons:** Use `aria-hidden="true"` for icons that are purely decorative.
-        html
-        <i class="fas fa-star" aria-hidden="true"></i>
-        
-    *   **Informative Icons:** Provide meaningful text alternatives for icons that convey information or are interactive.
-        *   Use `aria-label` for interactive elements (e.g., buttons, links).
-            html
-            <a href="/cart" aria-label="View your shopping cart">
-              <i class="fas fa-shopping-cart" aria-hidden="true"></i>
-            </a>
-            
-        *   Use visually hidden text (e.g., using CSS class `sr-only`) to provide a text alternative.
-            html
-            <span class="sr-only">Search</span>
-            <i class="fas fa-search" aria-hidden="true"></i>
-            
-        *   Use the `title` attribute to provide a tooltip for sighted users (optional, but recommended).
-            html
-             <i class="fas fa-info-circle" aria-hidden="true" title="More information"></i>
-             
+Use the `<i>` tag with appropriate Font Awesome classes. This is the simplest and most widely supported method.
 
-## 4. Performance Considerations
+❌ **BAD: Using `<span>` or other elements without a strong reason**
+```html
+<span class="fa-solid fa-user"></span>
+```
 
-*   **CDN Usage:**
-    *   Using a reputable CDN can improve performance through caching and optimized delivery. Ensure the CDN supports modern protocols like HTTP/2 or HTTP/3.
-*   **Self-Hosting:**
-    *   Self-hosting gives you more control over resources but requires proper server configuration and optimization.
-    *   Consider using a CDN in front of your origin server for better performance.
-*   **Web Fonts vs. SVG:**
-    *   Font Awesome offers both web fonts and SVG versions.
-    *   SVGs generally offer better performance and scalability but may require more setup.
-    *   Web fonts can cause rendering issues (e.g., FOIT - Flash of Invisible Text).  Consider using `font-display: swap;` in your CSS to mitigate this.
-*   **Subsetting (Pro Feature):**
-    *   Use Font Awesome's Pro subsetting feature to include only the icons you need, reducing the overall file size.
-*   **Lazy Loading:**
-    *   If you have a large number of icons on a page, consider lazy loading them to improve initial page load time. This can be complex and might require custom JavaScript.
+✅ **GOOD: Using `<i>` for standard icons**
+```html
+<i class="fa-solid fa-user"></i>
+```
 
-## 5. Common Patterns and Anti-Patterns
+### 1.3 Custom Icons
 
-*   **Pattern: Icon Component:** Creating a reusable icon component is a common and effective pattern.
-*   **Pattern: Consistent Styling:** Define a set of CSS classes or variables for consistent icon styling across your project.
-*   **Anti-Pattern: Overusing Icons:** Avoid using too many icons, as it can clutter the UI and reduce readability.
-*   **Anti-Pattern: Inconsistent Icon Usage:**  Ensure icons are used consistently throughout the application to maintain a cohesive user experience.
-*   **Anti-Pattern: Neglecting Accessibility:**  Failing to provide proper text alternatives for icons is a major accessibility issue.
+For icons not available in Font Awesome, upload them to your Kit. Treat them exactly like native icons for consistency.
 
-## 6. Security Best Practices
+❌ **BAD: Manually embedding custom SVGs or using separate icon libraries**
+```html
+<img src="/assets/custom-icon.svg" alt="Custom Icon">
+```
 
-*   **Vulnerability: Cross-Site Scripting (XSS):**
-    *   Prevent XSS by sanitizing any user-provided input used in conjunction with Font Awesome icons.
-    *   Never directly embed user input into CSS class names or HTML attributes.
-*   **Dependency Management:**
-    *   Keep Font Awesome dependencies up-to-date to patch security vulnerabilities.
-    *   Use a dependency management tool (e.g., npm, yarn) to manage and update dependencies securely.
-*   **Subresource Integrity (SRI):**
-    *   When using a CDN, use SRI hashes to verify the integrity of the Font Awesome files.
-        html
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" />
-        
+✅ **GOOD: Uploading custom SVGs to your Kit and using `fa-kit` prefix**
+```html
+<!-- In your Kit, you've uploaded 'my-custom-icon.svg' -->
+<i class="fa-kit fa-my-custom-icon"></i>
+<!-- For duotone custom icons -->
+<i class="fa-kit-duotone fa-my-duotone-icon"></i>
+```
 
-## 7. Testing Approaches
+## 2. Common Patterns and Anti-patterns
 
-*   **Unit Testing:**
-    *   If you create custom icon components, write unit tests to ensure they render correctly and handle different icon names and styles.
-*   **Integration Testing:**
-    *   Test the integration of Font Awesome icons within your application's UI to ensure they are displayed correctly in different browsers and devices.
-*   **End-to-End Testing:**
-    *   Use end-to-end tests to verify the overall user experience with Font Awesome icons, including accessibility and styling.
+### 2.1 Icon Styles
 
-## 8. Common Pitfalls and Gotchas
+Always specify the icon style (e.g., `fa-solid`, `fa-regular`, `fa-brands`). Consistency in style is crucial for a unified UI.
 
-*   **Version Conflicts:** Ensure all Font Awesome files are from the same version to avoid compatibility issues.
-*   **CSS Specificity:** Be aware of CSS specificity when styling Font Awesome icons, as it can override your custom styles.
-*   **Font Loading Issues:**  Address font loading issues (e.g., FOIT) by using `font-display: swap;`.
-*   **Incorrect Class Names:** Double-check icon class names for typos.
-*   **Missing Font Awesome Kit Code:** Ensure the Font Awesome Kit code is correctly added to your HTML.
+❌ **BAD: Omitting style, relying on default (which can change or be ambiguous)**
+```html
+<i class="fa-user"></i> <!-- Which style? -->
+```
 
-## 9. Tooling and Environment
+✅ **GOOD: Explicitly defining the style**
+```html
+<i class="fa-solid fa-user"></i>
+<i class="fa-regular fa-star"></i>
+<i class="fa-brands fa-github"></i>
+<i class="fa-sharp fa-solid fa-gear"></i>
+```
 
-*   **Development Tools:**
-    *   Use a code editor with syntax highlighting and autocompletion for CSS and HTML.
-    *   Use browser developer tools to inspect and debug Font Awesome styles and rendering.
-*   **Build Configuration:**
-    *   Configure your build tool (e.g., Webpack, Parcel) to correctly handle Font Awesome files and optimize for production.
-*   **Linting and Formatting:**
-    *   Use a linter (e.g., ESLint, Stylelint) to enforce code style and best practices for Font Awesome usage.
-*   **CI/CD Integration:**
-    *   Integrate Font Awesome dependency updates and security checks into your CI/CD pipeline.
+### 2.2 Sizing Icons
+
+Utilize Font Awesome's sizing utilities to maintain consistent vertical alignment and scale. Avoid custom CSS `font-size` overrides unless absolutely necessary for unique cases.
+
+#### 2.2.1 Relative Sizing (for UI elements)
+
+Use `fa-xs` to `fa-2xl` when icons need to align with text or other UI components. These classes adjust size while preserving vertical alignment.
+
+❌ **BAD: Custom CSS `font-size` for inline icons**
+```html
+<p><i class="fa-solid fa-coffee" style="font-size: 1.2em;"></i> My coffee</p>
+```
+
+✅ **GOOD: Relative sizing classes for text alignment**
+```html
+<p><i class="fa-solid fa-coffee fa-lg"></i> My coffee</p>
+<button><i class="fa-solid fa-plus fa-sm"></i> Add Item</button>
+```
+
+#### 2.2.2 Literal Sizing (for standalone icons)
+
+Use `fa-1x` to `fa-10x` for larger, standalone icons where precise text alignment is not the primary concern.
+
+❌ **BAD: Scaling large icons with `em` units that might break alignment**
+```html
+<div style="font-size: 5em;"><i class="fa-solid fa-camera"></i></div>
+```
+
+✅ **GOOD: Literal sizing classes for large, independent icons**
+```html
+<div class="hero-icon">
+  <i class="fa-solid fa-camera fa-5x"></i>
+  <h3>Capture the Moment</h3>
+</div>
+```
+
+## 3. Performance Considerations
+
+### 3.1 Kit Configuration
+
+**Always configure your Kit to load only the icon subsets you actually use.** This significantly reduces download size and improves page load times. Regularly review and prune unused icon styles or categories.
+
+❌ **BAD: Using a Kit with all icon styles enabled by default**
+(This is a configuration anti-pattern, not directly code-related, but impacts code performance.)
+
+✅ **GOOD: Customizing Kit to include only `Solid` and `Brands` if those are the only styles used.**
+(Action: Visit fontawesome.com/kits, configure your kit.)
+
+### 3.2 Self-Hosting (Advanced)
+
+Only consider self-hosting Font Awesome if you have strict performance requirements, advanced caching strategies, and full control over your asset delivery. For most projects, Kit-based CDN is superior.
+
+❌ **BAD: Self-hosting without a clear performance benefit or maintenance plan**
+(Increased complexity, manual updates, potential for outdated versions.)
+
+✅ **GOOD: Kit-based CDN for most projects; self-hosting only with justification and expertise.**
+(Action: Stick to Kit unless a performance audit explicitly demands self-hosting and your team has the resources.)
+
+## 4. Common Pitfalls and Gotchas
+
+### 4.1 Missing Kit Script
+
+Icons won't render if the Kit script is missing or incorrectly placed. Always verify its presence in the `<head>`.
+
+❌ **BAD: Icons showing as squares or empty space**
+```html
+<!-- No Font Awesome script in head -->
+<i class="fa-solid fa-bug"></i> <!-- Renders as a square -->
+```
+
+✅ **GOOD: Verify script is loaded and accessible**
+(Action: Check browser console for network errors related to the Kit script, ensure correct URL.)
+
+### 4.2 Incorrect Class Names
+
+Typos in icon names or style prefixes are common. Use the Font Awesome search tool to confirm exact class names.
+
+❌ **BAD: Typo in icon name**
+```html
+<i class="fa-solid fa-calender"></i> <!-- Should be fa-calendar -->
+```
+
+✅ **GOOD: Double-checking icon names**
+```html
+<i class="fa-solid fa-calendar"></i>
+```
+
+### 4.3 SVG Upload Guidelines
+
+When uploading custom SVGs to a Kit, adhere strictly to Font Awesome's guidelines to prevent rendering issues.
+
+*   **`viewBox`**: Must have explicit `width` and `height`.
+*   **Paths**: Single `<path>` for monotone, two `<path>` elements (one with <100% opacity) for duotone.
+*   **No unsupported attributes**: Keep SVGs clean.
+
+❌ **BAD: Uploading complex SVGs with multiple groups, raster images, or missing `viewBox`**
+(Leads to broken icons, inconsistent scaling, or upload failures.)
+
+✅ **GOOD: Simplified SVGs, optimized for icon use**
+```xml
+<!-- Monotone Example -->
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <path fill="currentColor" d="M0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256z"/>
+</svg>
+
+<!-- Duotone Example (simplified) -->
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <path fill="currentColor" opacity="0.4" d="M... (secondary layer) ..."/>
+  <path fill="currentColor" d="M... (primary layer) ..."/>
+</svg>
+```
+
+## 5. Accessibility
+
+Accessibility is paramount. Font Awesome Kits provide "auto-accessibility" features, but developers must provide the correct context.
+
+### 5.1 Decorative Icons
+
+If an icon is purely visual and adds no unique meaning (e.g., a bullet point in a list), ensure it's hidden from screen readers. Auto-accessibility handles this if the icon is *not* the sole content of an interactive element.
+
+❌ **BAD: Decorative icon without `aria-hidden` when not auto-handled**
+```html
+<i class="fa-solid fa-star"></i> Welcome!
+```
+
+✅ **GOOD: Rely on Auto-Accessibility or explicitly hide decorative icons**
+```html
+<p><i class="fa-solid fa-star" aria-hidden="true"></i> Welcome to our site!</p>
+<!-- Auto-accessibility will add aria-hidden="true" if the icon is adjacent to text -->
+<button type="submit">
+  <i class="fa-solid fa-envelope"></i> Email Us!
+</button>
+```
+
+### 5.2 Semantic Icons
+
+If an icon conveys meaning (e.g., a "next page" arrow, a "message" icon in a button), provide an accessible text alternative. Use the `title` attribute, and Font Awesome's auto-accessibility will convert it into a screen-reader-only span.
+
+❌ **BAD: Semantic icon without any accessible label**
+```html
+<button type="submit">
+  <i class="fa-solid fa-arrow-right"></i>
+</button>
+```
+
+✅ **GOOD: Semantic icon with a descriptive `title` attribute**
+```html
+<button type="submit">
+  <i class="fa-solid fa-arrow-right" title="Next Page"></i>
+</button>
+<!-- Auto-accessibility will render this as: -->
+<!-- <i class="fa-solid fa-arrow-right" aria-hidden="true"></i> -->
+<!-- <span class="sr-only">Next Page</span> -->
+```
+
+### 5.3 Manual Accessibility (Fallback)
+
+If Auto-Accessibility is unavailable (e.g., self-hosting older versions, specific framework integrations), you must manually apply `aria-hidden="true"` for decorative icons or an `sr-only` span for semantic ones.
+
+❌ **BAD: Assuming auto-accessibility is always active**
+(Always verify your setup or explicitly add attributes.)
+
+✅ **GOOD: Understanding when manual intervention is needed**
+```html
+<!-- Manual decorative -->
+<i class="fa-solid fa-bell" aria-hidden="true"></i> Notifications
+
+<!-- Manual semantic -->
+<button>
+  <i class="fa-solid fa-trash" aria-hidden="true"></i>
+  <span class="sr-only">Delete Item</span>
+</button>
+```
+
+## 6. Theming
+
+Font Awesome icons inherit `font-size` and `color` from their parent elements. Leverage this for consistent theming.
+
+❌ **BAD: Applying inline styles or overly specific CSS to individual icons**
+```html
+<i class="fa-solid fa-gear" style="color: blue; font-size: 24px;"></i>
+```
+
+✅ **GOOD: Styling icons via parent elements or utility classes**
+```css
+/* In your CSS */
+.primary-button .fa-icon {
+  color: var(--color-primary);
+}
+.large-heading .fa-icon {
+  font-size: 1.2em; /* Scales relative to heading */
+}
+```
+```html
+<button class="primary-button">
+  <i class="fa-solid fa-gear fa-icon"></i> Settings
+</button>
+<h1 class="large-heading">
+  <i class="fa-solid fa-chart-line fa-icon"></i> Dashboard
+</h1>
+```
+
+## 7. Component Architecture
+
+When integrating Font Awesome into component-based frameworks (React, Vue, Angular), **always use the official Font Awesome component libraries** for that framework. They handle SVG rendering, accessibility, and updates gracefully.
+
+❌ **BAD: Manually embedding `<i>` tags within framework components without official wrappers**
+```jsx
+// React example
+function MyButton() {
+  return <button><i className="fa-solid fa-save"></i> Save</button>;
+}
+```
+
+✅ **GOOD: Using official Font Awesome components**
+```jsx
+// React example with @fortawesome/react-fontawesome
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faSave } from '@fortawesome/free-solid-svg-icons';
+
+function MyButton() {
+  return <button><FontAwesomeIcon icon={faSave} /> Save</button>;
+}
+```
+
+## 8. Testing Approaches
+
+### 8.1 Visual Regression Testing
+
+Include Font Awesome icons in your visual regression tests (e.g., Storybook with Chromatic, Playwright visual comparisons). This catches unexpected changes in icon rendering, sizing, or alignment.
+
+### 8.2 Accessibility Testing
+
+Regularly run automated accessibility checks (e.g., Axe-core, Lighthouse) on pages containing icons. Manually test with screen readers to ensure semantic icons are correctly announced and decorative icons are ignored.
+
+❌ **BAD: Assuming icons "look fine" and skipping visual/accessibility tests**
+(Icons are critical UI elements and can easily break or become inaccessible.)
+
+✅ **GOOD: Integrating icon rendering and accessibility into CI/CD pipelines.**
+(Action: Add visual regression and accessibility checks to your component stories or end-to-end tests.)

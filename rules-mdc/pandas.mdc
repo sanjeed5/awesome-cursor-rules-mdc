@@ -1,175 +1,312 @@
 ---
-description: This rule outlines best practices for using the pandas library in Python, covering code style, performance, data handling, and testing. It aims to promote maintainable, efficient, and robust data analysis workflows.
-globs: *.py
+description: This guide outlines definitive best practices for writing high-performance, maintainable, and robust pandas code, focusing on modern patterns and avoiding common pitfalls.
+globs: **/*.py
 ---
-# Pandas Best Practices
+# pandas Best Practices
 
-This document provides guidelines for writing high-quality pandas code, covering various aspects from code style to performance optimization.
+Pandas is the backbone of data analysis in Python. Adhere to these guidelines to write efficient, readable, and scalable code that integrates seamlessly into modern AI/ML pipelines.
 
-## 1. Code Organization and Structure
+## 1. Code Organization & Structure
 
-- **Directory Structure:**
-    - Organize your project with a clear directory structure.
-    - Use separate directories for data, scripts, modules, tests, and documentation.
-    - Example:
-        
-        project_root/
-        ├── data/
-        │   ├── raw/
-        │   └── processed/
-        ├── src/
-        │   ├── modules/
-        │   │   ├── data_cleaning.py
-        │   │   ├── feature_engineering.py
-        │   │   └── ...
-        │   ├── main.py
-        ├── tests/
-        │   ├── unit/
-        │   ├── integration/
-        │   └── ...
-        ├── docs/
-        ├── notebooks/
-        ├── requirements.txt
-        └── ...
-        
+### 1.1 Standard Imports
+Always import pandas with its conventional alias for consistency.
 
-- **File Naming Conventions:**
-    - Use descriptive and consistent file names.
-    - Use snake_case for Python files and variables.
-    - Example: `data_processing.py`, `load_data.py`
+❌ BAD
+```python
+import pandas
+from pandas import DataFrame
+```
 
-- **Module Organization:**
-    - Break down your code into reusable modules.
-    - Each module should focus on a specific task or functionality.
-    - Use clear and concise function and class names within modules.
-    - Follow the Single Responsibility Principle (SRP).
+✅ GOOD
+```python
+import pandas as pd
+import numpy as np # For numerical operations
+```
 
-- **Component Architecture:**
-    - Design your pandas-based applications with a clear component architecture.
-    - Separate data loading, preprocessing, analysis, and visualization into distinct components.
-    - Use classes to encapsulate related functionality and data.
+### 1.2 Method Chaining for Readability
+Chain operations to create clear, sequential data transformations. Use `.pipe()` for custom functions or when intermediate steps improve clarity.
 
-- **Code Splitting Strategies:**
-    - Split large pandas operations into smaller, more manageable steps.
-    - Use functions or methods to encapsulate these steps.
-    - This improves readability and makes debugging easier.
+❌ BAD
+```python
+df_filtered = df[df['value'] > 10]
+df_grouped = df_filtered.groupby('category')
+df_result = df_grouped['metric'].mean().reset_index()
+```
 
-## 2. Common Patterns and Anti-patterns
+✅ GOOD
+```python
+df_result = (
+    df[df['value'] > 10]
+    .groupby('category')['metric']
+    .mean()
+    .reset_index()
+    .rename(columns={'metric': 'avg_metric'}) # Add a descriptive rename
+)
+```
 
-- **Design Patterns Specific to Pandas:**
-    - **Chain of Responsibility:** Use method chaining to perform a sequence of operations on a DataFrame.
-    - **Strategy Pattern:** Implement different data processing strategies based on input parameters.
-    - **Factory Pattern:** Use factory functions to create DataFrames or Series from various sources.
+## 2. Common Patterns & Anti-patterns
 
-- **Recommended Approaches for Common Tasks:**
-    - **Data Loading:** Use `pd.read_csv()`, `pd.read_excel()`, `pd.read_sql()` to load data from different sources.
-    - **Data Cleaning:** Use `dropna()`, `fillna()`, `replace()` to clean missing or incorrect data.
-    - **Data Transformation:** Use `apply()`, `map()`, `groupby()`, `pivot_table()` to transform data.
-    - **Data Aggregation:** Use `groupby()`, `agg()`, `transform()` to aggregate data.
-    - **Data Visualization:** Use `matplotlib`, `seaborn`, or `plotly` to visualize data.
+### 2.1 Avoid Python Loops – Embrace Vectorization
+Iterating over DataFrames row-by-row (`.iterrows()`, `.apply(axis=1)`) is a major performance bottleneck. Pandas operations are optimized C-level functions.
 
-- **Anti-patterns and Code Smells to Avoid:**
-    - **Iterating over DataFrames with `iterrows()` or `itertuples()`:** These are slow; prefer vectorized operations.
-    - **Chained Indexing:** Avoid using chained indexing (e.g., `df['A']['B']`) as it can lead to unexpected behavior. Use `.loc` or `.iloc` instead.
-    - **Ignoring Data Types:** Always be aware of your data types and convert them appropriately using `astype()`.
-    - **Writing loops to filter/process the data:** Vectorize these operations to avoid performance issues.
-    - **Modifying DataFrame inplace:** Creating copies is a safer approach.
+❌ BAD (Slow for large DataFrames)
+```python
+# Calculating a new column based on existing ones
+for index, row in df.iterrows():
+    df.loc[index, 'new_col'] = row['col_a'] + row['col_b']
 
-- **State Management Best Practices:**
-    - Avoid modifying DataFrames in place unless absolutely necessary.
-    - Make copies of DataFrames using `.copy()` to avoid unintended side effects.
-    - Use functional programming principles where possible to minimize state changes.
+# Complex conditional logic with .apply(axis=1)
+def calculate_status(row):
+    if row['score'] > 90 and row['grade'] == 'A':
+        return 'Excellent'
+    return 'Good'
+df['status'] = df.apply(calculate_status, axis=1)
+```
 
-- **Error Handling Patterns:**
-    - Use `try-except` blocks to handle potential errors during data loading, processing, or analysis.
-    - Log errors and warnings using the `logging` module.
-    - Raise exceptions when necessary to signal errors to the calling code.
+✅ GOOD (Vectorized and performant)
+```python
+# Calculating a new column
+df['new_col'] = df['col_a'] + df['col_b']
+
+# Complex conditional logic using np.select or boolean indexing
+conditions = [
+    (df['score'] > 90) & (df['grade'] == 'A'),
+    (df['score'] > 80) & (df['grade'] == 'B')
+]
+choices = ['Excellent', 'Very Good']
+df['status'] = np.select(conditions, choices, default='Good')
+```
+
+### 2.2 Use `.loc` and `.iloc` for Explicit Access
+Always use `.loc` (label-based) or `.iloc` (integer-based) for setting values to prevent `SettingWithCopyWarning` and ensure predictable behavior.
+
+❌ BAD (Chained indexing can return a view, leading to `SettingWithCopyWarning`)
+```python
+df[df['city'] == 'London']['population'] = 8_000_000
+```
+
+✅ GOOD (Explicitly modifies the original DataFrame)
+```python
+df.loc[df['city'] == 'London', 'population'] = 8_000_000
+```
+
+### 2.3 Leverage `df.eval()` and `df.query()`
+For complex filtering or column creation, `eval()` and `query()` can be significantly faster than boolean indexing, as they use the underlying C engine.
+
+❌ BAD
+```python
+df_filtered = df[(df['col_a'] > 10) & (df['col_b'] < 20) | (df['col_c'] == 'X')]
+df['new_col'] = df['col_a'] * df['col_b'] + df['col_c'] / df['col_d']
+```
+
+✅ GOOD
+```python
+df_filtered = df.query("(col_a > 10 and col_b < 20) or (col_c == 'X')")
+df['new_col'] = df.eval("col_a * col_b + col_c / col_d")
+```
 
 ## 3. Performance Considerations
 
-- **Optimization Techniques:**
-    - **Vectorization:** Use vectorized operations instead of loops whenever possible. Pandas is optimized for vectorized operations.
-    - **Cython:** Consider using Cython to optimize performance-critical parts of your code.
-    - **Numba:** Use Numba to JIT-compile NumPy and pandas code for improved performance.
-    - **Dask:** Use Dask for parallel processing of large datasets that don't fit in memory.
-    - **Parquet or Feather:** Use Parquet or Feather file formats for efficient data storage and retrieval.
-    - **Categorical Data:** Use categorical data types for columns with a limited number of unique values.
+### 3.1 Optimize Data Loading with `read_csv`
+Specify `dtype` and `usecols` upfront to reduce memory footprint and speed up loading, especially for large files. Let `read_csv` infer optimal defaults (`low_memory=False` is often better).
 
-- **Memory Management:**
-    - **Data Types:** Choose appropriate data types to minimize memory usage (e.g., `int8`, `float32` instead of `int64`, `float64`).
-    - **Chunking:** Load large datasets in chunks to avoid memory errors.
-    - **Garbage Collection:** Use `gc.collect()` to explicitly release memory.
-    - **Sparse Data:** Use sparse data structures for data with many missing values.
+❌ BAD
+```python
+df = pd.read_csv("large_data.csv") # Pandas infers all dtypes, loads all columns
+```
 
-## 4. Security Best Practices
+✅ GOOD
+```python
+# Define dtypes and select only necessary columns
+dtypes = {
+    'store_id': 'Int32', # Use nullable integer
+    'product_id': 'Int32',
+    'category': 'category', # For repeated strings
+    'price': 'Float32',
+    'timestamp': 'datetime64[ns]'
+}
+cols_to_use = ['store_id', 'product_id', 'category', 'price', 'timestamp']
 
-- **Common Vulnerabilities and How to Prevent Them:**
-    - **SQL Injection:** When reading data from SQL databases, use parameterized queries or ORM frameworks to prevent SQL injection attacks.
-    - **CSV Injection:** Be cautious when loading CSV files from untrusted sources, as they may contain malicious formulas that can execute arbitrary code.
-    - **Arbitrary Code Execution:** Avoid using `eval()` or `exec()` on data loaded from untrusted sources, as this can lead to arbitrary code execution.
+df = pd.read_csv(
+    "large_data.csv",
+    dtype=dtypes,
+    usecols=cols_to_use,
+    parse_dates=['timestamp'], # Parse dates explicitly
+    low_memory=False # Allows pandas to infer dtypes more accurately
+)
+```
 
-- **Input Validation:**
-    - Validate user inputs to prevent malicious data from entering your pandas workflows.
-    - Use regular expressions or custom validation functions to check the format and content of inputs.
+### 3.2 Use Optimal Data Types
+Explicitly set the smallest appropriate dtype. `category` for repeated strings, `Int64` (nullable integer), `StringDtype` (nullable string), and smaller floats/integers save memory and improve performance.
 
-- **Data Protection Strategies:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use access control mechanisms to restrict access to sensitive data.
-    - Anonymize or pseudonymize data when possible to protect privacy.
+❌ BAD
+```python
+df['id_col'] = df['id_col'].astype('int64') # Default, but maybe not needed
+df['product_name'] = df['product_name'].astype('object') # Default string
+```
 
-## 5. Testing Approaches
+✅ GOOD
+```python
+df['id_col'] = df['id_col'].astype('Int32') # Use nullable, smaller int
+df['product_name'] = df['product_name'].astype('StringDtype') # Modern nullable string
+df['region'] = df['region'].astype('category') # For categorical data
+df['sales'] = df['sales'].astype('Float32') # Smaller float if precision allows
+```
 
-- **Unit Testing Strategies:**
-    - Write unit tests for individual functions and classes.
-    - Use `pytest` or `unittest` for writing and running tests.
-    - Test edge cases and boundary conditions.
-    - Use assert statements to verify the correctness of your code.
+## 4. Common Pitfalls & Gotchas
 
-- **Integration Testing:**
-    - Write integration tests to verify the interaction between different modules or components.
-    - Test the end-to-end functionality of your pandas-based applications.
+### 4.1 Handle Missing Values Explicitly
+Always address `NaN` values. Use `.fillna()`, `.dropna()`, or `.interpolate()` with clear strategies.
 
-- **Test Organization:**
-    - Organize your tests in a separate `tests` directory.
-    - Use a clear naming convention for your test files and functions.
-    - Example: `test_data_cleaning.py`, `test_load_data()`
+❌ BAD
+```python
+# Operations on columns with NaNs can lead to unexpected results or errors
+df['revenue_per_sale'] = df['total_revenue'] / df['num_sales'] # NaNs propagate
+```
 
-- **Mocking and Stubbing:**
-    - Use mocking and stubbing to isolate units of code during testing.
-    - Use the `unittest.mock` module or third-party libraries like `pytest-mock`.
+✅ GOOD
+```python
+# Fill NaNs before calculation or drop them
+df['num_sales'] = df['num_sales'].fillna(0) # Assume 0 sales if missing
+df['revenue_per_sale'] = df['total_revenue'] / df['num_sales']
 
-## 6. Common Pitfalls and Gotchas
+# Or drop rows with NaNs in critical columns
+df_cleaned = df.dropna(subset=['total_revenue', 'num_sales'])
+```
 
-- **Frequent Mistakes Developers Make:**
-    - **Forgetting to set the index properly:** This can lead to performance issues when joining or merging DataFrames.
-    - **Incorrectly handling missing data:** Be aware of how missing data is represented in your DataFrames and handle it appropriately.
-    - **Not understanding the difference between `.loc` and `.iloc`:** These methods are used for different types of indexing and can lead to unexpected results if used incorrectly.
+### 4.2 Be Mindful of Implicit Type Conversions
+Operations can silently change dtypes. Monitor with `df.info()` and explicitly cast when necessary.
 
-- **Edge Cases to Be Aware Of:**
-    - **Empty DataFrames:** Handle the case where a DataFrame is empty.
-    - **DataFrames with duplicate indices:** Be aware of how pandas handles DataFrames with duplicate indices.
+❌ BAD
+```python
+# Adding a float to an Int64 column can convert it to float64, losing nullable int
+df['int_col'] = pd.Series([1, 2, pd.NA], dtype='Int64')
+df['int_col'] = df['int_col'] + 0.5 # Converts to float64
+```
 
-- **Debugging Strategies:**
-    - Use the `print()` function or the `logging` module to debug your code.
-    - Use a debugger to step through your code and inspect variables.
-    - Use the `pdb` module for interactive debugging.
+✅ GOOD
+```python
+df['int_col'] = pd.Series([1, 2, pd.NA], dtype='Int64')
+# If you need float, explicitly convert or accept the float result
+df['float_col'] = df['int_col'].astype('Float64') + 0.5
+```
 
-## 7. Tooling and Environment
+## 5. Type Hints
 
-- **Recommended Development Tools:**
-    - **Jupyter Notebook/Lab:** For interactive data exploration and analysis.
-    - **VS Code with Python extension:** For code editing, debugging, and testing.
-    - **PyCharm:** A full-featured IDE for Python development.
+### 5.1 Type Your Pandas Functions
+Use `pd.DataFrame`, `pd.Series`, and specific dtypes for function signatures to improve code clarity, enable static analysis, and reduce bugs.
 
-- **Linting and Formatting:**
-    - Use `flake8` to lint your code and identify potential issues.
-    - Use `black` to automatically format your code according to PEP 8.
-    - Use `isort` to automatically sort your imports.
-    - Integrate these tools into your pre-commit hooks to ensure consistent code style.
+❌ BAD
+```python
+def process_data(data):
+    # ... untyped operations ...
+    return data
+```
 
-- **CI/CD Integration:**
-    - Use CI/CD pipelines to automate the testing and deployment of your pandas-based applications.
-    - Integrate your CI/CD pipelines with your version control system (e.g., GitHub, GitLab, Bitbucket).
-    - Use Docker to containerize your applications for consistent deployment.
+✅ GOOD
+```python
+from typing import Dict, Any
+import pandas as pd
 
-This comprehensive guide covers the key aspects of pandas best practices and coding standards. By following these guidelines, you can write more maintainable, efficient, and robust pandas code.
+def process_sales_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Processes raw sales data to calculate aggregated metrics.
+    """
+    df['total_price'] = df['quantity'] * df['unit_price']
+    return df.groupby('product_id')['total_price'].sum().reset_index()
+
+def create_empty_dataframe(columns: Dict[str, Any]) -> pd.DataFrame:
+    """Creates an empty DataFrame with specified columns and dtypes."""
+    return pd.DataFrame(columns=list(columns.keys())).astype(columns)
+
+# Example usage with type hints
+schema = {
+    'product_id': 'Int64',
+    'quantity': 'Int32',
+    'unit_price': 'Float32'
+}
+empty_df = create_empty_dataframe(schema)
+```
+
+## 6. Virtual Environments
+
+### 6.1 Always Use Virtual Environments
+Isolate project dependencies using `venv` or `conda`. This prevents dependency conflicts and ensures reproducible environments.
+
+```bash
+# Create a virtual environment
+python -m venv .venv
+# Activate it
+source .venv/bin/activate # On Windows: .venv\Scripts\activate
+# Install pandas
+pip install pandas ruff black isort pytest
+```
+
+## 7. Packaging
+
+### 7.1 Manage Dependencies with `pyproject.toml`
+For any project beyond a simple script, use `pyproject.toml` (with `poetry` or `setuptools`) to declare dependencies, including `pandas`.
+
+```toml
+# pyproject.toml
+[project]
+name = "my_data_pipeline"
+version = "0.1.0"
+dependencies = [
+    "pandas>=2.3.0",
+    "numpy",
+    "pyarrow", # Recommended for faster I/O and nullable dtypes
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+```
+
+## 8. Testing Approaches
+
+### 8.1 Write Comprehensive Tests with `pytest`
+Ensure data transformations are correct and robust. Use `pandas.testing` for DataFrame and Series comparisons.
+
+```python
+# tests/test_data_processing.py
+import pandas as pd
+from pandas.testing import assert_frame_equal
+from my_package.data_processor import process_sales_data
+
+def test_process_sales_data():
+    # Arrange
+    raw_data = pd.DataFrame({
+        'product_id': [1, 1, 2, 2],
+        'quantity': [10, 5, 20, 10],
+        'unit_price': [1.0, 2.0, 0.5, 1.5]
+    })
+    expected_data = pd.DataFrame({
+        'product_id': [1, 2],
+        'total_price': [20.0, 25.0]
+    })
+
+    # Act
+    result_df = process_sales_data(raw_data)
+
+    # Assert
+    assert_frame_equal(result_df, expected_data)
+
+def test_process_sales_data_with_nans():
+    # Arrange
+    raw_data_with_nan = pd.DataFrame({
+        'product_id': [1, 1, 2, 2, 3],
+        'quantity': [10, 5, 20, 10, pd.NA],
+        'unit_price': [1.0, 2.0, 0.5, 1.5, 10.0]
+    }, dtype={'quantity': 'Int64'}) # Use nullable Int64
+
+    # Act (assuming process_sales_data handles NaNs gracefully, e.g., drops rows or fills)
+    # For this example, let's assume it drops rows with NA in quantity
+    result_df = process_sales_data(raw_data_with_nan.dropna(subset=['quantity']))
+
+    expected_data = pd.DataFrame({
+        'product_id': [1, 2],
+        'total_price': [20.0, 25.0]
+    })
+    assert_frame_equal(result_df, expected_data)
+```

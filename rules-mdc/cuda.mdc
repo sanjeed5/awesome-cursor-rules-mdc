@@ -1,165 +1,286 @@
 ---
-description: Enforces CUDA coding standards, performance optimizations, and best practices to ensure efficient and maintainable GPU-accelerated code. This rule provides guidance on code organization, memory management, error handling, and more.
-globs: *.cu
+description: Definitive guidelines for writing high-performance, maintainable, and error-resistant CUDA C++ code, focusing on modern practices, memory management, kernel optimization, and robust error handling.
+globs: **/*
 ---
-- # CUDA Best Practices Guide
-  This document outlines best practices for CUDA development, focusing on code organization, performance optimization, and common pitfalls.  It is based on NVIDIA's CUDA C++ Best Practices Guide and expands on it with more detailed recommendations.
+# CUDA Best Practices
 
-- ## 1. Code Organization and Structure
+This guide outlines the essential practices for developing efficient and maintainable CUDA C++ applications. Adhere to these rules to maximize GPU throughput, reduce debugging time, and ensure code quality across projects.
 
-  - ### 1.1 Directory Structure
-    - Organize your CUDA project with a clear directory structure.  A common structure includes:
-      
-      project_root/
-      ├── src/
-      │   ├── kernels/      # CUDA kernel source files (.cu)
-      │   ├── host/         # Host-side code (.cpp, .h)
-      │   ├── common/       # Shared utility code (.h, .cpp)
-      │   └── include/      # Header files
-      ├── build/            # Build output directory
-      ├── data/             # Input and output data
-      ├── tests/           # Unit and integration tests
-      └── CMakeLists.txt  # CMake build configuration
-      
+## 1. Code Organization and Structure
 
-  - ### 1.2 File Naming Conventions
-    - Use descriptive file names that clearly indicate the purpose of the file.
-      - Kernel files: `kernel_name.cu` (e.g., `matrix_multiply.cu`)
-      - Host files: `module_name.cpp`, `module_name.h` (e.g., `data_loader.cpp`, `data_loader.h`)
-      - Common files: `utility.h`, `error_handling.cpp`
+### 1.1 Robust Error Handling
+**Always wrap CUDA API calls in an error-checking macro.** This prevents silent failures and provides immediate, actionable debugging information.
 
-  - ### 1.3 Module Organization
-    - Divide your code into logical modules based on functionality.
-    - Use namespaces to avoid naming conflicts and improve code organization.
-    - Encapsulate CUDA kernel launches within well-defined functions or classes.
+❌ BAD:
+```cpp
+cudaMalloc(&d_data, size);
+// ... potentially crash later without knowing why
+```
 
-  - ### 1.4 Component Architecture
-    - Design your application with a modular component architecture to facilitate code reuse and maintainability.
-    - Decouple host-side code from CUDA kernels as much as possible.
-    - Use abstraction layers to hide CUDA-specific details from higher-level components.
+✅ GOOD:
+```cpp
+#define CUDA_CHECK(call)                                                          \
+    do {                                                                          \
+        cudaError_t err = call;                                                   \
+        if (err != cudaSuccess) {                                                 \
+            fprintf(stderr, "CUDA Error: %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); \
+            exit(EXIT_FAILURE);                                                   \
+        }                                                                         \
+    } while (0)
 
-  - ### 1.5 Code Splitting Strategies
-    - Split large CUDA kernels into smaller, more manageable functions.
-    - Use separate files for different kernels or related functionalities.
-    - Consider using template metaprogramming to generate specialized kernels at compile time.
+// Usage:
+CUDA_CHECK(cudaMalloc(&d_data, size));
+kernel<<<grid, block>>>(d_data);
+CUDA_CHECK(cudaGetLastError()); // Check for kernel launch errors
+```
 
-- ## 2. Common Patterns and Anti-patterns
+### 1.2 Host-Device Separation
+Clearly separate host (CPU) orchestration logic from device (GPU) computation.
 
-  - ### 2.1 Design Patterns Specific to CUDA
-    - **CUDA Stream Pattern:** Use CUDA streams to overlap data transfers and kernel execution.
-    - **Memory Pooling Pattern:** Implement memory pools to reduce the overhead of frequent memory allocations and deallocations.
-    - **Tiling Pattern:** Divide large data structures into smaller tiles to improve data locality and cache utilization.
-    - **Reduction Pattern:** Use parallel reduction algorithms to efficiently compute aggregate values.
+❌ BAD:
+```cpp
+// host_code.cu
+void processData() {
+    cudaMalloc(&d_data, size); // Mixed host/device
+    kernel<<<...>>>(d_data);
+}
+```
 
-  - ### 2.2 Recommended Approaches for Common Tasks
-    - **Error Handling:** Use the CUDA error handling API to check for errors after each CUDA function call.
-    - **Memory Allocation:** Use `cudaMalloc`, `cudaFree`, and related functions for memory allocation on the device.
-    - **Data Transfer:** Use `cudaMemcpy` to transfer data between host and device memory.
-    - **Kernel Launch:** Use the `<<<gridDim, blockDim, sharedMem>>>` syntax to launch CUDA kernels.
+✅ GOOD:
+```cpp
+// host_manager.cpp
+void allocateAndLaunch(float* h_in, int N) {
+    float *d_in;
+    CUDA_CHECK(cudaMalloc((void**)&d_in, N * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_in, h_in, N * sizeof(float), cudaMemcpyHostToDevice));
+    myKernel_kernel<<<N/256 + 1, 256>>>(d_in, N);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaFree(d_in));
+}
 
-  - ### 2.3 Anti-patterns and Code Smells to Avoid
-    - **Synchronous Memory Transfers:** Avoid blocking memory transfers that stall the GPU.
-    - **Excessive Global Memory Access:** Minimize global memory access by using shared memory and registers.
-    - **Thread Divergence:** Avoid conditional branches that cause threads within a warp to execute different code paths.
-    - **Uncoalesced Memory Access:** Ensure that threads access memory in a coalesced manner to maximize memory bandwidth.
-    - **CPU-GPU Synchronization Bottlenecks:**  Minimize the number of synchronization points between the CPU and GPU.
+// device_kernels.cu
+__global__ void myKernel_kernel(float* d_in, int N) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) { d_in[idx] *= 2.0f; }
+}
+```
 
-  - ### 2.4 State Management Best Practices
-    - Encapsulate CUDA context and device management within a dedicated class or module.
-    - Avoid global state variables that can lead to unexpected behavior and concurrency issues.
-    - Use RAII (Resource Acquisition Is Initialization) to ensure that CUDA resources are properly released.
+### 1.3 Consistent Naming Conventions
+Use clear suffixes and prefixes to distinguish CUDA components.
+*   `_kernel`: For `__global__` functions.
+*   `_device`: For `__device__` functions.
+*   `smem_`: For `__shared__` variables.
+*   `k` prefix: For `__constant__` memory or compile-time constants.
 
-  - ### 2.5 Error Handling Patterns
-    - Check the return value of every CUDA function call and handle errors appropriately.
-    - Use `cudaGetLastError` to retrieve the last error that occurred on the device.
-    - Implement custom error handling routines for specific error conditions.
-    - Log error messages with file name, line number, and a descriptive error message.
+❌ BAD:
+```cpp
+void compute(float* data); // Ambiguous
+__shared__ int temp;
+```
 
-- ## 3. Performance Considerations
+✅ GOOD:
+```cpp
+__global__ void myCompute_kernel(float* d_data);
+__device__ float calculate_device(float val);
+extern __shared__ float smem_scratch[];
+__constant__ const int kTileSize = 32;
+```
 
-  - ### 3.1 Optimization Techniques
-    - **Kernel Fusion:** Combine multiple kernels into a single kernel to reduce kernel launch overhead and data transfers.
-    - **Loop Unrolling:** Unroll loops to improve instruction-level parallelism.
-    - **Instruction Scheduling:** Optimize instruction scheduling to reduce pipeline stalls.
-    - **Constant Memory Usage:** Store frequently accessed read-only data in constant memory.
-    - **Texture Memory Usage:** Utilize texture memory for spatially coherent data access patterns.
+### 1.4 Modularity
+Decompose large kernels into smaller, focused `__device__` functions.
 
-  - ### 3.2 Memory Management
-    - **Minimize Data Transfers:** Reduce the amount of data transferred between host and device.
-    - **Asynchronous Data Transfers:** Use asynchronous memory transfers with CUDA streams to overlap computation and communication.
-    - **Zero-Copy Memory:** Use zero-copy memory to directly access host memory from the GPU (use with caution due to performance implications).
-    - **Pinned Memory (Page-Locked Memory):** Use pinned memory for efficient asynchronous data transfers.
+❌ BAD:
+```cpp
+__global__ void monolithicKernel(float* d_data, int N) { /* Do everything here */ }
+```
 
-  - ### 3.3 CUDA Profiler
-    - Use the NVIDIA Nsight Systems and Nsight Compute profilers to identify performance bottlenecks.
+✅ GOOD:
+```cpp
+__device__ float processElement_device(float val) { return val * val + 1.0f; }
 
-- ## 4. Security Best Practices
+__global__ void modularKernel(float* d_in, int N) {
+    int global_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (global_idx < N) {
+        d_in[global_idx] = processElement_device(d_in[global_idx]);
+    }
+}
+```
 
-  - ### 4.1 Common Vulnerabilities and How to Prevent Them
-    - **Buffer Overflows:** Carefully validate input sizes to prevent buffer overflows in CUDA kernels.
-    - **Integer Overflows:** Check for potential integer overflows in calculations involving data sizes and indices.
-    - **Race Conditions:** Protect shared data with appropriate synchronization mechanisms (e.g., atomic operations, mutexes) to prevent race conditions.
-    - **Injection Attacks:** Sanitize input data to prevent injection attacks that could execute arbitrary code on the GPU.
+## 2. Common Patterns and Anti-patterns
 
-  - ### 4.2 Input Validation
-    - Validate all input data received by CUDA kernels to ensure that it is within the expected range and format.
-    - Check for invalid or malicious input that could lead to security vulnerabilities.
+### 2.1 Modern Memory Management (RAII)
+Use RAII wrappers for device memory and streams to prevent leaks.
 
-  - ### 4.3 Data Protection Strategies
-    - Encrypt sensitive data stored on the GPU to protect it from unauthorized access.
-    - Use secure communication channels to transfer data between host and device.
+❌ BAD:
+```cpp
+float* d_data; cudaMalloc(&d_data, size); // ... cudaFree(d_data); // Easy to forget
+```
 
-- ## 5. Testing Approaches
+✅ GOOD:
+```cpp
+// Use a robust library or std::unique_ptr with custom deleter in production.
+template<typename T> struct CudaDeviceBuffer {
+    T* ptr = nullptr; size_t count = 0;
+    CudaDeviceBuffer(size_t n) : count(n) { CUDA_CHECK(cudaMalloc(&ptr, n * sizeof(T))); }
+    ~CudaDeviceBuffer() { if (ptr) CUDA_CHECK(cudaFree(ptr)); }
+    T* get() { return ptr; }
+};
+// Usage: CudaDeviceBuffer<float> d_data(N); // Auto-freed on scope exit
+```
 
-  - ### 5.1 Unit Testing Strategies
-    - Write unit tests to verify the correctness of individual CUDA kernels and host-side functions.
-    - Use a testing framework like Google Test or Catch2 to automate the testing process.
-    - Mock CUDA runtime functions to isolate kernels during testing.
-    - Use a separate compilation approach to test individual kernel functions.
+### 2.2 Aligned Memory Allocation
+For 2D arrays, use `cudaMallocPitch` for proper alignment and coalescing.
 
-  - ### 5.2 Integration Testing
-    - Perform integration tests to verify the interaction between different components of the CUDA application.
-    - Test data transfers between host and device, kernel launches, and error handling.
+❌ BAD:
+```cpp
+cudaMalloc(&d_matrix, width * height * sizeof(float)); // Misaligned rows possible
+```
 
-  - ### 5.3 Test Organization
-    - Organize your tests into a logical directory structure.
-    - Use descriptive test names that clearly indicate the purpose of each test.
-    - Group related tests together into test suites.
+✅ GOOD:
+```cpp
+float* d_matrix; size_t pitch; // Stored in bytes
+CUDA_CHECK(cudaMallocPitch((void**)&d_matrix, &pitch, width * sizeof(float), height));
+// Access in kernel: d_matrix[row * (pitch / sizeof(float)) + col];
+```
 
-  - ### 5.4 Mocking and Stubbing
-    - Use mocking and stubbing techniques to isolate components during testing and simulate different scenarios.
-    - Mock CUDA runtime functions to control the behavior of the GPU during testing.
+### 2.3 Overlap Data Transfer and Computation
+Utilize `cudaMemcpyAsync` with multiple streams to hide data transfer latency.
 
-- ## 6. Common Pitfalls and Gotchas
+❌ BAD:
+```cpp
+cudaMemcpy(d_data, h_data, size, cudaMemcpyHostToDevice); // Synchronous
+kernel<<<...>>>(d_data);
+```
 
-  - ### 6.1 Frequent Mistakes Developers Make
-    - **Ignoring CUDA Error Codes:** Always check the return values of CUDA functions to ensure that they succeed.
-    - **Incorrect Grid and Block Dimensions:** Choose appropriate grid and block dimensions for your kernels.
-    - **Shared Memory Bank Conflicts:** Avoid shared memory bank conflicts to maximize memory bandwidth.
-    - **Thread Divergence:** Minimize thread divergence within warps to improve performance.
-    - **Uncoalesced Memory Access:** Ensure that threads access memory in a coalesced manner.
+✅ GOOD:
+```cpp
+cudaStream_t stream1, stream2;
+CUDA_CHECK(cudaStreamCreate(&stream1));
+// Segment 1: Transfer H->D, Compute, Transfer D->H
+CUDA_CHECK(cudaMemcpyAsync(d_data_seg1, h_data_seg1, size_seg1, cudaMemcpyHostToDevice, stream1));
+kernel_seg1<<<...>>>(d_data_seg1, stream1);
+CUDA_CHECK(cudaMemcpyAsync(h_result_seg1, d_result_seg1, size_seg1, cudaMemcpyDeviceToHost, stream1));
+// ... (similar for stream2) ...
+CUDA_CHECK(cudaStreamSynchronize(stream1));
+CUDA_CHECK(cudaStreamDestroy(stream1));
+```
 
-  - ### 6.2 Version-Specific Issues
-    - Be aware of compatibility issues between different CUDA versions.
-    - Use conditional compilation to handle version-specific code.
+### 2.4 Minimize Warp Divergence
+Refactor conditional logic to reduce divergent branches within a warp. Use lookup tables or predicate execution.
 
-  - ### 6.3 Debugging Strategies
-    - Use the NVIDIA Nsight Systems and Nsight Compute debuggers to debug CUDA code.
-    - Insert print statements to track the execution flow and variable values.
-    - Use the `cudaDeviceSynchronize` function to force the GPU to complete all operations before proceeding.
+❌ BAD:
+```cpp
+if (idx % 2 == 0) { d_data[idx] *= 2; } else { d_data[idx] += 1; }
+```
 
-- ## 7. Tooling and Environment
+✅ GOOD:
+```cpp
+int multiplier = (idx % 2 == 0) ? 2 : 1;
+int adder = (idx % 2 == 0) ? 0 : 1;
+d_data[idx] = d_data[idx] * multiplier + adder;
+```
 
-  - ### 7.1 Recommended Development Tools
-    - **CUDA Toolkit:** Install the latest version of the CUDA Toolkit from NVIDIA's website.
-    - **NVIDIA Nsight Systems and Nsight Compute:** Use the Nsight profilers to analyze and optimize CUDA code.
-    - **CMake:** Use CMake to manage the build process.
-    - **Integrated Development Environment (IDE):** Use an IDE such as Visual Studio or Eclipse with CUDA support.
+### 2.5 Use `__restrict__` and `const` Qualifiers
+Enable compiler optimizations by explicitly declaring non-aliased pointers and read-only data.
 
-  - ### 7.2 Build Configuration
-    - Use CMake to generate build files for your target platform.
-    - Configure the CUDA compiler (nvcc) with appropriate optimization flags.
+❌ BAD:
+```cpp
+__global__ void add(float* a, float* b, float* c, int N) { /* ... */ }
+```
 
-  - ### 7.3 Linting and Formatting
-    - Use a linter such as clang-tidy to enforce coding standards and identify potential errors.
-    - Use a code formatter such as clang-format to ensure consistent code formatting.
+✅ GOOD:
+```cpp
+__global__ void add(const float* __restrict__ a, const float* __restrict__ b, float* __restrict__ c, int N) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) { c[idx] = a[idx] + b[idx]; }
+}
+```
+
+### 2.6 Data Layout: Structures-of-Arrays (SoA)
+Organize data as SoA for better memory coalescing, especially for frequently accessed fields.
+
+❌ BAD:
+```cpp
+struct Particle { float x, y, z; }; Particle* particles = new Particle[N];
+```
+
+✅ GOOD:
+```cpp
+struct ParticlesSoA { float *x, *y, *z; }; // Allocate each array separately
+```
+
+### 2.7 Leverage CUDA-X Libraries
+For common operations (BLAS, FFT, DNN), use highly optimized CUDA-X libraries (cuBLAS, cuFFT, cuDNN, cuML).
+
+❌ BAD:
+```cpp
+__global__ void myMatrixMul_kernel(...) { /* complex GEMM logic */ }
+```
+
+✅ GOOD:
+```cpp
+cublasHandle_t handle; CUDA_CHECK(cublasCreate(&handle));
+// ... setup matrices ...
+CUDA_CHECK(cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, M, N, K, &alpha, d_A, M, d_B, K, &beta, d_C, M));
+CUDA_CHECK(cublasDestroy(handle));
+```
+
+### 2.8 Embrace CUDA Tile (Toolkit 13.1+)
+For tile-based tensor operations, use the new CUDA Tile programming model and cuTile Python API. This simplifies complex tiling logic and targets specialized hardware.
+
+✅ GOOD:
+```cpp
+// Refer to NVIDIA documentation for specific CUDA Tile API usage.
+// This abstracts away explicit shared memory management and synchronization for tiling.
+// E.g., using cuTile Python API to express high-level tensor operations.
+```
+
+## 3. Performance Considerations
+
+### 3.1 Memory Coalescing
+Ensure global memory accesses by threads within a warp are contiguous and aligned.
+
+❌ BAD:
+```cpp
+d_matrix[threadIdx.x * N + blockIdx.x]; // Strided access
+```
+
+✅ GOOD:
+```cpp
+d_matrix[blockIdx.x * blockDim.x + threadIdx.x]; // Coalesced access
+```
+
+### 3.2 Shared Memory Optimization
+Use shared memory to cache frequently accessed global memory data. Be mindful of bank conflicts.
+
+❌ BAD:
+```cpp
+__shared__ float smem_data[256]; float val = smem_data[threadIdx.x * 2]; // Bank conflicts
+```
+
+✅ GOOD:
+```cpp
+__shared__ float smem_data[256]; float val = smem_data[threadIdx.x]; // No bank conflicts
+```
+
+### 3.3 Constant Memory
+Use `__constant__` memory for read-only data uniform across all threads. It has a fast, cached access path.
+
+✅ GOOD:
+```cpp
+__constant__ float kCoefficients[10];
+__global__ void process_kernel(float* d_data) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) { d_data[idx] *= kCoefficients[0]; } // Fast access
+}
+```
+
+## 4. Common Pitfalls and Gotchas
+
+### 4.1 Unchecked API Calls
+As covered in 1.1, neglecting error checks leads to hard-to-debug issues.
+
+### 4.2 Excessive `__syncthreads()`
+Overuse of `__syncthreads()` can severely limit occupancy and performance. Only synchronize when absolutely necessary.
+
+### 4.3 Forgetting `cuda

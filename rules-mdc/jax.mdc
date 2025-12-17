@@ -1,267 +1,197 @@
 ---
-description: This rule provides best practices and coding standards for the JAX library, emphasizing functional programming, JIT compilation, automatic differentiation, and immutable data structures. It also covers performance considerations, common pitfalls, and tooling recommendations.
-globs: *.py
+description: Definitive guidelines for writing high-performance, functionally pure, and maintainable JAX code, focusing on common pitfalls and optimal patterns for accelerators.
+globs: **/*.py
 ---
-- **Functional Programming**: JAX emphasizes a functional programming style. Ensure functions are pure (no side effects, no reliance on global variables) for consistent JIT compilation and optimization.
+# jax Best Practices
 
-- **JIT Compilation**: Use `@jax.jit` to decorate functions for performance optimization, especially those called multiple times with the same input shapes. Understand the implications of tracing and static arguments.
+JAX is the backbone of our AI/ML and numerical computing projects. Adhere to these principles for high-performance, reproducible, and maintainable JAX code.
 
-- **Automatic Differentiation**: Leverage `jax.grad()` for efficient gradient calculations and higher-order derivatives.  Be mindful of how JAX handles gradients with control flow and other transformations.
+## 1. Functional Purity: The Absolute Core
 
-- **Vectorization with `vmap`**: Utilize `jax.vmap()` for automatic vectorization instead of explicit loops. This improves performance by mapping operations across array dimensions.
+JAX transformations (`jit`, `grad`, `vmap`, `pmap`) operate exclusively on **functionally pure** code. This means functions must be free of side-effects: all inputs explicit, all results returned.
 
-- **Immutable Data Structures**: JAX arrays are immutable. Use `.at[].set()` for updates. Understand that these operations are out-of-place, returning a new array. In-place updates *may* occur under jit-compilation if the original value isn't reused, but rely on the functional style.
+*   **Avoid mutable global state:** JAX captures global values at first `jit` compilation, leading to stale values.
+    ❌ BAD:
+    ```python
+    g = 0
+    def impure_uses_globals(x):
+        return x + g # `g` is captured at first jit
+    # ... later g = 10, but jit(impure_uses_globals) still uses g=0
+    ```
+    ✅ GOOD: Pass all state explicitly.
+    ```python
+    def pure_uses_globals(x, g_val):
+        return x + g_val
+    # ... pass g_val=0, then g_val=10
+    ```
 
-- **Random Number Generation**: Use `jax.random` for random number generation. Employ explicit PRNG state management. Always split the key using `jax.random.split()` before generating random numbers to avoid reusing the same state.
+*   **No in-place array mutation:** JAX arrays are immutable. Use the `.at[]` syntax for functional updates.
+    ❌ BAD:
+    ```python
+    import jax.numpy as jnp
+    arr = jnp.zeros((3,3))
+    arr[1, :] = 1.0 # TypeError!
+    ```
+    ✅ GOOD:
+    ```python
+    import jax.numpy as jnp
+    arr = jnp.zeros((3,3))
+    updated_arr = arr.at[1, :].set(1.0) # Returns a new array
+    ```
 
-- **Control Flow**: Be aware of limitations when using Python control flow with `jax.jit`. Use `static_argnums` to specify arguments for tracing on concrete values if necessary. Consider structured control flow primitives like `lax.cond`, `lax.while_loop`, `lax.fori_loop`, and `lax.scan` for better traceability and avoiding large loop unrolling.  Understand which control flow constructs are differentiable.
+*   **Avoid Python iterators in `jit`ted code:** Iterators introduce state.
+    ❌ BAD:
+    ```python
+    from jax import jit
+    def sum_iterator(it):
+        total = 0
+        for x in it: # Python loop with iterator
+            total += x
+        return total
+    # jit(sum_iterator)(iter(range(10))) # Will fail or give unexpected results
+    ```
+    ✅ GOOD: Use JAX control flow primitives.
+    ```python
+    from jax import lax
+    import jax.numpy as jnp
+    def sum_array(arr):
+        # Use lax.scan or lax.fori_loop for JAX-compatible loops
+        return lax.fori_loop(0, arr.shape[0], lambda i, x: x + arr[i], 0)
+    # jit(sum_array)(jnp.arange(10))
+    ```
 
-- **Dynamic Shapes**: Avoid dynamic shapes within JAX transformations like `jax.jit`, `jax.vmap`, and `jax.grad`.  The shapes of output arrays must not depend on values within other arrays. Use techniques like `jnp.where` to work around the need for dynamically-sized arrays.
+## 2. Numerical Type Discipline
 
-- **NaN Handling**: Use the NaN-checker during debugging by setting `JAX_DEBUG_NANS=True` or using `jax.config.update("jax_debug_nans", True)`.  Be aware that this adds overhead and should be disabled in production.
+Prioritize `float32` for performance on accelerators. Avoid implicit `float64` promotion.
 
-- **Double Precision**: Enable double-precision numbers by setting the `jax_enable_x64` configuration variable at startup (`JAX_ENABLE_X64=True` environment variable, `jax.config.update("jax_enable_x64", True)`, or `jax.config.parse_flags_with_absl()`).  Note that not all backends support 64-bit convolutions.
+*   **Explicit `dtype` for constants:**
+    ❌ BAD: Implicitly typed Python floats can lead to `float64` promotion.
+    ```python
+    import jax.numpy as jnp
+    x = jnp.ones(5, dtype=jnp.float32)
+    y = x * 2.0 # 2.0 is a Python float, can cause unwanted promotion
+    ```
+    ✅ GOOD: Use 0-D `jnp.array` with explicit `dtype` or `jnp.float32()`.
+    ```python
+    import jax.numpy as jnp
+    x = jnp.ones(5, dtype=jnp.float32)
+    y = x * jnp.array(2.0, dtype=jnp.float32)
+    # Or more concisely:
+    z = x * jnp.float32(2.0)
+    ```
 
-- **Non-array Inputs**: JAX generally expects NumPy arrays as inputs to its API functions. Avoid passing Python lists or tuples directly; convert them to arrays first.
+## 3. Performance Considerations: Stable Compilation
 
-- **Out-of-Bounds Indexing**: JAX handles out-of-bounds indexing by clamping the index to the bounds of the array for retrieval operations. Array update operations at out-of-bounds indices are skipped. Use the optional parameters of `ndarray.at` for finer-grained control.
+Prevent costly recompilations and leverage XLA effectively.
 
-- **Miscellaneous Divergences from NumPy**: Be aware of differences in type promotion rules, unsafe type casts, and other corner cases where JAX's behavior may differ from NumPy.
+*   **Static shapes:** Keep input shapes static or pass them via `static_argnums` to `jit`. Dynamic shapes force recompilation.
+    ❌ BAD:
+    ```python
+    from jax import jit
+    def dynamic_shape_func(x):
+        return x.sum()
+    # jit(dynamic_shape_func)(jnp.ones(5))
+    # jit(dynamic_shape_func)(jnp.ones(10)) # Recompiles!
+    ```
+    ✅ GOOD:
+    ```python
+    from jax import jit
+    @jit
+    def static_shape_func(x):
+        return x.sum()
+    # Call with consistent shapes
+    # static_shape_func(jnp.ones(5))
+    # static_shape_func(jnp.ones(5)) # Uses cached compilation
+    ```
+    If shapes *must* vary, consider `static_argnums` for non-array arguments that determine shape.
 
-## Code Organization and Structure:
+*   **JAX control flow primitives:** Always use `lax.scan`, `lax.while_loop`, `lax.cond` inside `jit`ted functions. Python control flow breaks XLA compilation.
+    ❌ BAD:
+    ```python
+    from jax import jit
+    @jit
+    def python_loop(x, n):
+        for _ in range(n): # Python loop inside jit
+            x = x * 2
+        return x
+    ```
+    ✅ GOOD:
+    ```python
+    from jax import jit, lax
+    @jit
+    def jax_loop(x, n):
+        # lax.fori_loop(start, stop, body_fn, init_val)
+        return lax.fori_loop(0, n, lambda i, val: val * 2, x)
+    ```
 
-- **Directory Structure**: Consider a structure like this:
-  
-  project_root/
-  ├── src/
-  │   ├── __init__.py
-  │   ├── models/
-  │   │   ├── __init__.py
-  │   │   ├── model_a.py
-  │   │   └── model_b.py
-  │   ├── layers/
-  │   │   ├── __init__.py
-  │   │   ├── layer_a.py
-  │   │   └── layer_b.py
-  │   ├── utils/
-  │   │   ├── __init__.py
-  │   │   ├── data_loading.py
-  │   │   └── evaluation.py
-  │   ├── train.py
-  │   └── predict.py
-  ├── tests/
-  │   ├── __init__.py
-  │   ├── models/
-  │   │   ├── test_model_a.py
-  │   │   └── test_model_b.py
-  │   ├── utils/
-  │   │   ├── test_data_loading.py
-  │   │   └── test_evaluation.py
-  │   └── test_train.py
-  ├── notebooks/
-  │   ├── exploration.ipynb
-  │   └── analysis.ipynb
-  ├── data/
-  │   ├── raw/
-  │   └── processed/
-  ├── models/
-  │   └── saved_models/
-  ├── .gitignore
-  ├── README.md
-  ├── requirements.txt
-  └── setup.py
-  
+*   **Vectorization with `vmap`:** For data-parallel batching, `vmap` is your tool.
+    ```python
+    from jax import vmap
+    import jax.numpy as jnp
+    def elementwise_op(x, y):
+        return x + y # Operates on scalars or single elements
+    batched_op = vmap(elementwise_op)
+    # batched_op(jnp.array([1,2,3]), jnp.array([4,5,6])) # Applies elementwise
+    ```
 
-- **File Naming**: Use descriptive, lowercase names with underscores (e.g., `data_loading.py`, `model_a.py`).
+## 4. Code Organization and Randomness
 
-- **Module Organization**: Group related functionalities into modules.  Use clear and concise module names.
+*   **Standard Imports:**
+    ```python
+    import jax
+    import jax.numpy as jnp
+    import jax.random as jr
+    import jax.lax as lax
+    ```
 
-- **Component Architecture**: Favor a modular architecture. Decouple components where possible. Use interfaces or abstract base classes when appropriate.
+*   **Randomness Management:** Use `jax.random` and explicitly split PRNGKeys. Never reuse a key.
+    ❌ BAD:
+    ```python
+    import jax.random as jr
+    key = jr.PRNGKey(0)
+    val1 = jr.normal(key, (5,)) # Key used
+    val2 = jr.normal(key, (5,)) # Key reused, not independent!
+    ```
+    ✅ GOOD:
+    ```python
+    import jax.random as jr
+    key = jr.PRNGKey(0)
+    key, subkey1 = jr.split(key)
+    val1 = jr.normal(subkey1, (5,))
+    key, subkey2 = jr.split(key)
+    val2 = jr.normal(subkey2, (5,)) # Independent random values
+    ```
 
-- **Code Splitting**: Split large files into smaller, more manageable modules.  Consider splitting based on functionality or abstraction level.
+## 5. Type Hints
 
-## Common Patterns and Anti-patterns:
+Use standard Python type hints, especially `jax.Array` for JAX arrays. This improves readability and enables static analysis.
 
-- **Design Patterns**: Consider patterns like:
-    - **Strategy**: For selecting different computation strategies at runtime.
-    - **Factory**: For creating JAX models or layers.
-    - **Observer**: For monitoring training progress.
+```python
+import jax.numpy as jnp
+from jax import Array, jit
 
-- **Recommended Approaches**: 
-    - Using `jax.tree_util` for working with nested data structures (pytrees).
-    - Caching intermediate results with `lru_cache` (with caution, as it introduces state).
-    - Using `jax.experimental.optimizers` for defining optimization schedules.
+@jit
+def add_arrays(a: Array, b: Array) -> Array:
+    """Adds two JAX arrays."""
+    return a + b
 
-- **Anti-patterns**: 
-    - Mutable global state within JIT-compiled functions.
-    - Excessive use of `static_argnums` (leads to recompilation).
-    - Ignoring the immutability of JAX arrays.
-    - Using Python loops instead of vectorized operations (`vmap`).
-    - Unnecessary host-device data transfers.
-    - Reusing PRNG keys without splitting.
+# Example usage:
+# result = add_arrays(jnp.ones(5), jnp.ones(5))
+```
 
-- **State Management**: 
-    - Avoid global mutable state. Pass state explicitly as function arguments.
-    - Consider using immutable data structures for state.
-    - If mutable state is absolutely necessary (e.g., in some RL settings), use JAX's stateful computation tools carefully (e.g., `jax.lax.scan` with a carry).
+## 6. Testing Approaches
 
-- **Error Handling**: 
-    - Use `try...except` blocks for handling potential errors during data loading or preprocessing.
-    - Employ assertions to check for invalid input or unexpected conditions.
-    - Utilize logging to track errors and debug issues.
-    - The `JAX_DEBUG_NANS` and `JAX_DEBUG_NANS=True` flag is critical when debugging `NaN`.
+*   **`pytest` is standard:** Use `pytest` for unit and integration tests.
+*   **Gradient checking:** For custom operations or complex functions, use `jax.test_util.check_grads` to verify gradients.
 
-## Performance Considerations:
+```python
+import jax
+import jax.numpy as jnp
+from jax.test_util import check_grads
 
-- **Optimization Techniques**: 
-    - JIT compilation (`jax.jit`).
-    - Vectorization (`jax.vmap`).
-    - Parallelization (`jax.pmap`).
-    - Fusion of operations.
-    - Reducing host-device data transfers.
-    - Choose appropriate data types (e.g., `float32` instead of `float64` if sufficient).
-    - Use `jax.numpy` functions instead of NumPy functions where possible.
-    - Avoid scalar operations inside JIT-compiled loops; use array operations.
+def my_complex_func(x):
+    return jnp.sin(x) * jnp.exp(x)
 
-- **Memory Management**: 
-    - Minimize the creation of large intermediate arrays.
-    - Reuse arrays where possible (using `.at[].set()` for in-place updates if safe to do so).
-    - Be aware of memory fragmentation.
-    - If you are dealing with datasets larger than memory, explore data streaming/sharding approaches.
-
-- **Rendering Optimization**:  (Relevant if using JAX for visualization, e.g., with OpenGL or similar libraries)
-    - Batch rendering operations.
-    - Optimize data transfer to the rendering device (e.g., GPU).
-    - Consider using specialized rendering libraries that are compatible with JAX arrays.
-
-- **Bundle Size Optimization**: (For JAX-based applications deployed in web environments)
-    - Tree-shake unused code.
-    - Minify JavaScript bundles.
-    - Use code splitting to load only necessary modules.
-    - Compress assets (e.g., images, data files).
-
-- **Lazy Loading**: 
-    - Load data or models only when needed.
-    - Use iterators or generators for large datasets.
-    - Implement a loading indicator to provide feedback to the user.
-
-## Security Best Practices:
-
-- **Common Vulnerabilities**: 
-    - Input data poisoning.
-    - Model inversion attacks.
-    - Adversarial examples.
-    - Side-channel attacks (less relevant in typical JAX applications, but important in cryptographic applications).
-
-- **Input Validation**: 
-    - Validate input data types and ranges.
-    - Sanitize input data to prevent injection attacks.
-    - Use schema validation libraries (e.g., `cerberus`, `jsonschema`).
-
-- **Authentication and Authorization**:  (If building APIs or web services with JAX)
-    - Implement secure authentication mechanisms (e.g., OAuth 2.0, JWT).
-    - Use role-based access control (RBAC) to restrict access to sensitive resources.
-    - Protect API endpoints with appropriate authentication and authorization checks.
-
-- **Data Protection**: 
-    - Encrypt sensitive data at rest and in transit.
-    - Use secure storage mechanisms for models and data.
-    - Implement data masking or anonymization techniques to protect personally identifiable information (PII).
-
-- **Secure API Communication**: 
-    - Use HTTPS for all API communication.
-    - Implement proper rate limiting to prevent denial-of-service attacks.
-    - Use secure coding practices to prevent common web vulnerabilities (e.g., cross-site scripting, SQL injection).
-
-## Testing Approaches:
-
-- **Unit Testing**: 
-    - Test individual functions or classes in isolation.
-    - Use `pytest` or `unittest` for writing unit tests.
-    - Mock external dependencies to isolate the code under test.
-    - Test different input scenarios and edge cases.
-    - Use `jax.random.PRNGKey` with a fixed seed for reproducible tests.
-
-- **Integration Testing**: 
-    - Test the interaction between different components or modules.
-    - Verify that data flows correctly between components.
-    - Test the integration with external services or databases.
-
-- **End-to-End Testing**: 
-    - Test the entire application flow from start to finish.
-    - Simulate real user interactions.
-    - Verify that the application meets the specified requirements.
-    - Use tools like Selenium or Cypress for end-to-end testing.
-
-- **Test Organization**: 
-    - Organize tests into separate directories or modules.
-    - Use descriptive test names.
-    - Follow a consistent testing style.
-
-- **Mocking and Stubbing**: 
-    - Use `unittest.mock` or `pytest-mock` for mocking external dependencies.
-    - Create stubs for complex or time-consuming operations.
-    - Mock JAX functions (e.g., `jax.random.normal`) to control the output of random number generators.
-
-## Common Pitfalls and Gotchas:
-
-- **Frequent Mistakes**: 
-    - Mutable global state in JIT-compiled functions.
-    - Incorrect use of `static_argnums`.
-    - Ignoring JAX array immutability.
-    - Using Python loops instead of `vmap`.
-    - Reusing PRNG keys without splitting.
-
-- **Edge Cases**: 
-    - Handling `NaN` and `Inf` values.
-    - Dealing with numerical instability.
-    - Working with sparse data.
-    - Optimizing for different hardware backends (CPU, GPU, TPU).
-
-- **Version-Specific Issues**: 
-    - Be aware of breaking changes between JAX versions.
-    - Consult the JAX documentation for the latest updates and bug fixes.
-
-- **Compatibility Concerns**: 
-    - Ensure compatibility between JAX and other libraries (e.g., TensorFlow, PyTorch).
-    - Be aware of potential conflicts between JAX and NumPy versions.
-
-- **Debugging Strategies**: 
-    - Use the JAX debugger (`jax.debug.print`).
-    - Set `JAX_DEBUG_NANS=True` to detect `NaN` values.
-    - Use `jax.make_jaxpr` to inspect the JAX program representation.
-    - Use `jax.debug.visualize_jaxpr` to visualize the JAX program flow (requires graphviz).
-    - Profile your code to identify performance bottlenecks.
-    - Use a debugger (e.g., `pdb`) to step through your code and inspect variables.
-
-## Tooling and Environment:
-
-- **Recommended Development Tools**: 
-    - VS Code with the Python extension.
-    - Jupyter Notebook or JupyterLab for interactive development.
-    - IPython for a powerful interactive shell.
-    - TensorBoard for visualizing training progress.
-
-- **Build Configuration**: 
-    - Use `requirements.txt` or `setup.py` to manage dependencies.
-    - Specify JAX version requirements.
-    - Use a virtual environment (e.g., `venv`, `conda`) to isolate dependencies.
-
-- **Linting and Formatting**: 
-    - Use `flake8` or `pylint` for linting.
-    - Use `black` or `autopep8` for formatting.
-    - Configure your editor to automatically lint and format code on save.
-
-- **Deployment Best Practices**: 
-    - Package your application into a Docker container.
-    - Use a cloud platform (e.g., AWS, Google Cloud, Azure) for deployment.
-    - Use a deployment framework (e.g., Flask, FastAPI) for serving APIs.
-    - Monitor your application for performance and errors.
-
-- **CI/CD Integration**: 
-    - Use a CI/CD platform (e.g., GitHub Actions, Travis CI, CircleCI).
-    - Automate testing, linting, and formatting.
-    - Automate deployment to staging and production environments.
-
-
-This comprehensive guide should help developers write better JAX code, avoid common pitfalls, and build high-performance machine learning applications.
+# Test gradients numerically vs. analytically
+# check_grads(my_complex_func, (jnp.array(1.0),), order=1)
+```

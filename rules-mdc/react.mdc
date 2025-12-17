@@ -1,146 +1,309 @@
 ---
-description: Provides comprehensive best practices for writing clean, performant, and maintainable React applications, covering code organization, common patterns, performance, state management, and accessibility.
+description: Definitive guidelines for writing idiomatic, maintainable, and performant React applications using modern best practices and TypeScript.
 globs: **/*.{jsx,tsx}
 ---
-# React Best Practices
+# react Best Practices
 
-This guide outlines best practices for developing robust, scalable, and maintainable React applications. Adhering to these principles will lead to more predictable code, easier debugging, and improved collaboration.
+This guide outlines the non-negotiable standards for building React applications within our team. Adherence ensures predictable behavior, simplifies debugging, and enables future optimizations.
 
-## 1. Code Organization and Structure
+## 1. Core React Principles: Purity & Rules of Hooks
 
-*   **One Component Per File:** Generally, each React component should reside in its own file. For very small, stateless, or pure components that are tightly coupled, multiple components can be in one file.
-    *   **Naming:** Use `PascalCase` for component files (e.g., `Button.jsx`, `UserProfile.tsx`) and `camelCase` for variables and functions.
-*   **Functional Components & Hooks:** Prefer functional components and React Hooks (`useState`, `useEffect`, `useContext`, `useReducer`, custom hooks) over class components for new development.
-*   **Sensible Folder Structure:**
-    *   Start with a flat `src/` and evolve as the project grows.
-    *   Common structure:
-        ```
-        src/
-        ├── assets/         # Images, icons, fonts
-        ├── components/     # Reusable UI components (e.g., Button, Modal)
-        ├── features/       # Domain-specific features (e.g., Auth, Products, UserProfile)
-        ├── hooks/          # Custom React Hooks
-        ├── pages/          # Top-level page components (e.g., HomePage, DashboardPage)
-        ├── api/            # API service calls
-        ├── utils/          # Utility functions (e.g., formatters, validators)
-        ├── types/          # TypeScript type definitions
-        ├── routes/         # Application routing configuration
-        ├── store/          # Global state management (if applicable)
-        └── App.jsx
-        ```
-*   **CSS Modules:** Use CSS Modules (`*.module.css`) or styled-components for encapsulated styling to prevent style conflicts.
-*   **Colocate Tests:** Place unit tests (`*.test.js` or `*.spec.js`) alongside the component files they test.
+Components and Hooks **must be pure**. They should always return the same output given the same inputs (props, state, context) and not cause side effects during rendering. Obey the [Rules of Hooks](https://react.dev/reference/rules/rules-of-hooks) without exception.
 
-## 2. Common Patterns and Anti-patterns
+### ❌ BAD: Impure component / Side effect in render
+```tsx
+function ProductList({ products }) {
+  // ❌ Modifies external data during render
+  products.sort((a, b) => a.name.localeCompare(b.name));
+  return (/* ... */);
+}
 
-### Patterns
-*   **Custom Hooks:** Extract reusable stateful logic into custom hooks.
-    ```jsx
-    // hooks/useToggle.js
-    import { useState, useCallback } from 'react';
-    const useToggle = (initialValue = false) => {
-      const [value, setValue] = useState(initialValue);
-      const toggle = useCallback(() => setValue(prev => !prev), []);
-      return [value, toggle];
-    };
-    // Usage: const [isOpen, toggleOpen] = useToggle(false);
-    ```
-*   **Compound Components:** For complex UI patterns where components work together (e.g., `Select.Root`, `Select.Option`).
-*   **Context API:** Use for sharing "global" data (e.g., theme, user info) across the component tree without prop drilling.
+function MyComponent() {
+  // ❌ Hook called conditionally
+  if (Math.random() > 0.5) {
+    const [count, setCount] = useState(0);
+  }
+  return (/* ... */);
+}
+```
 
-### Anti-patterns
-*   **Prop Drilling:** Avoid passing props through many layers of components that don't directly use them. Use Context API or state management libraries instead.
-*   **Direct DOM Manipulation:** Let React manage the DOM. Use `useRef` sparingly for direct DOM access (e.g., focusing an input).
-*   **Mutating State Directly:** Never directly modify state objects or arrays. Always create a new copy.
-    ```jsx
-    // BAD
-    // state.items.push(newItem);
-    // setState(state);
+### ✅ GOOD: Pure component / Correct Hook usage
+```tsx
+import { useMemo, useState } from 'react';
 
-    // GOOD
-    setItems(prevItems => [...prevItems, newItem]);
-    ```
-*   **Complex Logic in `useEffect`:** Keep `useEffect` focused on a single side effect. Extract complex logic into separate functions or custom hooks.
+function ProductList({ products }) {
+  // ✅ Sort data immutably or memoize if expensive
+  const sortedProducts = useMemo(() => 
+    [...products].sort((a, b) => a.name.localeCompare(b.name)),
+    [products]
+  );
+  return (/* ... */);
+}
 
-## 3. Performance Considerations
+function MyComponent() {
+  // ✅ Hooks always at the top level
+  const [count, setCount] = useState(0); 
+  // ... conditional logic after hooks
+  return (/* ... */);
+}
+```
 
-*   **`React.memo`, `useMemo`, `useCallback`:**
-    *   `React.memo`: Memoizes functional components to prevent re-renders if props haven't changed. Use for "pure" components with expensive render logic.
-    *   `useMemo`: Memoizes expensive calculations.
-    *   `useCallback`: Memoizes functions to prevent unnecessary re-creation, useful for passing stable functions to `React.memo` children or `useEffect` dependencies.
-    *   **Caution:** Don't over-optimize. These add overhead; use them when profiling indicates a performance bottleneck.
-*   **Key Prop in Lists:** Always provide a unique and stable `key` prop when rendering lists of elements. Avoid using array indexes as keys if the list items can change order, be added, or removed.
-    ```jsx
-    {items.map(item => (
-      <ListItem key={item.id} item={item} />
-    ))}
-    ```
-*   **Lazy Loading / Code Splitting:** Use `React.lazy` and `Suspense` to split your application's code into smaller chunks, loading them only when needed.
-    ```jsx
-    const LazyComponent = React.lazy(() => import('./MyHeavyComponent'));
-    function App() {
-      return (
-        <React.Suspense fallback={<div>Loading...</div>}>
-          <LazyComponent />
-        </React.Suspense>
-      );
-    }
-    ```
-*   **Virtualization:** For very long lists, use libraries like `react-window` or `react-virtualized` to render only the visible items.
+## 2. Code Organization & Naming
 
-## 4. Common Pitfalls and Gotchas
+Organize code by **feature** using the `bulletproof-react` pattern. Use TypeScript (`.tsx`) for all components.
 
-*   **Incorrect `useEffect` Dependencies:**
-    *   Missing dependencies can lead to stale closures or incorrect behavior.
-    *   Over-specifying dependencies can lead to infinite loops or unnecessary re-runs.
-    *   Use ESLint's `exhaustive-deps` rule.
-*   **Mutable Objects in State:** Modifying an object or array directly in state won't trigger a re-render because React performs a shallow comparison. Always create new objects/arrays.
-*   **Race Conditions in `useEffect`:** Handle asynchronous operations in `useEffect` with cleanup functions to prevent updates on unmounted components or outdated data.
-    ```jsx
-    useEffect(() => {
-      let didCancel = false;
-      async function fetchData() {
-        const data = await myApiCall();
-        if (!didCancel) {
-          setData(data);
-        }
-      }
-      fetchData();
-      return () => { didCancel = true; }; // Cleanup
-    }, [someDependency]);
-    ```
-*   **Props are Read-Only:** Never modify props directly within a component. If a value needs to change, it should be managed as state in the component itself or its parent.
+*   **One Component Per File**: Except for small, pure, stateless components closely related to a parent.
+*   **Naming**:
+    *   Components: `PascalCase` (e.g., `UserProfile.tsx`)
+    *   Custom Hooks: `use` prefix + `PascalCase` (e.g., `useAuth.ts`)
+    *   Functions/Variables: `camelCase`
+    *   CSS Classes: `kebab-case` (via CSS Modules or utility classes)
 
-## 5. Component Architecture
+### ✅ GOOD: Feature-based structure
+```
+src/
+├── features/
+│   ├── auth/
+│   │   ├── components/
+│   │   │   ├── LoginForm.tsx
+│   │   │   └── AuthButton.tsx
+│   │   ├── hooks/
+│   │   │   └── useAuth.ts
+│   │   └── api/auth.ts
+│   └── products/
+│       ├── components/
+│       │   ├── ProductCard.tsx
+│       │   └── ProductList.tsx
+│       └── hooks/useProducts.ts
+├── components/ui/  // Reusable, generic UI components
+│   ├── Button.tsx
+│   └── Modal.tsx
+└── App.tsx
+```
 
-*   **Single Responsibility Principle:** Each component should ideally do one thing well. This makes components easier to understand, test, and reuse.
-*   **Presentational vs. Container Components (Smart/Dumb):**
-    *   **Presentational (Dumb) Components:** Focus on *how things look*. Receive data and callbacks via props, have no state of their own (or only UI state), and are typically stateless functional components.
-    *   **Container (Smart) Components:** Focus on *how things work*. Manage state, fetch data, and pass data/callbacks to presentational components.
-*   **Composition Over Inheritance:** React encourages composition. Build complex UIs by composing smaller, simpler components together.
+## 3. Component Design & Patterns
 
-## 6. State Management
+Prioritize **function components with Hooks**. Separate concerns into "smart" (data/logic) and "dumb" (presentational) components.
 
-*   **Local Component State (`useState`):** For state that is only relevant to a single component.
-*   **`useReducer`:** A good alternative to `useState` for more complex state logic, especially when state transitions depend on previous state or involve multiple sub-values.
-*   **Context API:** For sharing state or functions that are needed by many components at different nesting levels, avoiding prop drilling.
-*   **External Libraries (Redux, Zustand, Jotai, Recoil):** Consider these for large applications with complex global state requirements, cross-cutting concerns, or when you need advanced features like middleware, time-travel debugging, or derived state.
+### ❌ BAD: Class components / Mixed concerns
+```tsx
+// ❌ Class component (avoid)
+class UserProfile extends React.Component { /* ... */ }
 
-## 7. Accessibility (A11y)
+// ❌ Component fetches data AND renders complex UI
+function ProductPage() {
+  const [products, setProducts] = useState([]);
+  useEffect(() => { /* fetch products */ }, []);
+  return (/* complex product list UI */);
+}
+```
 
-*   **Semantic HTML:** Use appropriate HTML elements (`<button>`, `<input>`, `<nav>`, `<main>`, etc.) for their intended purpose.
-*   **ARIA Attributes:** Use `aria-*` attributes when semantic HTML isn't sufficient for custom interactive components (e.g., `aria-label`, `aria-expanded`).
-*   **Keyboard Navigation:** Ensure all interactive elements are reachable and operable via keyboard (Tab, Enter, Space).
-*   **Focus Management:** Manage focus for dynamic content like modals, dropdowns, and form submissions.
-*   **Alt Text for Images:** Provide meaningful `alt` attributes for all `<img>` tags.
-*   **ESLint `jsx-a11y` Plugin:** Integrate this plugin into your development workflow to catch common accessibility issues early.
+### ✅ GOOD: Function components / Separation of concerns
+```tsx
+// ✅ Use function components with hooks
+function UserProfile({ user }) { /* ... */ }
 
-## 8. Testing Approaches
+// ✅ Smart component (container) handles data fetching
+function ProductListContainer() {
+  const { products, isLoading } = useProducts(); // Custom hook for data
+  if (isLoading) return <LoadingSpinner />;
+  return <ProductList products={products} />; // Renders dumb component
+}
 
-*   **Unit Testing:** Focus on testing individual components or pure functions in isolation.
-    *   **React Testing Library:** Preferred for testing React components. It encourages testing components the way users interact with them, focusing on behavior rather than implementation details.
-    *   **Jest:** A popular JavaScript testing framework often used with React Testing Library.
-*   **Integration Testing:** Test how multiple components work together.
-*   **End-to-End (E2E) Testing:** Test the entire application flow from a user's perspective using tools like Cypress or Playwright.
-*   **Mocking:** Mock API calls and external dependencies to ensure tests are fast, reliable, and isolated.
-*   **Test Alongside Components:** Keep test files (`*.test.js` or `*.spec.js`) in the same directory as the components they test for easy discoverability.
+// ✅ Dumb component (presentational) focuses on UI
+function ProductList({ products }) {
+  return (
+    <ul>
+      {products.map(product => <ProductCard key={product.id} product={product} />)}
+    </ul>
+  );
+}
+```
+
+## 4. State Management
+
+Start with **local state (`useState`, `useReducer`)**. Lift state up when necessary. Use **Context API** for global state that rarely changes. For complex global state, use dedicated libraries (e.g., Zustand, Jotai, Redux Toolkit). **Avoid prop drilling.**
+
+### ❌ BAD: Prop drilling
+```tsx
+function Grandparent() {
+  const [theme, setTheme] = useState('dark');
+  return <Parent theme={theme} setTheme={setTheme} />;
+}
+function Parent({ theme, setTheme }) {
+  return <Child theme={theme} setTheme={setTheme} />;
+}
+function Child({ theme, setTheme }) {
+  return <Button onClick={() => setTheme('light')}>Toggle Theme</Button>;
+}
+```
+
+### ✅ GOOD: Context API for global state
+```tsx
+import { createContext, useContext, useState, ReactNode } from 'react';
+
+type Theme = 'light' | 'dark';
+type ThemeContextType = { theme: Theme; toggleTheme: () => void };
+
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setTheme] = useState<Theme>('dark');
+  const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (context === undefined) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
+};
+
+// Usage:
+function MyComponent() {
+  const { theme, toggleTheme } = useTheme();
+  return <button onClick={toggleTheme}>Current theme: {theme}</button>;
+}
+```
+
+## 5. Performance & Optimization
+
+Optimize only when profiling indicates a bottleneck. Use `React.memo`, `useCallback`, `useMemo` judiciously.
+
+### ❌ BAD: Premature optimization / Incorrect memoization
+```tsx
+// ❌ Memoizing a component that re-renders frequently or has no expensive props
+const MyButton = React.memo(({ onClick, children }) => <button onClick={onClick}>{children}</button>);
+
+// ❌ Callback with missing dependency, causing stale closure
+function Parent() {
+  const [count, setCount] = useState(0);
+  const handleClick = useCallback(() => {
+    console.log(count); // ❌ 'count' is stale if not in dependency array
+  }, []); 
+  return <Child onClick={handleClick} />;
+}
+```
+
+### ✅ GOOD: Targeted optimization / Correct dependencies
+```tsx
+import React, { useCallback, useMemo, useState } from 'react';
+
+// ✅ Memoize only if component is expensive AND props are stable
+const ExpensiveList = React.memo(({ items }) => {
+  console.log('Rendering ExpensiveList');
+  return (/* ... render many items ... */);
+});
+
+function Parent() {
+  const [count, setCount] = useState(0);
+  // ✅ Callback with correct dependencies
+  const handleClick = useCallback(() => {
+    setCount(prev => prev + 1); // Use functional update to avoid 'count' in deps
+  }, []); 
+
+  // ✅ Memoize expensive calculations
+  const computedValue = useMemo(() => {
+    // ... heavy computation based on count ...
+    return count * 2;
+  }, [count]);
+
+  return (
+    <>
+      <ExpensiveList items={[{ id: 1, name: 'Item 1' }]} /> {/* Example usage */}
+      <Child onClick={handleClick} />
+      <p>Count: {count}, Computed: {computedValue}</p>
+    </>
+  );
+}
+// Child component that receives the memoized callback
+const Child = React.memo(({ onClick }: { onClick: () => void }) => {
+  console.log('Rendering Child');
+  return <button onClick={onClick}>Increment</button>;
+});
+```
+
+## 6. Common Pitfalls
+
+*   **Never mutate props or state directly.** Always create new objects/arrays.
+*   **Never call component functions directly.** Use JSX.
+*   **Ensure `useEffect` cleanup functions are always provided** for subscriptions or timers.
+*   **Correct `useEffect` dependency arrays** are critical to avoid infinite loops or stale closures.
+
+### ❌ BAD: Direct mutation / Calling component as function
+```tsx
+function MyComponent({ items }) {
+  // ❌ Mutating props directly
+  items.push('new item'); 
+
+  const [data, setData] = useState({ value: 1 });
+  // ❌ Mutating state directly
+  data.value = 2; 
+  setData(data);
+
+  // ❌ Calling component as a function
+  return MyOtherComponent(); 
+}
+```
+
+### ✅ GOOD: Immutable updates / JSX usage
+```tsx
+function MyComponent({ items }) {
+  const [data, setData] = useState({ value: 1 });
+
+  // ✅ Create a new array for updates
+  const updatedItems = [...items, 'new item']; 
+
+  // ✅ Create a new object for state updates
+  setData(prevData => ({ ...prevData, value: 2 }));
+
+  // ✅ Use JSX for components
+  return <MyOtherComponent />;
+}
+```
+
+## 7. Accessibility (A11y) & Testing
+
+Build for accessibility from the start. Test components as a user would.
+
+*   **Semantic HTML**: Use native HTML elements (`<button>`, `<input>`, `<a>`) whenever possible.
+*   **ARIA Attributes**: Use `aria-*` attributes only when semantic HTML is insufficient.
+*   **Keyboard Navigation**: Ensure all interactive elements are keyboard accessible and have proper focus management.
+*   **React Testing Library**: Use `RTL` to test component behavior, not implementation details.
+
+### ❌ BAD: Non-semantic HTML / Untestable implementation
+```tsx
+// ❌ Div acting as a button, missing keyboard interaction
+function MyButton() {
+  return <div onClick={() => alert('Clicked!')}>Click Me</div>;
+}
+
+// ❌ Testing internal state or component instance (implementation detail)
+test('MyComponent sets count to 1', () => {
+  const { instance } = render(<MyComponent />);
+  expect(instance.state.count).toBe(1); // ❌ Avoid
+});
+```
+
+### ✅ GOOD: Semantic HTML / User-centric testing
+```tsx
+import { render, screen, fireEvent } from '@testing-library/react';
+
+// ✅ Proper button element with click handler
+function MyButton() {
+  return <button type="button" onClick={() => alert('Clicked!')}>Click Me</button>;
+}
+
+// ✅ Test user interaction and visible output
+test('MyButton alerts on click', () => {
+  render(<MyButton />);
+  fireEvent.click(screen.getByRole('button', { name: /click me/i }));
+  expect(window.alert).toHaveBeenCalledWith('Clicked!'); // Assuming alert is mocked
+});
+```

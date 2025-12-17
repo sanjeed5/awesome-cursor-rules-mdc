@@ -1,342 +1,245 @@
 ---
-description: This rule provides guidelines for best practices when working with the Hugging Face Transformers library, covering code organization, performance, testing, security, and common pitfalls. It emphasizes community standards and maintainability.
-globs: *.py
+description: Definitive guidelines for writing robust, performant, and maintainable Python code using Hugging Face Transformers and the Hugging Face Hub.
+globs: **/*.py
 ---
-# Hugging Face Transformers Library Best Practices
+# Hugging Face Best Practices
 
-This document outlines best practices and coding standards for using the Hugging Face Transformers library. It covers various aspects, including code organization, performance, testing, security, and common pitfalls.
-
-## Philosophy: Embrace the Single Model File Policy
-
-- **Single Model File Policy:** Prioritize having all the code for a model's forward pass within a single file. While it might seem to contradict the DRY (Don't Repeat Yourself) principle, this improves readability and accessibility, especially for newcomers.  This makes it easier to understand the entire model architecture without navigating through multiple files.
+This guide establishes the definitive coding standards for developing with Hugging Face libraries, particularly `transformers`, and interacting with the Hugging Face Hub. Adherence ensures high-quality, performant, and maintainable ML code.
 
 ## 1. Code Organization and Structure
 
-### 1.1 Directory Structure
+Always structure your Hugging Face projects for clarity, modularity, and Hub compatibility.
 
-While the Transformers library promotes the single model file policy, good project-level organization is still crucial. A typical project structure might look like this:
+### 1.1 Model and Tokenizer Loading
+Use `Auto` classes and `from_pretrained` for standard model and tokenizer loading. This ensures compatibility and leverages the Hub's versioning.
 
+❌ **BAD** (Hardcoding specific model classes, limits flexibility)
+```python
+from transformers import BertForSequenceClassification, BertTokenizer
 
-my_project/
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── ...
-├── models/
-│   ├── modeling_bert.py  # Example: BERT model definition
-│   ├── ...
+model = BertForSequenceClassification.from_pretrained("bert-base-uncased")
+tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+```
+
+✅ **GOOD** (Flexible, auto-detecting model types and versions)
+```python
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+model_name = "bert-base-uncased"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
+```
+
+### 1.2 Project Structure for Hub Repositories
+Embrace the "Git-first" workflow. Every model, dataset, or Space lives in a Git repository on the Hub. Structure your local project to mirror this, ensuring `README.md` (Model Card) and `.gitattributes` are present.
+
+✅ **GOOD** (Standard Hub repository structure)
+```
+my-awesome-model/
+├── src/
+│   ├── model.py            # Custom model definition (if any)
+│   └── utils.py            # Helper functions
 ├── scripts/
-│   ├── train.py
-│   ├── evaluate.py
-│   ├── preprocess.py
-│   └── ...
-├── utils/
-│   ├── data_utils.py
-│   ├── model_utils.py
-│   └── ...
-├── tests/
-│   ├── test_models.py
-│   ├── test_data_utils.py
-│   └── ...
-├── notebooks/ # optional
-│   ├── exploration.ipynb
-│   └── ...
-├── requirements.txt
-├── pyproject.toml
-└── README.md
-
-
-- **`data/`:**  Stores raw and processed datasets.
-- **`models/`:** Contains model definitions (adhering to the single model file policy).
-- **`scripts/`:**  Holds training, evaluation, and preprocessing scripts.
-- **`utils/`:**  Includes utility functions for data handling, model management, etc.
-- **`tests/`:** Contains unit, integration, and end-to-end tests.
-- **`notebooks/`:** (Optional) Jupyter notebooks for experimentation.
-
-### 1.2 File Naming Conventions
-
-- Use descriptive and consistent file names.
-- For model files, follow the naming convention `modeling_<model_name>.py` (e.g., `modeling_bert.py`).
-- For utility files, use `*_utils.py` (e.g., `data_utils.py`).
-- Use lowercase letters and underscores for file names (snake_case).
-
-### 1.3 Module Organization
-
-- Keep modules focused and avoid creating overly large modules.  Each module should have a clear responsibility.
-- Import necessary modules within functions or classes to improve readability and avoid unnecessary dependencies at the module level.
-- Use relative imports within the project structure (e.g., `from . import data_utils`) to avoid conflicts and improve portability.
-
-### 1.4 Component Architecture
-
-- Design models as modular components.  While adhering to the single model file policy, the internal structure of the model can be highly modular.  Use classes to encapsulate different parts of the model (e.g., embedding layer, attention mechanism, feedforward network).
-- Each component should have a well-defined interface.
-- Leverage inheritance when appropriate to share common functionality between similar components.
-
-### 1.5 Code Splitting Strategies
-
-- For extremely large models, consider splitting the model definition into multiple files, but maintain a clear entry point that encapsulates the entire model. A primary file should import and orchestrate the other components.
-- Consider splitting preprocessing and postprocessing logic into separate modules to improve readability and maintainability.
+│   └── train.py            # Training script
+├── data/                   # Small datasets, or pointers to Hub datasets
+├── config.json             # Model configuration
+├── tokenizer.json          # Tokenizer configuration
+├── model.safetensors       # Model weights (or .bin)
+├── README.md               # Crucial Model Card with metadata
+├── .gitattributes          # For large file handling (Xet)
+└── requirements.txt        # Project dependencies
+```
 
 ## 2. Common Patterns and Anti-patterns
 
-### 2.1 Design Patterns Specific to Hugging Face
+### 2.1 Inference with `pipeline`
+For quick, high-level inference tasks, `pipeline` is the most efficient and robust choice. It handles preprocessing and postprocessing automatically.
 
-- **Configuration-Driven Design:** Use `PretrainedConfig` objects to define model parameters. This allows for easy configuration and sharing of model architectures.
-- **Tokenizers and Pipelines:** Leverage the built-in tokenizers and pipelines for efficient text processing. Understand how to customize them for specific tasks.
-- **Model Cards:** Create comprehensive model cards that document the model's architecture, training data, evaluation metrics, and intended use cases. This is crucial for reproducibility and transparency.
+❌ **BAD** (Manual steps for common tasks, error-prone)
+```python
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
 
-### 2.2 Recommended Approaches for Common Tasks
+model_name = "distilbert-base-uncased-finetuned-sst-2-english"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
 
-- **Loading Pre-trained Models:** Use `AutoModel` and `AutoTokenizer` classes to automatically load the appropriate model and tokenizer based on the model name.
+inputs = tokenizer("I love Hugging Face!", return_tensors="pt")
+with torch.no_grad():
+    outputs = model(**inputs)
+predictions = torch.argmax(outputs.logits, dim=-1)
+print(model.config.id2label[predictions.item()])
+```
 
-   python
-   from transformers import AutoModelForSequenceClassification, AutoTokenizer
+✅ **GOOD** (Leverage `pipeline` for simplicity and robustness)
+```python
+from transformers import pipeline
 
-   model_name = "bert-base-uncased"
-   model = AutoModelForSequenceClassification.from_pretrained(model_name)
-   tokenizer = AutoTokenizer.from_pretrained(model_name)
-   
+classifier = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
+result = classifier("I love Hugging Face!")
+print(result)
+```
 
-- **Fine-tuning Models:** Use the `Trainer` class for efficient fine-tuning.  Customize the training loop when necessary for advanced control.
+### 2.2 Saving and Loading Models
+Always use `save_pretrained()` and `from_pretrained()` for models and tokenizers. This ensures all necessary files (config, weights, tokenizer files) are handled correctly for Hub compatibility.
 
-   python
-   from transformers import Trainer, TrainingArguments
+❌ **BAD** (Framework-specific saving, loses crucial metadata)
+```python
+import torch
+from transformers import AutoModelForSequenceClassification
 
-   training_args = TrainingArguments(
-       output_dir="./results",
-       evaluation_strategy="epoch",
-       num_train_epochs=3
-   )
+model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased")
+torch.save(model.state_dict(), "my_model_weights.pt")
+# To load, you'd still need the config and potentially other files.
+```
 
-   trainer = Trainer(
-       model=model,
-       args=training_args,
-       train_dataset=train_dataset,
-       eval_dataset=eval_dataset
-   )
+✅ **GOOD** (Hugging Face standard, Hub-ready)
+```python
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-   trainer.train()
-   
+model_name = "bert-base-uncased"
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-- **Inference:** Use pipelines for simple inference tasks or write custom inference loops for more control.
+# Save to a local directory
+save_directory = "./my_fine_tuned_model"
+model.save_pretrained(save_directory)
+tokenizer.save_pretrained(save_directory)
 
-   python
-   from transformers import pipeline
-
-   classifier = pipeline("sentiment-analysis")
-   result = classifier("This is a great movie!")
-   
-
-### 2.3 Anti-patterns and Code Smells to Avoid
-
-- **Ignoring `model_max_length`:** When initializing tokenizers and models, be mindful of the `model_max_length` parameter. Ensure that input sequences are properly truncated or padded to avoid errors or performance issues.
-- **Hardcoding Paths:** Avoid hardcoding file paths.  Use relative paths or environment variables to make the code more portable.
-- **Lack of Documentation:**  Write clear and concise documentation for all functions, classes, and modules. This is especially important given the single model file policy, as comprehensive inline documentation becomes critical.
-- **Over-Complicating Model Definitions:** Keep model definitions as simple as possible while still meeting the requirements.  Avoid unnecessary complexity.
-- **Ignoring Warnings:**  Pay attention to warnings raised by the Transformers library. They often indicate potential issues.
-
-### 2.4 State Management Best Practices
-
-- Avoid global variables.  Encapsulate state within classes or functions.
-- Use immutable data structures when possible to prevent accidental modifications.
-- Manage model weights carefully. Load and save weights using the `state_dict` method.
-
-   python
-   # Save model weights
-   torch.save(model.state_dict(), "model.pth")
-
-   # Load model weights
-   model.load_state_dict(torch.load("model.pth"))
-   
-
-### 2.5 Error Handling Patterns
-
-- Use `try...except` blocks to handle potential exceptions, such as file not found errors or invalid input data.
-- Provide informative error messages to help users understand the cause of the error.
-- Use logging to record errors and debug information.
-
-   python
-   import logging
-
-   logging.basicConfig(level=logging.INFO)
-
-   try:
-       model = AutoModelForSequenceClassification.from_pretrained("invalid-model")
-   except OSError as e:
-       logging.error(f"Failed to load model: {e}")
-   
+# Load later
+loaded_tokenizer = AutoTokenizer.from_pretrained(save_directory)
+loaded_model = AutoModelForSequenceClassification.from_pretrained(save_directory)
+```
 
 ## 3. Performance Considerations
 
-### 3.1 Optimization Techniques
+Prioritize performance from the start, especially for training and large model inference.
 
-- **Mixed Precision Training:** Use mixed precision training (e.g., using `torch.cuda.amp` in PyTorch) to reduce memory usage and improve training speed.
-- **Gradient Accumulation:** Use gradient accumulation to simulate larger batch sizes when memory is limited.
-- **Quantization:** Quantize models to reduce their size and improve inference speed.
-- **ONNX Runtime:** Convert models to ONNX format and use the ONNX Runtime for faster inference.
+### 3.1 Hardware-Aware Libraries
+Leverage `Optimum`, `PEFT`, `bitsandbytes`, and `accelerate` for memory and speed optimizations.
 
-### 3.2 Memory Management
+✅ **GOOD** (Using `accelerate` for distributed training/inference)
+```python
+# In train.py
+from accelerate import Accelerator
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, AdamW
+from torch.utils.data import DataLoader, Dataset
+import torch
 
-- Delete unused variables and tensors to free up memory.
-- Use `torch.no_grad()` during inference to disable gradient calculations and reduce memory usage.
-- Consider using techniques like gradient checkpointing to reduce memory usage during training, especially for very large models.
+class MyDataset(Dataset):
+    def __len__(self): return 100
+    def __getitem__(self, idx): return {"input_ids": torch.randint(0, 1000, (128,)), "labels": torch.randint(0, 2, (1,))}
 
-### 3.3 Rendering Optimization (If Applicable)
+accelerator = Accelerator()
+model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased")
+optimizer = AdamW(model.parameters(), lr=1e-5)
+train_dataloader = DataLoader(MyDataset(), batch_size=8)
 
-- If the application involves rendering model outputs (e.g., text generation), optimize the rendering process to minimize latency and improve user experience.
-- Use efficient text rendering libraries.
-- Cache rendered outputs when possible.
+model, optimizer, train_dataloader = accelerator.prepare(
+    model, optimizer, train_dataloader
+)
 
-### 3.4 Bundle Size Optimization (If Applicable)
+# Training loop
+for batch in train_dataloader:
+    outputs = model(**batch)
+    loss = outputs.loss
+    accelerator.backward(loss)
+    optimizer.step()
+    optimizer.zero_grad()
+```
 
-- If the application is deployed as a web application or mobile app, optimize the bundle size to reduce download times.
-- Use code splitting to load only the necessary code for each feature.
-- Use minification and compression to reduce the size of JavaScript and CSS files.
+✅ **GOOD** (Using `bitsandbytes` for 4-bit quantization with `PEFT` for LoRA)
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from peft import LoraConfig, get_peft_model
+import torch
 
-### 3.5 Lazy Loading Strategies
+model_id = "meta-llama/Llama-2-7b-hf"
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.bfloat16
+)
+model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config, device_map="auto")
+tokenizer = AutoTokenizer.from_pretrained(model_id)
 
-- Load models and data lazily to reduce startup time and memory usage.
-- Use generators to process large datasets in chunks.
-- Only load the parts of the model that are needed for the current task.
+# Apply PEFT LoRA
+lora_config = LoraConfig(
+    r=8, lora_alpha=16, target_modules=["q_proj", "v_proj"], lora_dropout=0.05, bias="none", task_type="CAUSAL_LM"
+)
+model = get_peft_model(model, lora_config)
+model.print_trainable_parameters()
+```
 
-## 4. Security Best Practices
+### 3.2 Mixed Precision Training
+Always enable mixed precision (e.g., `bfloat16` or `float16`) for GPU training to reduce memory footprint and speed up computation.
 
-### 4.1 Common Vulnerabilities and How to Prevent Them
+✅ **GOOD** (With `Trainer`)
+```python
+from transformers import Trainer, TrainingArguments, AutoModelForSequenceClassification, AutoTokenizer
+from datasets import load_dataset
 
-- **Prompt Injection:**  Be aware of prompt injection attacks, where malicious users craft inputs that can manipulate the model's behavior.  Implement input validation and sanitization techniques to mitigate this risk.
-- **Data Poisoning:**  Protect against data poisoning attacks by carefully vetting training data sources.
-- **Model Stealing:**  Implement measures to protect model weights from being stolen. Consider using encryption or access controls.
+model_name = "bert-base-uncased"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
+dataset = load_dataset("imdb")
 
-### 4.2 Input Validation
+def tokenize_function(examples):
+    return tokenizer(examples["text"], padding="max_length", truncation=True)
 
-- Validate all inputs to ensure that they are within the expected range and format.
-- Sanitize inputs to remove potentially harmful characters or code.
-- Use regular expressions to enforce input constraints.
+tokenized_datasets = dataset.map(tokenize_function, batched=True)
 
-### 4.3 Authentication and Authorization Patterns
+training_args = TrainingArguments(
+    output_dir="./results",
+    fp16=True, # Enable mixed precision (or bf16=True for bfloat16)
+    per_device_train_batch_size=16,
+    num_train_epochs=3,
+    logging_dir='./logs',
+)
 
-- Implement authentication to verify the identity of users.
-- Use authorization to control access to resources based on user roles.
-- Store credentials securely using encryption and hashing.
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=tokenized_datasets["train"],
+)
+trainer.train()
+```
 
-### 4.4 Data Protection Strategies
+## 4. Common Pitfalls and Gotchas
 
-- Encrypt sensitive data at rest and in transit.
-- Use access controls to restrict access to data.
-- Anonymize or pseudonymize data to protect user privacy.
+### 4.1 Device Placement
+Ensure your model and inputs are on the same device (CPU/GPU) to avoid runtime errors. Use `model.to(device)` and `inputs.to(device)`.
 
-### 4.5 Secure API Communication
+❌ **BAD** (Mixing devices, leads to runtime errors)
+```python
+import torch
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-- Use HTTPS to encrypt communication between the client and the server.
-- Use API keys or tokens to authenticate requests.
-- Implement rate limiting to prevent abuse.
+model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased").cuda() # Model on GPU
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+inputs = tokenizer("Hello", return_tensors="pt") # Inputs on CPU by default
+outputs = model(**inputs) # ERROR: Inputs on CPU, model on GPU
+```
 
-## 5. Testing Approaches
+✅ **GOOD** (Consistent device placement)
+```python
+import torch
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-### 5.1 Unit Testing Strategies
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased").to(device)
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+inputs = tokenizer("Hello", return_tensors="pt").to(device) # Move inputs to device
+outputs = model(**inputs)
+```
 
-- Write unit tests for all individual functions, classes, and modules.
-- Use a testing framework like `pytest` or `unittest`.
-- Test edge cases and boundary conditions.
+### 4.2 Tokenizer Mismatch
+Always use the tokenizer associated with the specific pretrained model you are using. Different models often have different tokenization schemes.
 
-### 5.2 Integration Testing
+❌ **BAD** (Using a generic tokenizer, leads to incorrect results)
+```python
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
-- Write integration tests to verify the interaction between different components of the system.
-- Test the flow of data through the system.
-- Use mocks and stubs to isolate components during testing.
-
-### 5.3 End-to-end Testing
-
-- Write end-to-end tests to verify the entire system from end to end.
-- Simulate user interactions to test the system's functionality.
-- Use a testing framework like `Selenium` or `Cypress` for web applications.
-
-### 5.4 Test Organization
-
-- Organize tests into separate files or directories based on the component being tested.
-- Use descriptive names for test functions and classes.
-- Keep tests concise and focused.
-
-### 5.5 Mocking and Stubbing
-
-- Use mocks and stubs to isolate components during testing.
-- Mock external dependencies, such as API calls or database connections.
-- Use a mocking library like `unittest.mock` or `pytest-mock`.
-
-## 6. Common Pitfalls and Gotchas
-
-### 6.1 Frequent Mistakes Developers Make
-
-- **Incorrect Tokenization:** Using the wrong tokenizer or not properly handling special tokens can lead to inaccurate results.
-- **Oversized Inputs:** Forgetting to truncate or pad input sequences to the model's maximum length can cause errors or performance issues.
-- **Incorrect Device Placement:** Running models on the CPU when a GPU is available can significantly slow down training and inference.
-- **Ignoring Data Preprocessing:** Failing to properly preprocess data (e.g., cleaning, normalizing) can negatively impact model performance.
-
-### 6.2 Edge Cases to be Aware Of
-
-- **Rare Words:** Handle rare or out-of-vocabulary words gracefully.
-- **Long Sequences:** Models may struggle with extremely long sequences.
-- **Adversarial Examples:** Models can be fooled by adversarial examples.
-
-### 6.3 Version-Specific Issues
-
-- Be aware of breaking changes in new versions of the Transformers library.
-- Check the release notes for details on any changes that may affect your code.
-- Use version pinning in `requirements.txt` or `pyproject.toml` to ensure that your code runs with the correct version of the library.
-
-### 6.4 Compatibility Concerns
-
-- Ensure that your code is compatible with the target hardware and software environment.
-- Test your code on different platforms and configurations.
-- Use conditional imports to handle different dependencies.
-
-### 6.5 Debugging Strategies
-
-- Use logging to track the flow of execution and identify errors.
-- Use a debugger to step through the code and inspect variables.
-- Use print statements to output intermediate values.
-- Use a profiler to identify performance bottlenecks.
-
-## 7. Tooling and Environment
-
-### 7.1 Recommended Development Tools
-
-- **IDE:** Visual Studio Code, PyCharm
-- **Version Control:** Git
-- **Package Manager:** pip, conda, uv
-- **Testing Framework:** pytest
-- **Linting:** pylint, flake8
-- **Formatting:** black, autopep8
-
-### 7.2 Build Configuration
-
-- Use `requirements.txt` or `pyproject.toml` to manage dependencies.
-- Use a build system like `Make` or `Poetry` to automate the build process.
-- Create a virtual environment for each project to isolate dependencies.
-
-### 7.3 Linting and Formatting
-
-- Use a linter to enforce code style guidelines.
-- Use a formatter to automatically format code.
-- Configure the linter and formatter to run automatically on save.
-
-### 7.4 Deployment Best Practices
-
-- Containerize your application using Docker.
-- Use a cloud platform like AWS, Azure, or GCP to deploy your application.
-- Use a deployment tool like Kubernetes to manage your application.
-
-### 7.5 CI/CD Integration
-
-- Use a CI/CD pipeline to automate the testing and deployment process.
-- Use a CI/CD tool like Jenkins, GitHub Actions, or GitLab CI.
-- Run tests automatically on every commit.
-- Deploy the application automatically when tests pass.
-
-## Additional Recommendations
-
-- **Utilize NVIDIA RTX GPUs:**  Leverage RTX GPUs for enhanced performance due to their high-speed VRAM and dedicated AI accelerators.  This is especially important for larger models and higher batch sizes.
-- **Token Management:** Understand how to manage tokens effectively to optimize performance, as performance is often measured in tokens per second.
-- **Batch API:** Consider using the OpenAI Batch API for cost efficiency and higher rate limits, especially when immediate responses are not required.
-
-By following these best practices, you can write more maintainable, efficient, and secure code when working with the Hugging Face Transformers library.
+# Using a tokenizer not designed for Llama-2
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+model = AutoModelForCausalLM.from

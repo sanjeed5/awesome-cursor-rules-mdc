@@ -1,101 +1,224 @@
 ---
-description: This rule file outlines best practices for using mypy in Python projects, emphasizing gradual adoption, consistent configuration, and leveraging advanced features for improved code quality and maintainability. It covers code organization, performance, security, testing, common pitfalls, and tooling.
-globs: *.py
+description: This guide provides definitive, actionable best practices for using mypy to ensure robust static type checking in Python projects, focusing on modern patterns and common pitfalls.
+globs: **/*.py
 ---
-# Mypy Best Practices and Coding Standards
+# mypy Best Practices
 
-This document outlines the recommended best practices for using Mypy in Python projects. Following these guidelines can lead to more maintainable, robust, and understandable code.
+mypy is the definitive static type checker for Python. Adhering to these guidelines ensures your codebase is robust, maintainable, and catches type errors before runtime.
 
-## 1. Gradual Typing and Adoption
+## 1. Configuration & Integration
 
-- **Start Small:** When introducing Mypy to an existing codebase, focus on a manageable subset of the code first. Choose modules or files that are relatively isolated or self-contained.
-- **Iterative Annotation:** Gradually increase the coverage by adding type hints as you modify or add new code. Avoid large-scale refactoring solely for the purpose of adding type hints.
-- **`# type: ignore` Strategically:** Use `# type: ignore` comments sparingly to temporarily suppress errors in code that is not yet fully typed. Always include a specific error code when using `# type: ignore` to avoid unintentionally ignoring other errors.  Review these regularly.
-- **Prioritize Widely Imported Modules:** Focus on annotating modules that are imported by many other modules. This will provide the greatest benefit in terms of type checking and error detection.
+Always use a shared `pyproject.toml` for mypy configuration. This ensures consistency across the team and CI/CD. Pin your mypy version.
 
-## 2. Consistent Configuration and Integration
+### 1.1. Centralized Configuration
 
-- **Standardized Configuration:** Ensure that all developers use the same Mypy configuration and version. Use a `mypy.ini` file or a `pyproject.toml` file to define the project's Mypy settings. This file should be version-controlled.
-- **CI Integration:** Integrate Mypy checks into your Continuous Integration (CI) pipeline to catch type errors early in the development process. Use a pre-commit hook to run Mypy before committing code.
-- **Editor Integration:** Encourage developers to use Mypy integration in their code editors to get real-time feedback on type errors. Most popular Python editors, such as VS Code, PyCharm, and Sublime Text, have Mypy plugins or extensions.
-- **Version Pinning:** Pin the version of mypy in your project's dependencies to ensure consistent behavior across different environments.
+**Always** configure mypy via `pyproject.toml`. This is the modern standard.
 
-## 3. Leveraging Advanced Features
+❌ BAD: `mypy.ini` or command-line flags only
+✅ GOOD: `pyproject.toml`
+```toml
+# pyproject.toml
+[tool.mypy]
+python_version = "3.11"
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+strict_optional = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+# Enable strict mode for new code, or specific modules
+# strict = true
+```
 
-- **Strict Mode:** Utilize Mypy's strict mode (enabled with the `--strict` flag) to catch more potential errors. Strict mode enables a collection of stricter type checking options.
-- **`--warn-unused-ignores`:** Use this flag to identify `# type: ignore` comments that are no longer necessary because the corresponding errors have been fixed.
-- **`--disallow-untyped-defs`:** Use this flag to require type annotations for all function definitions.
-- **`--disallow-incomplete-defs`:** Use this flag to disallow function definitions with incomplete type annotations.
-- **`--check-untyped-defs`:** Use this flag to type check function bodies even if the signature lacks type annotations.
-- **Protocols and Structural Subtyping:** Take advantage of Mypy's support for protocols and structural subtyping to define flexible interfaces and improve code reusability.
-- **Generics:** Use generics to write type-safe code that can work with different types of data.
-- **TypedDict:** Use `TypedDict` to define the types of dictionaries with known keys and values. This can help to prevent errors when working with data structures.
+### 1.2. CI/CD & Pre-commit Hooks
 
-## 4. Code Organization and Structure
+Integrate mypy into your CI/CD pipeline and as a pre-commit hook. Catch errors early.
 
-- **Directory Structure:** Use a well-defined directory structure to organize your code. A common pattern is the `src` layout, where the project's source code is located in a `src` directory.
-- **File Naming Conventions:** Follow consistent file naming conventions. Use lowercase letters and underscores for module names (e.g., `my_module.py`).
-- **Module Organization:** Organize your code into logical modules. Each module should have a clear purpose and a well-defined interface.
-- **Component Architecture:** Design your application using a component-based architecture. Each component should be responsible for a specific task and should have well-defined inputs and outputs.
-- **Code Splitting:** Split large modules into smaller, more manageable files. This can improve code readability and maintainability.
+```bash
+# .pre-commit-config.yaml
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.5.0 # Use the latest stable version
+  hooks:
+    - id: check-added-large-files
+    - id: check-yaml
+    - id: end-of-file-fixer
+    - id: trailing-whitespace
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.8.0 # Pin to the same version as your pyproject.toml
+  hooks:
+    - id: mypy
+      args: [--no-strict-optional, --ignore-missing-imports] # Override global strict for pre-commit if needed
+```
 
-## 5. Common Patterns and Anti-patterns
+### 1.3. Incremental Adoption
 
-- **Dependency Injection:** Use dependency injection to decouple components and improve testability.
-- **Abstract Factories:** Use abstract factories to create families of related objects without specifying their concrete classes.
-- **Singletons:** Avoid using singletons excessively. They can make code harder to test and reason about.
-- **Global State:** Minimize the use of global state. It can make code harder to understand and debug.
-- **Exception Handling:** Use exception handling to gracefully handle errors and prevent the application from crashing. Avoid catching generic exceptions (e.g., `except Exception:`). Catch specific exceptions and handle them appropriately.
+For existing codebases, start with a minimal configuration and gradually enable stricter checks. Prioritize annotating widely imported modules.
 
-## 6. Performance Considerations
+```toml
+# pyproject.toml (initial, less strict)
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true # Temporarily ignore missing stubs
+allow_untyped_defs = true     # Allow unannotated functions
+```
+Then, enable stricter checks module by module or globally.
 
-- **Profiling:** Use profiling tools to identify performance bottlenecks in your code.
-- **Caching:** Use caching to store frequently accessed data and reduce the number of expensive operations.
-- **Lazy Loading:** Use lazy loading to defer the loading of resources until they are actually needed.
-- **Efficient Data Structures:** Choose appropriate data structures for your data. For example, use sets for membership testing and dictionaries for key-value lookups.
-- **Avoid Unnecessary Copying:** Avoid making unnecessary copies of data. This can consume memory and slow down your code.
+## 2. Type Hinting Best Practices
 
-## 7. Security Best Practices
+### 2.1. Prefer `object` over `Any`
 
-- **Input Validation:** Validate all user inputs to prevent injection attacks and other security vulnerabilities. Use type annotations to enforce type constraints on function arguments.
-- **Authentication and Authorization:** Implement robust authentication and authorization mechanisms to protect your application from unauthorized access.
-- **Data Protection:** Protect sensitive data by encrypting it and storing it securely.
-- **Secure API Communication:** Use HTTPS to encrypt communication between your application and external APIs.
-- **Dependency Management:** Regularly audit your project's dependencies for security vulnerabilities and update them to the latest versions.
+Use `object` when a function truly accepts any value, especially for arguments. `Any` disables type checking.
 
-## 8. Testing Approaches
+❌ BAD:
+```python
+def process_data(data: Any) -> None:
+    print(str(data))
+```
+✅ GOOD:
+```python
+def process_data(data: object) -> None:
+    # mypy knows 'data' is an object, but not its specific type
+    print(str(data))
+```
 
-- **Unit Testing:** Write unit tests for all components in your application. Unit tests should verify that each component behaves as expected in isolation.
-- **Integration Testing:** Write integration tests to verify that different components in your application work together correctly.
-- **End-to-End Testing:** Write end-to-end tests to verify that the entire application works as expected from the user's perspective.
-- **Test Organization:** Organize your tests into a clear and logical structure. Use separate directories for unit tests, integration tests, and end-to-end tests.
-- **Mocking and Stubbing:** Use mocking and stubbing to isolate components during testing and to simulate external dependencies.
+### 2.2. Use `TypeAlias` for Type Aliases
 
-## 9. Common Pitfalls and Gotchas
+Explicitly declare type aliases with `TypeAlias` for clarity.
 
-- **`Any` Type:** Avoid using the `Any` type excessively. It effectively disables type checking for the corresponding code.
-- **Inconsistent Type Annotations:** Ensure that type annotations are consistent throughout your codebase. Inconsistent type annotations can lead to unexpected errors.
-- **Ignoring Errors:** Avoid ignoring Mypy errors without a good reason. Mypy errors usually indicate a real problem in your code.
-- **Version Compatibility:** Be aware of compatibility issues between different versions of Mypy and other libraries.
-- **Circular Dependencies:** Avoid circular dependencies between modules. They can make code harder to understand and test.
+❌ BAD:
+```python
+Vector = list[float]
+```
+✅ GOOD:
+```python
+from typing import TypeAlias
 
-## 10. Tooling and Environment
+Vector: TypeAlias = list[float]
+```
 
-- **Development Tools:** Use a good code editor with Mypy integration, such as VS Code, PyCharm, or Sublime Text.
-- **Build Configuration:** Use a build system, such as `setuptools` or `poetry`, to manage your project's dependencies and build process.
-- **Linting and Formatting:** Use a linter, such as `flake8` or `ruff`, to enforce code style and detect potential errors. Use a code formatter, such as `black` or `ruff`, to automatically format your code.
-- **Deployment:** Deploy your application to a production environment using a container system, such as Docker, or a cloud platform, such as AWS or Google Cloud.
-- **CI/CD:** Integrate Mypy into your CI/CD pipeline to automatically check your code for type errors before deploying it to production.
+### 2.3. Concrete vs. Abstract Types
 
-## 11. Additional Best Practices
+For arguments, prefer abstract types (protocols, ABCs) for flexibility. For return values, prefer concrete types for clear implementation.
 
-- **Use type hints for all function arguments and return values.** This makes it easier to understand what types of data the function expects and returns.
-- **Use type aliases to simplify complex type annotations.** This can make your code more readable and maintainable.
-- **Use the `typing` module to access advanced type features.** The `typing` module provides a number of useful type-related classes and functions, such as `List`, `Dict`, `Union`, and `Optional`.
-- **Use the `reveal_type()` function to inspect the type of an expression.** This can be helpful for debugging type-related issues.
-- **Keep your code clean and well-organized.** This makes it easier to understand and maintain.
-- **Write clear and concise comments.** This helps others understand your code and how it works.
-- **Follow the PEP 8 style guide.** This ensures that your code is consistent and readable.
-- **Use a version control system.** This allows you to track changes to your code and collaborate with others.
+❌ BAD (arguments too specific, returns too abstract):
+```python
+from typing import MutableMapping
 
-By following these best practices, you can improve the quality, maintainability, and robustness of your Python code that uses mypy and other Python tools.
+def map_data(input: list[str]) -> MutableMapping[str, int]:
+    return {s: len(s) for s in input}
+```
+✅ GOOD:
+```python
+from collections.abc import Iterable
+
+def map_data(input: Iterable[str]) -> dict[str, int]:
+    """Maps strings to their lengths."""
+    return {s: len(s) for s in input}
+```
+
+### 2.4. Shorthand Union Syntax
+
+Use `|` for unions and `None` as the last element.
+
+❌ BAD:
+```python
+from typing import Union, Optional
+
+def get_item(key: Union[str, int]) -> Optional[str]:
+    ...
+```
+✅ GOOD:
+```python
+def get_item(key: str | int) -> str | None:
+    ...
+```
+
+### 2.5. Built-in Generics
+
+Use built-in generic types (`list`, `dict`, `set`) instead of `typing` aliases.
+
+❌ BAD:
+```python
+from typing import List, Dict
+
+def process_items(items: List[str]) -> Dict[str, int]:
+    ...
+```
+✅ GOOD:
+```python
+def process_items(items: list[str]) -> dict[str, int]:
+    ...
+```
+
+### 2.6. Protocols for Structural Typing
+
+Define interfaces with `Protocol` for robust duck typing.
+
+```python
+from typing import Protocol
+
+class SupportsQuack(Protocol):
+    def quack(self) -> str:
+        ...
+
+def make_it_quack(duck: SupportsQuack) -> None:
+    print(duck.quack())
+
+class MyDuck:
+    def quack(self) -> str:
+        return "Quack!"
+
+make_it_quack(MyDuck()) # ✅ Works, MyDuck implicitly satisfies SupportsQuack
+```
+
+## 3. Managing Type Errors
+
+### 3.1. Specific `# type: ignore`
+
+Only use `# type: ignore` as a last resort, always with a specific error code, and review regularly.
+
+❌ BAD:
+```python
+result = some_untyped_function() # type: ignore
+```
+✅ GOOD:
+```python
+result = some_untyped_function() # type: ignore[no-untyped-call]
+```
+
+### 3.2. Strict Mode for New Code
+
+Enable `strict = true` in `pyproject.toml` for all new modules or the entire codebase once mature.
+
+```toml
+# pyproject.toml
+[tool.mypy]
+strict = true
+```
+
+## 4. Performance Considerations
+
+Use the mypy daemon (`dmypy`) for faster incremental checks in large codebases.
+
+```bash
+# Start the daemon once
+dmypy start
+
+# Run checks repeatedly
+dmypy run -- foo.py bar.py
+
+# Stop the daemon when done
+dmypy stop
+```
+
+## 5. Third-Party Libraries
+
+For libraries without type stubs, install community stubs or generate your own.
+
+```bash
+# Install community stubs
+mypy --install-types
+```

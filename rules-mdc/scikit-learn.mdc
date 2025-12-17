@@ -1,193 +1,383 @@
 ---
-description: Enforces best practices and coding standards for scikit-learn projects, promoting maintainability, performance, and security. This rule provides guidelines on code organization, common patterns, performance optimization, testing, and common pitfalls.
-globs: *.py
+description: Definitive guidelines for writing robust, maintainable, and performant scikit-learn code, emphasizing consistent preprocessing, API adherence, and data leakage prevention.
+globs: **/*.py
 ---
-# Scikit-learn Best Practices and Coding Standards
+# scikit-learn Best Practices
 
-This document outlines best practices and coding standards for developing with scikit-learn, aiming to improve code quality, maintainability, performance, and security.
+This guide outlines our team's definitive best practices for using and extending scikit-learn. Adhering to these rules ensures consistent, reproducible, and production-ready machine learning code.
 
 ## 1. Code Organization and Structure
 
-- **Directory Structure:**
-    - Organize your project into logical modules or components. A typical structure might include:
-        - `src/`: Source code for your project.
-            - `models/`: Contains the implementation of machine learning models.
-            - `features/`: Feature engineering and processing logic.
-            - `utils/`: Utility functions and helper modules.
-        - `data/`: Datasets used for training and testing.
-            - `raw/`: Original, unprocessed data.
-            - `processed/`: Cleaned and preprocessed data.
-        - `notebooks/`: Jupyter notebooks for experimentation and analysis.
-        - `tests/`: Unit and integration tests.
-        - `scripts/`: Scripts for training, evaluation, and deployment.
-        - `config/`: Configuration files (e.g., YAML, JSON).
-    - Example:
+### 1.1. Always Use Pipelines for Preprocessing and Models
 
-      
-      project_root/
-      ├── src/
-      │   ├── models/
-      │   │   ├── __init__.py
-      │   │   ├── model_1.py
-      │   │   └── model_2.py
-      │   ├── features/
-      │   │   ├── __init__.py
-      │   │   ├── feature_engineering.py
-      │   │   └── feature_selection.py
-      │   ├── utils/
-      │   │   ├── __init__.py
-      │   │   └── helpers.py
-      │   ├── __init__.py
-      │   └── main.py
-      ├── data/
-      │   ├── raw/
-      │   │   └── data.csv
-      │   └── processed/
-      │       └── processed_data.csv
-      ├── notebooks/
-      │   └── exploratory_data_analysis.ipynb
-      ├── tests/
-      │   ├── __init__.py
-      │   ├── test_models.py
-      │   └── test_features.py
-      ├── scripts/
-      │   ├── train.py
-      │   └── evaluate.py
-      ├── config/
-      │   └── config.yaml
-      ├── README.md
-      └── requirements.txt
-      
+**Pipelines are mandatory.** They prevent data leakage, ensure consistent transformations across training and inference, and simplify hyperparameter tuning.
 
-- **File Naming Conventions:**
-    - Use descriptive and consistent names for files and modules.
-    - Prefer snake_case for Python files and variables (e.g., `model_training.py`, `n_samples`).
+❌ BAD: Inconsistent manual transformations
 
-- **Module Organization:**
-    - Each module should have a clear and specific purpose.
-    - Use `__init__.py` files to define packages and modules within directories.
-    - Minimize dependencies between modules to improve maintainability.
+```python
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+import numpy as np
 
-- **Component Architecture:**
-    - Design your application with loosely coupled components.
-    - Implement interfaces or abstract classes to define contracts between components.
-    - Use dependency injection to manage dependencies and promote testability.
+X, y = np.random.rand(100, 5), np.random.rand(100)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
 
-- **Code Splitting Strategies:**
-    - Split large files into smaller, more manageable modules.
-    - Group related functions and classes into modules based on functionality.
-    - Consider splitting code based on layers (e.g., data access, business logic, presentation).
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+model = LinearRegression().fit(X_train_scaled, y_train)
+
+# Forgetting to scale X_test leads to incorrect predictions
+y_pred = model.predict(X_test)
+print(f"MSE (BAD): {mean_squared_error(y_test, y_pred):.2f}")
+```
+
+✅ GOOD: Encapsulate all steps in a `Pipeline`
+
+```python
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+import numpy as np
+
+X, y = np.random.rand(100, 5), np.random.rand(100)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+
+# All steps are chained and applied consistently
+model = make_pipeline(StandardScaler(), LinearRegression())
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+print(f"MSE (GOOD): {mean_squared_error(y_test, y_pred):.2f}")
+```
+
+### 1.2. Custom Estimators Must Adhere to the scikit-learn API
+
+When creating custom transformers or models, strictly follow the scikit-learn estimator API for seamless integration with pipelines and model selection tools.
+
+-   Inherit from `BaseEstimator` and relevant mixins (`TransformerMixin`, `ClassifierMixin`, `RegressorMixin`).
+-   `__init__` stores *only* hyperparameters as keyword arguments with defaults. No logic or data processing here.
+-   `fit(self, X, y=None)` learns parameters from data. Store learned attributes with a trailing underscore (e.g., `self.mean_`). Return `self`.
+-   `transform(self, X)` (for transformers) or `predict(self, X)`/`predict_proba(self, X)` (for predictors) applies the learned transformation/prediction.
+-   Implement `get_params` and `set_params` (usually inherited from `BaseEstimator`).
+
+❌ BAD: Non-compliant custom estimator
+
+```python
+class BadCustomScaler:
+    def __init__(self, scale_factor):
+        # Logic in __init__
+        if scale_factor <= 0:
+            raise ValueError("Scale factor must be positive")
+        self.scale_factor = scale_factor
+        self.mean_ = None # Should be learned in fit
+
+    def fit(self, X):
+        self.mean_ = X.mean(axis=0)
+        return self
+
+    def transform(self, X):
+        if self.mean_ is None:
+            raise RuntimeError("Fit not called yet.")
+        return (X - self.mean_) * self.scale_factor
+
+# This won't work with GridSearchCV or Pipelines reliably
+```
+
+✅ GOOD: API-compliant custom estimator
+
+```python
+from sklearn.base import BaseEstimator, TransformerMixin
+import numpy as np
+
+class GoodCustomScaler(BaseEstimator, TransformerMixin):
+    def __init__(self, scale_factor: float = 1.0):
+        # Only store hyperparameters, no logic
+        self.scale_factor = scale_factor
+
+    def fit(self, X: np.ndarray, y=None):
+        # Input validation (optional, but good practice)
+        X = self._validate_data(X)
+        if self.scale_factor <= 0:
+            raise ValueError("Scale factor must be positive")
+        self.mean_ = X.mean(axis=0) # Learned attribute with underscore
+        return self
+
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        X = self._validate_data(X) # Ensure consistency
+        if not hasattr(self, "mean_"):
+            raise RuntimeError("Estimator not fitted. Call fit() first.")
+        return (X - self.mean_) * self.scale_factor
+
+# This estimator integrates perfectly with scikit-learn utilities.
+```
 
 ## 2. Common Patterns and Anti-patterns
 
-- **Design Patterns:**
-    - **Pipeline:** Use scikit-learn's `Pipeline` class to chain together multiple data preprocessing and modeling steps. This helps prevent data leakage and ensures consistent data transformations.
-    - **Model Selection:** Employ techniques like cross-validation and grid search to select the best model and hyperparameters for your data. Use `GridSearchCV` or `RandomizedSearchCV`.
-    - **Ensemble Methods:** Leverage ensemble methods like Random Forests, Gradient Boosting, and Voting Classifiers to improve model accuracy and robustness.
-    - **Custom Transformers:** Create custom transformers using `BaseEstimator` and `TransformerMixin` to encapsulate complex feature engineering logic.
+### 2.1. Prevent Data Leakage: Split First, Fit on Train Only
 
-- **Recommended Approaches:**
-    - **Data Preprocessing:** Always split your data into training and testing sets *before* any preprocessing steps.
-    - **Feature Scaling:** Apply appropriate feature scaling techniques (e.g., StandardScaler, MinMaxScaler) to numerical features before training models.
-    - **Categorical Encoding:** Use one-hot encoding or ordinal encoding for categorical features.
-    - **Missing Value Imputation:** Handle missing values using imputation techniques like mean, median, or k-NN imputation.
-    - **Model Persistence:** Save trained models to disk using `joblib` or `pickle` for later use.
+Always split your data into training and test sets *before* any preprocessing. `fit` and `fit_transform` methods must *only* be called on the training data. `transform` can then be called on both training and test data.
 
-- **Anti-patterns and Code Smells:**
-    - **Data Leakage:** Avoid data leakage by preprocessing the entire dataset before splitting into training and testing sets.
-    - **Overfitting:** Be cautious of overfitting by using regularization techniques and cross-validation.
-    - **Ignoring Data Distributions:**  Always visualize and understand data distributions before applying transformations or choosing models.
-    - **Hardcoding Parameters:** Avoid hardcoding parameters directly in the code. Use configuration files or command-line arguments instead.
-    - **Ignoring Warnings:** Pay attention to scikit-learn warnings, as they often indicate potential problems with your code or data.
+❌ BAD: Data leakage by fitting on all data
 
-- **State Management:**
-    - Use classes to encapsulate state and behavior related to models or data processing steps.
-    - Avoid global variables and mutable state whenever possible.
-    - Use immutable data structures where appropriate to prevent unintended side effects.
+```python
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+import numpy as np
 
-- **Error Handling:**
-    - Use try-except blocks to handle exceptions and prevent your application from crashing.
-    - Log errors and warnings to a file or logging service.
-    - Provide informative error messages to users.
-    - Implement retry mechanisms for transient errors.
+X, y = np.random.rand(100, 5), np.random.rand(100)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+
+scaler = StandardScaler()
+# Fitting on all data (X) leaks information from the test set
+X_scaled = scaler.fit_transform(X)
+X_train_scaled = X_scaled[:len(X_train)]
+X_test_scaled = X_scaled[len(X_train):]
+```
+
+✅ GOOD: Correct data splitting and transformation
+
+```python
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+import numpy as np
+
+X, y = np.random.rand(100, 5), np.random.rand(100)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+
+scaler = StandardScaler()
+# Fit only on training data
+X_train_scaled = scaler.fit_transform(X_train)
+# Transform both train and test using parameters learned from train
+X_test_scaled = scaler.transform(X_test)
+```
+
+### 2.2. Reproducibility: Always Set `random_state`
+
+For any estimator or utility that involves randomness (e.g., `train_test_split`, `RandomForestClassifier`, `KMeans`), explicitly set the `random_state` parameter for reproducible results.
+
+❌ BAD: Non-reproducible results
+
+```python
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+# Results will change on each run
+X_train, X_test, y_train, y_test = train_test_split(X, y)
+model = RandomForestClassifier()
+```
+
+✅ GOOD: Reproducible results
+
+```python
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+
+# Use a fixed integer for random_state
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+model = RandomForestClassifier(random_state=42)
+```
 
 ## 3. Performance Considerations
 
-- **Optimization Techniques:**
-    - **Vectorization:** Utilize NumPy's vectorized operations to perform calculations on entire arrays instead of looping through individual elements. Use `.values` from pandas DataFrames when passing to scikit-learn.
-    - **Memory Optimization:** Minimize memory usage by using appropriate data types (e.g., `int8`, `float32`) and avoiding unnecessary copies of data.
-    - **Algorithm Selection:** Choose efficient algorithms that are well-suited for your data and task. For example, use `MiniBatchKMeans` for large datasets.
-    - **Parallelization:** Use scikit-learn's built-in support for parallel processing to speed up training and prediction.
+### 3.1. Leverage Cython for Performance-Critical Components
 
-- **Memory Management:**
-    - Use memory profiling tools to identify memory leaks and optimize memory usage.
-    - Release unused memory by deleting variables or using the `gc` module.
-    - Use data streaming techniques for large datasets that don't fit into memory.
+When extending scikit-learn with custom, performance-critical algorithms, use Cython and follow scikit-learn's internal conventions.
 
-- **Lazy Loading Strategies:**
-    - Load data and models only when they are needed.
-    - Use generators or iterators to process large datasets in chunks.
+-   Disable bounds checking and wraparound for production code.
+-   Use `sklearn.utils._typedefs` for explicit type declarations.
+-   Use `sklearn.utils._openmp_helpers` for OpenMP routines.
+-   Prefer memoryviews over `cnp.ndarray` when possible.
 
-## 4. Security Best Practices
+```python
+# Example of Cython directives and imports (in a .pyx file)
+# distutils: language=c
+# distutils: extra_compile_args=-fopenmp
+# distutils: extra_link_args=-fopenmp
+# cython: boundscheck=False
+# cython: wraparound=False
+# cython: cdivision=True
 
-- **Common Vulnerabilities:**
-    - **Model Poisoning:** Protect against model poisoning attacks by validating input data and sanitizing user-provided data.
-    - **Adversarial Attacks:** Be aware of adversarial attacks that can manipulate model predictions. Consider using techniques like adversarial training to improve model robustness.
+from cython.parallel import prange
+from sklearn.utils._typedefs cimport float64
+from sklearn.utils._openmp_helpers cimport _get_num_threads
 
-- **Input Validation:**
-    - Validate all input data to ensure it conforms to the expected format and range.
-    - Sanitize user-provided data to prevent injection attacks.
+cdef void my_fast_function(float64[:] data, int n_threads) nogil:
+    cdef int i
+    with nogil:
+        for i in prange(data.shape[0], num_threads=n_threads, schedule='static'):
+            data[i] *= 2.0
+```
 
-- **Data Protection:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use access control mechanisms to restrict access to data and models.
+## 4. Common Pitfalls and Gotchas
 
-## 5. Testing Approaches
+### 4.1. Avoid Overfitting on Validation Data During Hyperparameter Tuning
 
-- **Unit Testing:**
-    - Write unit tests for individual functions and classes.
-    - Use mocking to isolate components and test them in isolation.
-    - Assert that your code produces the expected output for different inputs.
+Use `GridSearchCV` or `RandomizedSearchCV` *with a pipeline* to ensure that cross-validation folds are correctly handled and preprocessing steps are refitted for each fold, preventing data leakage.
 
-- **Integration Testing:**
-    - Write integration tests to verify that different components work together correctly.
-    - Test the interaction between your code and external dependencies.
+❌ BAD: Tuning hyperparameters outside a pipeline
 
-- **Test Organization:**
-    - Organize your tests into a separate directory (e.g., `tests`).
-    - Use descriptive names for your test files and functions.
+```python
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV, train_test_split
+import numpy as np
 
-- **Mocking and Stubbing:**
-    - Use mocking libraries like `unittest.mock` or `pytest-mock` to create mock objects for testing.
-    - Use stubs to replace complex dependencies with simpler implementations.
+X, y = np.random.rand(100, 5), np.random.randint(0, 2, 100)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
 
-## 6. Common Pitfalls and Gotchas
+# Scaling outside of GridSearchCV means the scaler sees all training data
+# before cross-validation, leading to optimistic scores.
+scaler = StandardScaler().fit(X_train)
+X_train_scaled = scaler.transform(X_train)
 
-- **Data Type Mismatches:** Ensure that the data types of your input features are compatible with the model you are using.
-- **Feature Scaling Issues:** Use the correct scaling method for your features, understanding how each scaler behaves.
-- **Improper Cross-Validation:** Make sure the cross-validation strategy you choose is appropriate for your dataset and model.
-- **Version Compatibility:** Be aware of compatibility issues between different versions of scikit-learn and its dependencies.
+param_grid = {'C': [0.1, 1.0, 10.0]}
+grid_search = GridSearchCV(LogisticRegression(random_state=42), param_grid, cv=3)
+grid_search.fit(X_train_scaled, y_train)
+# Scores here are optimistically biased
+```
 
-## 7. Tooling and Environment
+✅ GOOD: Tuning hyperparameters with a pipeline
 
-- **Recommended Development Tools:**
-    - **IDE:** Use an IDE like VS Code, PyCharm, or JupyterLab.
-    - **Version Control:** Use Git for version control.
-    - **Package Manager:** Use pip or Conda for managing dependencies.
-    - **Virtual Environments:** Create virtual environments for each project to isolate dependencies.
+```python
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV, train_test_split
+import numpy as np
 
-- **Linting and Formatting:**
-    - Use linters like pylint or flake8 to enforce code style and identify potential errors.
-    - Use formatters like black or autopep8 to automatically format your code.
+X, y = np.random.rand(100, 5), np.random.randint(0, 2, 100)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
 
-- **CI/CD Integration:**
-    - Integrate your code with a CI/CD system like Jenkins, Travis CI, or CircleCI.
-    - Automatically run tests and linters on every commit.
-    - Deploy your application to a production environment automatically.
+# Define the pipeline including preprocessing and the model
+pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('logreg', LogisticRegression(random_state=42))
+])
 
-## General Coding Style
-- Use underscores to separate words in non-class names: `n_samples` rather than `nsamples`.
-- Avoid multiple statements on one line.
-- Use relative imports for references inside scikit-learn (except for unit tests, which should use absolute imports).
+param_grid = {'logreg__C': [0.1, 1.0, 10.0]} # Note the 'estimator__param' syntax
+grid_search = GridSearchCV(pipeline, param_grid, cv=3)
+grid_search.fit(X_train, y_train) # Fit the entire pipeline on X_train
+# Scores are realistic as preprocessing is done correctly within each fold
+```
 
-By following these best practices, you can write cleaner, more maintainable, and more efficient scikit-learn code.
+## 5. Type Hints
+
+### 5.1. Use Type Hints Extensively
+
+All function signatures, class attributes, and complex variable assignments must include type hints. This improves code readability, enables static analysis, and reduces bugs.
+
+❌ BAD: Untyped function
+
+```python
+def calculate_metric(y_true, y_pred):
+    # What are y_true and y_pred? Lists, arrays, Series?
+    return (y_true == y_pred).mean()
+```
+
+✅ GOOD: Clearly typed function
+
+```python
+import numpy as np
+from typing import Union
+
+def calculate_metric(y_true: Union[np.ndarray, list], y_pred: Union[np.ndarray, list]) -> float:
+    """Calculates accuracy for binary classification."""
+    y_true_arr = np.asarray(y_true)
+    y_pred_arr = np.asarray(y_pred)
+    return (y_true_arr == y_pred_arr).mean()
+```
+
+## 6. Virtual Environments
+
+### 6.1. Isolate Project Dependencies with Virtual Environments
+
+Always use a dedicated virtual environment (`venv`, `conda`, `poetry`, etc.) for each project. This prevents dependency conflicts and ensures consistent environments.
+
+❌ BAD: Global `pip install`
+
+```bash
+pip install scikit-learn pandas numpy # Pollutes global environment
+```
+
+✅ GOOD: Project-specific virtual environment
+
+```bash
+# Using venv
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Using conda
+conda create -n my_ml_env python=3.9 scikit-learn pandas numpy
+conda activate my_ml_env
+```
+
+## 7. Packaging
+
+### 7.1. Use `scikit-learn-contrib` Template for Shareable Estimators
+
+If you develop a custom estimator intended for public use or sharing across projects, leverage the `scikit-learn-contrib template`. It provides a robust structure, testing, and CI/CD setup, ensuring your estimator is fully compliant and easily consumable.
+
+❌ BAD: Ad-hoc custom estimator distribution
+
+```python
+# Just a .py file with a custom estimator, no proper packaging
+# Difficult for others to install, test, or integrate
+```
+
+✅ GOOD: Structured project using `scikit-learn-contrib`
+
+```bash
+# Follow the template to create a new project:
+# https://github.com/scikit-learn-contrib/project-template
+# This provides setup.py, tests, documentation structure, etc.
+```
+
+## 8. Testing Approaches
+
+### 8.1. Implement Comprehensive Unit and Integration Tests
+
+For custom estimators, write unit tests to verify individual methods and use `sklearn.utils.estimator_checks.check_estimator` to ensure API compliance. For pipelines, write integration tests that cover the entire workflow.
+
+❌ BAD: No tests or only manual verification
+
+```python
+# No tests for MyCustomEstimator, relying on manual runs
+# to confirm it works.
+```
+
+✅ GOOD: Automated testing with `check_estimator`
+
+```python
+import pytest
+from sklearn.utils.estimator_checks import check_estimator
+from sklearn.base import BaseEstimator, TransformerMixin
+import numpy as np
+
+class MyCustomTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self, offset: float = 0.0):
+        self.offset = offset
+    def fit(self, X, y=None):
+        self._validate_data(X)
+        return self
+    def transform(self, X):
+        self._validate_data(X, reset=False)
+        return X + self.offset
+
+# Test API compliance
+@pytest.mark.parametrize(
+    "estimator", [MyCustomTransformer()]
+)
+def test_all_estimators(estimator):
+    return check_estimator(estimator)
+
+# Add specific unit tests for logic
+def test_my_custom_transformer_offset():
+    X = np.array([[1, 2], [3, 4]])
+    transformer = MyCustomTransformer(offset=10)
+    transformer.fit(X)
+    transformed_X = transformer.transform(X)
+    assert np.array_equal(transformed_X, np.array([[11, 12], [13, 14]]))
+```

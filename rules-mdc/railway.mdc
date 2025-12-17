@@ -1,289 +1,269 @@
 ---
-description: This rule outlines the best practices and coding standards for developing and deploying applications on the Railway platform, covering aspects from code organization to security and performance.
-globs: *.js,*.jsx,*.ts,*.tsx,*.py,*.go,*.java,*.rs,*.c,*.cpp,*.cs,*.html,*.css,*.yml,*.yaml,*.json,*.sh
+description: This guide provides definitive best practices for developing and deploying applications on Railway, focusing on stateless services, reproducible builds with Nixpacks, secure configuration, and optimal performance.
+globs: **/*
 ---
-# Railway Best Practices and Coding Standards
+# railway Best Practices
 
-This document provides a comprehensive guide to best practices for developing and deploying applications on the Railway platform. Following these guidelines ensures optimized, secure, and maintainable deployments.
+Railway is a powerful PaaS for modern applications. Adhere to these guidelines to ensure your services are performant, reliable, and easily deployable.
 
 ## 1. Code Organization and Structure
 
-### 1.1. Directory Structure
+Organize your codebase for clarity and Railway's build system. For monorepos, explicitly define service directories.
 
-*   **Project Root:** Contains the `railway.toml` (or `railway.json`) file defining the project configuration, README, LICENSE, and other top-level files.
-*   **src/:**  Holds the source code of the application. Further divided into modules and components.
-*   **config/:** Stores configuration files for different environments (development, staging, production). Use environment variables within Railway for sensitive data.
-*   **scripts/:** Contains utility scripts for build, deployment, and maintenance tasks.
-*   **tests/:** Includes unit, integration, and end-to-end tests.
-*   **docs/:** Holds project documentation, API specifications, and other relevant documentation.
+### ✅ GOOD: Explicit Service Definition (Monorepo)
 
-Example:
+Use `railway.json` to define services, ensuring Railway builds and deploys the correct subdirectories.
 
-
-my-railway-app/
-├── railway.toml
-├── README.md
-├── LICENSE
-├── src/
-│   ├── components/
-│   │   ├── Button.js
-│   │   └── Input.js
-│   ├── modules/
-│   │   ├── auth.js
-│   │   └── data.js
-│   ├── app.js
-│   └── index.js
-├── config/
-│   ├── development.js
-│   └── production.js
-├── scripts/
-│   ├── build.sh
-│   └── deploy.sh
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── e2e/
-└── docs/
-
-
-### 1.2. File Naming Conventions
-
-*   **Source Code:** Use descriptive and consistent naming conventions (e.g., `ComponentName.js`, `moduleName.ts`).
-*   **Configuration Files:** Name configuration files according to their environment (e.g., `development.json`, `production.yml`).
-*   **Test Files:**  Follow a naming convention that clearly identifies the tested component or module (e.g., `ComponentName.test.js`, `moduleName.spec.ts`).
-
-### 1.3. Module Organization
-
-*   **Functional Grouping:** Organize modules based on their functionality (e.g., authentication, data fetching, UI components).
-*   **Loose Coupling:**  Design modules to be loosely coupled, minimizing dependencies between them.
-*   **Clear Interfaces:** Define clear and well-documented interfaces for each module.
-*   **Avoid Circular Dependencies:** Prevent circular dependencies between modules to improve maintainability.
-
-### 1.4. Component Architecture
-
-*   **Component-Based Approach:** Break down the application into reusable components.
-*   **Single Responsibility Principle:** Each component should have a single, well-defined responsibility.
-*   **Presentational and Container Components:** Separate presentational components (UI) from container components (logic and data fetching).
-*   **Props and State Management:** Use props for passing data down the component tree and manage state appropriately (using libraries like Redux, Zustand or React Context where necessary).
-
-### 1.5. Code Splitting Strategies
-
-*   **Route-Based Splitting:** Split the application based on routes, loading only the necessary components and modules for each route.
-*   **Component-Based Splitting:**  Split large components into smaller chunks, loading them on demand.
-*   **Dynamic Imports:** Use dynamic imports (`import()`) to load modules and components asynchronously.
-*   **Webpack/Parcel Configuration:** Configure your bundler (Webpack, Parcel, etc.) to optimize code splitting and chunking.
+```json
+// railway.json
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "services": [
+    {
+      "name": "backend",
+      "path": "./backend",
+      "buildCommand": "npm install && npm run build",
+      "startCommand": "npm start"
+    },
+    {
+      "name": "frontend",
+      "path": "./frontend",
+      "buildCommand": "npm install && npm run build",
+      "startCommand": "npm start"
+    }
+  ]
+}
+```
 
 ## 2. Common Patterns and Anti-patterns
 
-### 2.1. Design Patterns
+Embrace statelessness and graceful shutdowns for scalable, resilient services.
 
-*   **Dependency Injection:**  Use dependency injection to manage dependencies and improve testability.
-*   **Observer Pattern:**  Implement the observer pattern for handling events and notifications.
-*   **Singleton Pattern:** Use the singleton pattern sparingly, only when a single instance of a class is truly required.
-*   **Factory Pattern:** Utilize factory patterns to abstract object creation.
+### ❌ BAD: Stateful Services
 
-### 2.2. Recommended Approaches
+Storing session data or temporary files directly on the server instance. This breaks horizontal scaling and leads to data loss on redeployments or scale-downs.
 
-*   **Environment Variables:** Utilize Railway's environment variables for configuration and secrets management.  Access them in your application using appropriate methods for your language (e.g., `process.env` in Node.js, `os.environ` in Python).
-*   **Private Networking:**  Use Railway's private networking to ensure secure and efficient communication between services within the same project and environment using the `RAILWAY_PRIVATE_DOMAIN` environment variable.
-*   **Reference Variables:** Use Railway's reference variables to dynamically reference other variables, either from a variable set on the current service or from another service in the same project using the `${{serviceName.VARIABLE_NAME}}` syntax, keeping your variable values in sync and avoiding hardcoding.
-*   **Config as Code:** Utilize Railway's config as code feature to maintain your Railway configuration in a JSON or TOML file, enabling you to keep track of changes just as you do with your source code.
+```typescript
+// app.ts (BAD)
+let inMemoryCache = {}; // Will be lost on scale-down/redeploy
+```
 
-### 2.3. Anti-patterns
+### ✅ GOOD: Stateless Design
 
-*   **Hardcoding Secrets:** Avoid hardcoding secrets or API keys in your code. Use environment variables instead.
-*   **Ignoring Errors:**  Don't ignore errors or exceptions. Implement proper error handling and logging.
-*   **Over-Engineering:** Avoid over-engineering solutions. Keep the code simple and maintainable.
-*   **Tight Coupling:** Minimize dependencies between modules and components.
-*   **Long-Lived Branches:**  Avoid creating long-lived branches. Use feature branches and merge them frequently.
+Persist state in external services (databases, Redis, S3). Your application must be able to start, stop, and scale without losing data or affecting other instances.
 
-### 2.4. State Management
+```typescript
+// app.ts (GOOD)
+import { createClient } from 'redis'; // Use an external Redis instance
 
-*   **Local State:** Use component-level state for simple UI-related state.
-*   **Context API (React):**  Use the Context API for sharing state between components within a subtree.
-*   **State Management Libraries (Redux, Zustand, Recoil):** Use state management libraries for complex application state and predictable state updates.
-*   **Immutable Data Structures:**  Use immutable data structures to prevent accidental state mutations.
+const redisClient = createClient({
+  url: process.env.REDIS_URL // Connect to Railway-provisioned Redis
+});
 
-### 2.5. Error Handling
+async function getFromCache(key: string) {
+  await redisClient.connect();
+  const value = await redisClient.get(key);
+  await redisClient.disconnect();
+  return value;
+}
+```
 
-*   **Try-Catch Blocks:** Use `try-catch` blocks to handle exceptions gracefully.
-*   **Error Boundaries (React):** Use error boundaries to catch errors during rendering and prevent the entire application from crashing.
-*   **Centralized Error Handling:** Implement a centralized error handling mechanism for logging errors and displaying user-friendly messages.
-*   **Asynchronous Error Handling:** Handle errors in asynchronous operations (e.g., Promises) using `.catch()` or `async/await` with `try-catch`.
+### ✅ GOOD: Graceful Shutdowns (Node.js Example)
+
+Handle `SIGTERM` signals to ensure your application cleans up resources (e.g., close database connections, flush logs) before termination, preventing data corruption or dropped requests.
+
+```typescript
+// server.ts
+import express from 'express';
+// Assume connectToDatabase and disconnectFromDatabase exist
+import { connectToDatabase, disconnectFromDatabase } from './db'; 
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+let server: any;
+
+async function startServer() {
+  await connectToDatabase();
+  server = app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+function handleShutdown() {
+  console.log('SIGTERM received. Shutting down gracefully...');
+  server.close(async () => {
+    console.log('HTTP server closed.');
+    await disconnectFromDatabase();
+    process.exit(0);
+  });
+
+  // Force close if server hasn't closed after a timeout
+  setTimeout(() => {
+    console.error('Forcing shutdown after timeout.');
+    process.exit(1);
+  }, 10000); // 10 seconds
+}
+
+process.on('SIGTERM', handleShutdown);
+process.on('SIGINT', handleShutdown); // Also handle Ctrl+C for local dev
+
+startServer();
+```
 
 ## 3. Performance Considerations
 
-### 3.1. Optimization Techniques
+Optimize for low latency and efficient resource usage.
 
-*   **Code Optimization:** Optimize code for performance (e.g., minimizing DOM manipulations, using efficient algorithms).
-*   **Caching:** Implement caching mechanisms to reduce server load and improve response times. Use Railway environment variables to configure cache TTLs.
-*   **Database Optimization:** Optimize database queries and indexing for faster data retrieval. Select database types that optimize well with Railway. Consider a database cluster for production workloads.
-*   **Image Optimization:** Optimize images for web delivery (e.g., compressing images, using appropriate formats).
-*   **Gzip Compression:**  Enable Gzip compression to reduce the size of transferred data.
+### ✅ GOOD: Private Networking for Internal Services
 
-### 3.2. Memory Management
+Always use Railway's private network for communication between services (e.g., app to database, app to cache). This reduces latency and eliminates egress costs.
 
-*   **Memory Leaks:**  Identify and fix memory leaks in your code.  Use memory profiling tools to detect leaks.
-*   **Garbage Collection:**  Understand how garbage collection works in your language and optimize memory usage accordingly.  Ensure resources are properly released and terminated.
-*   **Large Data Structures:** Avoid loading large data structures into memory unnecessarily.  Use streaming or pagination techniques.
+```typescript
+// database.ts
+// ❌ BAD: Public endpoint (introduces latency, egress costs)
+// const DB_HOST = 'your-db-public-url.railway.app';
 
-### 3.3. Rendering Optimization (If Applicable)
+// ✅ GOOD: Private network endpoint (fast, free internal traffic)
+const DB_HOST = process.env.PGHOST || 'postgres.railway.internal'; // Or redis.railway.internal, mongo.railway.internal
+const DB_PORT = process.env.PGPORT || 5432;
+```
 
-*   **Virtual DOM (React):**  Take advantage of the virtual DOM in frameworks like React to minimize DOM updates.
-*   **Memoization:** Use memoization techniques to prevent unnecessary re-renders.
-*   **Code Splitting:** Split code into smaller chunks to reduce initial load time.
+### ✅ GOOD: Region Selection
 
-### 3.4. Bundle Size Optimization
+Deploy your application in a region geographically close to your primary user base to minimize latency.
 
-*   **Dead Code Elimination:**  Eliminate dead code and unused dependencies using tools like Webpack's tree shaking.
-*   **Minification:**  Minify code to reduce its size.
-*   **Dependency Optimization:**  Optimize dependencies by using smaller alternatives or by importing only the necessary parts of a library.
+## 4. Common Pitfalls and Gotchas
 
-### 3.5. Lazy Loading
+Avoid common mistakes that lead to deployment failures or runtime issues.
 
-*   **Route-Based Lazy Loading:**  Lazy load routes to improve initial load time.
-*   **Component-Based Lazy Loading:** Lazy load components that are not immediately visible or necessary.
-*   **Intersection Observer:** Use the Intersection Observer API to lazy load images and other resources when they come into view.
+### ❌ BAD: Missing Health Checks
 
-## 4. Security Best Practices
+Railway needs a `/health` endpoint to determine if your service is running correctly. Without it, deployments may fail or services restart unnecessarily.
 
-### 4.1. Common Vulnerabilities
+### ✅ GOOD: Implement a Basic Health Endpoint
 
-*   **SQL Injection:**  Prevent SQL injection by using parameterized queries or ORM libraries.
-*   **Cross-Site Scripting (XSS):**  Prevent XSS by sanitizing user inputs and escaping outputs.
-*   **Cross-Site Request Forgery (CSRF):**  Prevent CSRF by using anti-CSRF tokens.
-*   **Authentication and Authorization Vulnerabilities:** Implement secure authentication and authorization mechanisms.
-*   **Dependency Vulnerabilities:**  Keep dependencies up to date to address known vulnerabilities.
+```typescript
+// app.ts
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+```
 
-### 4.2. Input Validation
+## 5. Configuration Management
 
-*   **Server-Side Validation:**  Validate all user inputs on the server-side.
-*   **Whitelisting:** Use whitelisting to allow only valid inputs.
-*   **Sanitization:** Sanitize user inputs to remove potentially harmful characters.
-*   **Regular Expressions:** Use regular expressions to validate input formats.
+Treat your configuration as code and manage secrets securely.
 
-### 4.3. Authentication and Authorization
+### ✅ GOOD: Config-as-Code with `railway.yaml`
 
-*   **Secure Password Storage:**  Use strong hashing algorithms (e.g., bcrypt, Argon2) to store passwords securely.
-*   **Multi-Factor Authentication (MFA):** Implement MFA for enhanced security.
-*   **Role-Based Access Control (RBAC):**  Implement RBAC to control access to resources based on user roles.
-*   **JSON Web Tokens (JWT):**  Use JWT for stateless authentication.
+Define environment variables, secrets, and service configurations directly in version control. This ensures reproducibility across environments.
 
-### 4.4. Data Protection
+```yaml
+# railway.yaml
+name: My Awesome Project
+services:
+  - name: web
+    repo: .
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    variables:
+      NODE_ENV: production
+    secrets:
+      API_KEY: ${{ secrets.API_KEY }} # Reference secrets securely
+```
 
-*   **Encryption:**  Encrypt sensitive data at rest and in transit.
-*   **Data Masking:** Mask sensitive data in logs and reports.
-*   **Regular Backups:**  Create regular backups of your data to prevent data loss. Use Railway's volume and backup features.
-*   **Data Minimization:** Only store the data that is necessary.
+### ✅ GOOD: Use Nixpacks for Reproducible Builds
 
-### 4.5. Secure API Communication
+Leverage Nixpacks for declarative, reproducible builds. Only use custom Dockerfiles if Nixpacks cannot infer your build process or if you have highly specialized requirements.
 
-*   **HTTPS:**  Use HTTPS for all API communication.
-*   **API Keys:** Protect API keys and other sensitive credentials.
-*   **Rate Limiting:** Implement rate limiting to prevent abuse.
-*   **Input Validation:** Validate all API requests.
-*   **Output Encoding:** Encode API responses to prevent injection attacks.
-*   **Private Networking:** Use private networking to protect your services from malicious threats by keeping them unexposed to the public network. Secure communication between services in the same project and environment.
+```toml
+# nixpacks.toml (Example for a Python app needing specific system packages)
+[phases.setup]
+nixPkgs = ["python3", "postgresql"] # Add system-level dependencies here
+```
 
-## 5. Testing Approaches
+## 6. Environment Variables
 
-### 5.1. Unit Testing
+Manage environment variables and secrets securely.
 
-*   **Test-Driven Development (TDD):**  Write tests before writing code.
-*   **Component Isolation:**  Isolate components during unit testing.
-*   **Mocking Dependencies:** Mock dependencies to control the behavior of external systems.
-*   **Code Coverage:**  Aim for high code coverage.
+### ❌ BAD: Hardcoding Secrets or Committing `.env`
 
-### 5.2. Integration Testing
+Never commit sensitive information directly to your repository. This is a major security vulnerability.
 
-*   **Integration with External Systems:**  Test the integration between different components and external systems.
-*   **Database Integration:**  Test database interactions.
-*   **API Integration:** Test API endpoints.
+```typescript
+// config.ts (BAD)
+const API_KEY = "super-secret-key-123";
+```
 
-### 5.3. End-to-End Testing
+### ✅ GOOD: Use Railway Secrets
 
-*   **User Flows:** Test complete user flows to ensure that the application works as expected.
-*   **Browser Automation:**  Use browser automation tools (e.g., Selenium, Cypress) to simulate user interactions.
-*   **Environment Parity:** Run end-to-end tests in an environment that closely resembles production.
+Store secrets directly in Railway's dashboard or via `railway variables set --project <id> API_KEY=...` and reference them in `railway.yaml`. Access them via `process.env` at runtime.
 
-### 5.4. Test Organization
+```typescript
+// config.ts (GOOD)
+const API_KEY = process.env.API_KEY; // Railway injects this securely
+```
 
-*   **Test Suites:** Organize tests into logical test suites.
-*   **Test Naming Conventions:**  Use consistent test naming conventions.
-*   **Test Documentation:**  Document tests to explain their purpose and expected behavior.
+## 7. Logging
 
-### 5.5. Mocking and Stubbing
+Centralize logs to Railway's platform for easy debugging and monitoring.
 
-*   **Mocking External Services:**  Mock external services (e.g., APIs, databases) to control their behavior during testing.
-*   **Stubbing Functions:**  Stub functions to replace their implementation with a predefined behavior.
-*   **Mocking Libraries:** Use mocking libraries (e.g., Jest, Mocha) to simplify the mocking process.
+### ✅ GOOD: Log to Standard Output (Stdout/Stderr)
 
-## 6. Common Pitfalls and Gotchas
+Railway automatically collects logs written to `stdout` and `stderr`. Use structured logging (JSON) for easier parsing and integration with external log analysis tools.
 
-### 6.1. Frequent Mistakes
+```typescript
+// logger.ts
+import pino from 'pino';
 
-*   **Incorrect Environment Variable Configuration:**  Ensure that environment variables are correctly configured and accessible in your application.
-*   **Failing to Configure Restart Policies:** Configure your services' restart policy to mitigate performance degradation and user impact when a service crashes.
-*   **Not Utilizing Private Networking:**  Make sure to use private networking for faster networking along with no egress fees for service-to-service communication within a project.
-*   **Ignoring Asynchronous Operations:**  Handle asynchronous operations correctly to prevent race conditions and unexpected behavior.
-*   **Overlooking Security Vulnerabilities:**  Stay informed about common security vulnerabilities and take steps to mitigate them.
+const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  formatters: {
+    level: (label) => ({ level: label }),
+  },
+  timestamp: pino.stdTimeFunctions.isoTime,
+});
 
-### 6.2. Edge Cases
+// ✅ GOOD: Structured JSON log for easy parsing
+logger.info({ event: 'user_login', userId: 'abc-123', ip: '192.168.1.1' }, 'User logged in');
 
-*   **Handling Edge Cases:**  Consider and handle edge cases in your code.
-*   **Input Validation:**  Validate all user inputs to prevent unexpected behavior.
-*   **Error Handling:**  Handle errors gracefully to prevent application crashes.
+// ❌ BAD: Unstructured log (hard to parse programmatically)
+// console.log('User logged in');
+```
 
-### 6.3. Version-Specific Issues
+## 8. Testing Approaches
 
-*   **Compatibility Issues:** Be aware of compatibility issues between different versions of Railway and its dependencies.
-*   **Breaking Changes:**  Stay informed about breaking changes in Railway releases and update your code accordingly.
+Integrate automated testing into your CI/CD pipeline.
 
-### 6.4. Compatibility Concerns
+### ✅ GOOD: Automated CI/CD with GitHub Actions
 
-*   **Dependency Conflicts:**  Resolve dependency conflicts between Railway and other technologies.
-*   **Integration Issues:**  Address integration issues between Railway and other services.
+Run unit, integration, and end-to-end tests automatically on every push or pull request *before* deploying to Railway. This ensures code quality and prevents regressions.
 
-### 6.5. Debugging Strategies
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to Railway
 
-*   **Logging:** Use logging to track the execution flow and identify potential issues.
-*   **Debugging Tools:** Use debugging tools to step through your code and inspect variables.
-*   **Remote Debugging:**  Use remote debugging to debug applications running on Railway servers.
-*   **Log Explorer:** Familiarize yourself with the Log Explorer so you can query logs across all of your services in one place.
+on:
+  push:
+    branches:
+      - main
 
-## 7. Tooling and Environment
-
-### 7.1. Recommended Development Tools
-
-*   **IDE (Integrated Development Environment):**  Use a suitable IDE (e.g., VS Code, IntelliJ IDEA) with appropriate extensions for your language.
-*   **CLI (Command-Line Interface):**  Use the Railway CLI for managing your Railway projects and services.
-*   **Version Control System (Git):**  Use Git for version control.
-
-### 7.2. Build Configuration
-
-*   **Build Scripts:**  Define build scripts in your `package.json` (Node.js) or equivalent file.
-*   **Dependency Management:**  Use a dependency management tool (e.g., npm, yarn, pip, maven) to manage dependencies.
-*   **Configuration Management:**  Use configuration management tools to manage configuration files across different environments.
-
-### 7.3. Linting and Formatting
-
-*   **Linters:**  Use linters (e.g., ESLint, Pylint) to enforce code style and identify potential errors.
-*   **Formatters:**  Use formatters (e.g., Prettier, Black) to automatically format your code.
-*   **Editor Integration:**  Integrate linters and formatters with your editor to provide real-time feedback.
-
-### 7.4. Deployment Best Practices
-
-*   **Automated Deployments:**  Automate the deployment process using CI/CD pipelines.
-*   **Zero-Downtime Deployments:**  Implement zero-downtime deployments to minimize downtime during deployments.  (Consider using blue-green deployments or rolling updates).
-*   **Rollbacks:** Implement a rollback strategy to quickly revert to a previous deployment in case of issues.  Be sure to check out the deployment rollback feature, in case you need to rollback to a previous deployment.
-*   **Check Suites:** Enable check suites to have Railway wait for your GitHub workflows to complete successfully before triggering a deployment.
-
-### 7.5. CI/CD Integration
-
-*   **CI/CD Pipelines:**  Set up CI/CD pipelines to automatically build, test, and deploy your application.
-*   **GitHub Actions:**  Use GitHub Actions for CI/CD.
-*   **GitLab CI:** Use GitLab CI for CI/CD.
-*   **Environment Variables:** Use environment variables to configure the CI/CD pipeline.
-*   **Webhooks and Email Notifications:** Setup webhooks and email notifications to be alerted if the deployment status of your services change.
-
-By adhering to these best practices, you can develop and deploy robust, scalable, and secure applications on the Railway platform.
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test # ✅ Ensure tests pass before deployment
+      - name: Deploy to Railway
+        if: success() # Only deploy if tests pass
+        uses: railwayapp/github-action@v3
+        with:
+          token: ${{ secrets.RAILWAY_TOKEN }}
+          service: backend # Or use railway.json for multiple services
+```

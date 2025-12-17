@@ -1,295 +1,308 @@
 ---
-description: This rule provides guidelines for best practices and coding standards when using the scikit-image library for image processing in Python. It covers code organization, performance, security, testing, and common pitfalls.
-globs: *.py
+description: This guide defines the definitive best practices for developing with scikit-image, ensuring maintainable, performant, and robust image processing code.
+globs: **/*.py
 ---
-- Always use UV when installing dependencies for faster and more deterministic dependency resolution.
-- Always use Python 3.12 or later to leverage the latest language features and performance improvements.
-- Utilize classes instead of standalone functions where appropriate for better code organization and encapsulation, especially when dealing with stateful image processing operations.
+# scikit-image Best Practices
 
-## Scikit-image Best Practices and Coding Standards
+This document outlines the mandatory guidelines for all `scikit-image` development within our team. Adhering to these rules ensures consistency, performance, and long-term maintainability of our image processing pipelines.
 
-This document outlines the best practices and coding standards for using the scikit-image library in Python for image processing. Following these guidelines will help ensure code clarity, maintainability, performance, and security.
+## 1. Core Principles
 
-### Library Information:
-- Name: scikit-image
-- Tags: python, image-processing, scientific-computing
+`scikit-image` is built on NumPy. All functions must accept and return plain `ndarray` objects.
 
-### 1. Code Organization and Structure:
+### 1.1. Immutability of Input Images
+**Always** treat input images as immutable. Functions must return new arrays, never modify inputs in-place. This prevents unexpected side effects and simplifies debugging.
 
-- **Directory Structure:**
-    - Adopt a modular directory structure to organize your scikit-image projects.
-    - Example:
-      
-      project_name/
-          ├── data/          # Contains image data (e.g., input images, sample datasets)
-          ├── src/           # Source code directory
-          │   ├── __init__.py  # Marks src as a Python package
-          │   ├── modules/
-          │   │   ├── __init__.py
-          │   │   ├── image_io.py   # Image input/output related functions
-          │   │   ├── processing.py # Core image processing algorithms
-          │   │   ├── segmentation.py # Segmentation algorithms
-          │   │   └── feature.py    # Feature extraction modules
-          │   ├── utils.py       # Utility functions
-          │   └── main.py        # Main application entry point
-          ├── tests/         # Unit and integration tests
-          │   ├── __init__.py
-          │   ├── test_image_io.py
-          │   ├── test_processing.py
-          │   └── test_segmentation.py
-          ├── notebooks/    # Jupyter notebooks for exploration
-          ├── requirements.txt # Project dependencies
-          ├── pyproject.toml   # Project metadata and build system
-          └── README.md      # Project documentation
-      
+❌ BAD: In-place modification
+```python
+import numpy as np
+from skimage import exposure
 
-- **File Naming Conventions:**
-    - Use descriptive and consistent file names.
-    - Module files: `image_io.py`, `processing.py`, `segmentation.py`
-    - Test files: `test_image_io.py`, `test_processing.py`
-    - Utility files: `utils.py`
+def normalize_image_bad(image: np.ndarray) -> None:
+    """❌ BAD: Modifies the input image directly."""
+    image[:] = exposure.rescale_intensity(image, out_range=(0, 1))
 
-- **Module Organization:**
-    - Group related functions and classes into modules.
-    - Avoid monolithic modules; break down large modules into smaller, more manageable ones.
-    - Use `__init__.py` files to define packages and control namespace exposure.
-    - Example (in `src/modules/processing.py`):
-      python
-      from skimage import filters
-      from skimage import morphology
-      import numpy as np
+img = np.array([[0, 100], [50, 200]], dtype=np.uint8)
+original_img_id = id(img)
+normalize_image_bad(img)
+print(f"Image ID changed? {id(img) != original_img_id}") # False, same object modified
+```
 
-      def apply_threshold(image, threshold_value=128):
-          """Applies a simple threshold to an image."""
-          return image > threshold_value
+✅ GOOD: Return a new array
+```python
+import numpy as np
+from skimage import exposure
+from numpy.typing import NDArray, Any
 
-      def remove_small_objects(binary_image, min_size=100):
-          """Removes small connected components from a binary image."""
-          return morphology.remove_small_objects(binary_image, min_size=min_size)
-      
+def normalize_image_good(image: NDArray[Any, Any]) -> NDArray[Any, Any]:
+    """✅ GOOD: Returns a new, processed image array."""
+    return exposure.rescale_intensity(image, out_range=(0, 1))
 
-- **Component Architecture:**
-    - Design components with clear responsibilities and well-defined interfaces.
-    - Favor composition over inheritance for greater flexibility.
-    - Use abstract base classes (ABCs) to define interfaces for components.
-    - Example:
-      python
-      from abc import ABC, abstractmethod
+img = np.array([[0, 100], [50, 200]], dtype=np.uint8)
+original_img_id = id(img)
+processed_img = normalize_image_good(img)
+print(f"Image ID changed? {id(processed_img) != original_img_id}") # True, new object returned
+```
 
-      class ImageProcessor(ABC):
-          @abstractmethod
-          def process_image(self, image):
-              pass
+### 1.2. Public API Usage
+**Always** use the documented public API. Avoid internal or private functions (prefixed with `_`) to ensure forward compatibility and stability.
 
-      class GrayscaleConverter(ImageProcessor):
-          def process_image(self, image):
-              from skimage.color import rgb2gray
-              return rgb2gray(image)
-      
+## 2. Code Organization and Structure
 
-- **Code Splitting Strategies:**
-    - Decompose complex image processing pipelines into smaller, reusable functions.
-    - Use generators or iterators for processing large images in chunks.
-    - Consider using multiprocessing or multithreading for parallel processing of image regions.
-    - Utilize lazy loading techniques for large image datasets.
+### 2.1. Modular Functions
+Break down complex image processing tasks into small, focused, and reusable functions. Each function should do one thing well.
 
-### 2. Common Patterns and Anti-patterns:
+❌ BAD: Monolithic function
+```python
+import numpy as np
+from skimage import io, filters, exposure
 
-- **Design Patterns:**
-    - **Factory Pattern:** Use factory functions or classes to create image processing objects.
-    - **Strategy Pattern:** Implement different image processing algorithms as strategies that can be swapped at runtime.
-    - **Observer Pattern:** Notify observers when an image processing operation completes.
+def process_image_bad(path: str) -> np.ndarray:
+    """❌ BAD: Combines loading, filtering, and normalization."""
+    image = io.imread(path, as_gray=True)
+    blurred = filters.gaussian(image, sigma=1)
+    normalized = exposure.rescale_intensity(blurred, out_range=(0, 1))
+    return normalized
+```
 
-- **Recommended Approaches:**
-    - Use NumPy arrays as the primary data structure for image representation.
-    - Leverage scikit-image's functional API for modular and composable image processing pipelines.
-    - Use `img_as_float` or other data type conversion utilities to ensure consistent data types.
-    - Document image processing functions and classes using docstrings.
+✅ GOOD: Chained, focused functions
+```python
+import numpy as np
+from skimage import io, filters, exposure
+from numpy.typing import NDArray, Any
 
-- **Anti-patterns and Code Smells:**
-    - **Global State:** Avoid using global variables to store image data or processing parameters.
-    - **Magic Numbers:** Use named constants instead of hardcoded numerical values.
-    - **Deeply Nested Loops:** Optimize image processing loops using NumPy's vectorized operations.
-    - **Ignoring Data Types:** Always be aware of the data types of images and intermediate results.
-    - **Over-Complicating Code:** Aim for simplicity and readability in your image processing code.
+def load_grayscale_image(path: str) -> NDArray[Any, Any]:
+    """Loads an image from path as grayscale."""
+    return io.imread(path, as_gray=True)
 
-- **State Management:**
-    - Encapsulate state within classes or data structures.
-    - Use immutable data structures where possible.
-    - Avoid modifying image data in-place unless necessary.
+def apply_gaussian_blur(image: NDArray[Any, Any], sigma: float) -> NDArray[Any, Any]:
+    """Applies a Gaussian blur to the image."""
+    return filters.gaussian(image, sigma=sigma)
 
-- **Error Handling:**
-    - Use try-except blocks to handle potential exceptions (e.g., file I/O errors, invalid image formats).
-    - Log errors and warnings using the `logging` module.
-    - Provide informative error messages to the user.
-    - Consider custom exception types for scikit-image related errors.
-    - Example:
-        python
-        import logging
-        from skimage import io
+def normalize_intensity(image: NDArray[Any, Any]) -> NDArray[Any, Any]:
+    """Rescales image intensity to [0, 1]."""
+    return exposure.rescale_intensity(image, out_range=(0, 1))
 
-        logging.basicConfig(level=logging.ERROR)
+# Usage:
+# image_path = "path/to/your/image.png"
+# img = load_grayscale_image(image_path)
+# blurred_img = apply_gaussian_blur(img, sigma=1.5)
+# final_img = normalize_intensity(blurred_img)
+```
 
-        def load_image(filepath):
-            try:
-                image = io.imread(filepath)
-                return image
-            except FileNotFoundError:
-                logging.error(f"File not found: {filepath}")
-                return None
-            except Exception as e:
-                logging.exception(f"Error loading image: {e}")
-                return None
-        
+### 2.2. Docstrings and Type Hints
+**Every** function, class, and method must have a comprehensive docstring following PEP 257 and explicit type hints following PEP 484. Use `numpy.typing.NDArray` for NumPy arrays.
 
-### 3. Performance Considerations:
+```python
+from typing import Tuple, Literal
+import numpy as np
+from numpy.typing import NDArray, DTypeLike
 
-- **Optimization Techniques:**
-    - Vectorize image processing operations using NumPy's broadcasting and array manipulation features.
-    - Use Cython to optimize performance-critical sections of code.
-    - Explore Numba for just-in-time (JIT) compilation of image processing functions.
-    - Utilize `skimage.util.apply_parallel` for parallel processing of image regions.
-    - Example using NumPy vectorization:
-      python
-      import numpy as np
+def convert_to_float(
+    image: NDArray[DTypeLike, Any],
+    *,
+    force_copy: bool = False
+) -> NDArray[np.float64, Any]:
+    """Converts an image to floating-point representation.
 
-      def brighten_image(image, factor=1.5):
-          """Brightens an image by multiplying each pixel by a factor."""
-          return np.clip(image * factor, 0, 255).astype(image.dtype) # Clip values to valid range
-      
+    Parameters
+    ----------
+    image : NDArray
+        The input image array.
+    force_copy : bool, optional
+        If True, always return a new array, even if the dtype is already float.
+        Defaults to False.
 
-- **Memory Management:**
-    - Use appropriate data types to minimize memory usage (e.g., `uint8` for grayscale images).
-    - Release large image arrays when they are no longer needed.
-    - Avoid creating unnecessary copies of image data.
-    - Consider using memory-mapped arrays for very large images.
+    Returns
+    -------
+    NDArray[np.float64, Any]
+        The image converted to float64, with pixel values scaled to [0, 1]
+        if the original dtype was integer.
+    """
+    # Implementation details...
+    return image.astype(np.float64) # Simplified for example
+```
 
-- **Rendering Optimization:**
-    - Optimize image display using appropriate colormaps and scaling.
-    - Use hardware acceleration (e.g., OpenGL) for faster rendering.
+## 3. Common Patterns and Anti-patterns
 
-- **Bundle Size Optimization:**
-    - Minimize dependencies in your scikit-image projects.
-    - Use tree shaking to remove unused code from your bundles.
-    - Compress image assets using appropriate compression algorithms.
+### 3.1. Image Data Types and Ranges
+**Always** process images in floating-point format (e.g., `np.float64`) with values normalized to `[0, 1]`. Convert to `uint8` or `uint16` only for display or saving. Use `skimage.util.img_as_float` for reliable conversion.
 
-- **Lazy Loading:**
-    - Load large images only when they are needed.
-    - Use generators or iterators to process images in chunks.
-    - Implement caching mechanisms to avoid redundant image loading.
+❌ BAD: Processing with `uint8`
+```python
+import numpy as np
+from skimage import filters
 
-### 4. Security Best Practices:
+def process_uint8_bad(image: np.ndarray) -> np.ndarray:
+    """❌ BAD: Operations on uint8 can lead to clipping and precision loss."""
+    # e.g., subtracting 50 from a pixel value of 20 results in 0, not -30
+    return filters.gaussian(image, sigma=1) # Gaussian filter expects float for proper behavior
+```
 
-- **Common Vulnerabilities:**
-    - **Denial-of-Service (DoS) Attacks:** Protect against DoS attacks by limiting the size of input images.
-    - **Code Injection:** Sanitize user-provided image processing parameters to prevent code injection attacks.
+✅ GOOD: Processing with `float`
+```python
+import numpy as np
+from skimage import filters, util
+from numpy.typing import NDArray, Any
 
-- **Input Validation:**
-    - Validate the format, size, and data type of input images.
-    - Check for malicious image headers or metadata.
-    - Sanitize user-provided parameters to prevent code injection.
-    - Example:
-      python
-      from skimage import io
+def process_float_good(image: NDArray[Any, Any]) -> NDArray[Any, Any]:
+    """✅ GOOD: Converts to float for accurate processing."""
+    float_image = util.img_as_float(image) # Converts to float64, scales to [0, 1]
+    processed_float = filters.gaussian(float_image, sigma=1)
+    return processed_float
+```
 
-      def process_image(filepath, resize_factor):
-          if not isinstance(resize_factor, (int, float)):
-              raise ValueError("Resize factor must be a number.")
-          if resize_factor <= 0:
-              raise ValueError("Resize factor must be positive.")
+### 3.2. Channel Order
+**Always** use `(Height, Width, Channels)` (HWC) order for color images to maintain consistency with `matplotlib` and common deep learning frameworks. `scikit-image` functions generally expect channels as the last dimension.
 
-          try:
-              image = io.imread(filepath)
-              # Perform image processing operations using resize_factor
-          except Exception as e:
-              print(f"Error processing image: {e}")
-      
+### 3.3. Loading and Saving Images
+**Always** use `skimage.io.imread` and `skimage.io.imsave`. These functions handle various image formats and integrate well with `scikit-image`'s `ndarray` expectations.
 
-- **Authentication and Authorization:**
-    - Implement authentication and authorization mechanisms to control access to image processing resources.
-    - Use secure protocols (e.g., HTTPS) for API communication.
+```python
+from skimage import io
+import numpy as np
+from numpy.typing import NDArray, Any
 
-- **Data Protection:**
-    - Encrypt sensitive image data at rest and in transit.
-    - Implement access control policies to protect image data.
-    - Use secure storage mechanisms for image data.
+def load_and_save_image(input_path: str, output_path: str) -> None:
+    """Loads an image, processes it (placeholder), and saves it."""
+    image: NDArray[Any, Any] = io.imread(input_path)
+    # Perform processing here (e.g., convert_to_float, apply_filter, etc.)
+    processed_image = image # Placeholder
+    io.imsave(output_path, processed_image)
+```
 
-- **Secure API Communication:**
-    - Use HTTPS for all API communication.
-    - Implement rate limiting to prevent abuse.
-    - Use input validation to prevent injection attacks.
+## 4. Performance Considerations
 
-### 5. Testing Approaches:
+### 4.1. Vectorized Operations
+**Always** leverage NumPy's vectorized operations. Avoid explicit Python loops over pixel values, as they are significantly slower.
 
-- **Unit Testing:**
-    - Write unit tests for individual functions and classes.
-    - Use mocking and stubbing to isolate components during testing.
-    - Test edge cases and boundary conditions.
+❌ BAD: Pixel-wise loop
+```python
+import numpy as np
 
-- **Integration Testing:**
-    - Write integration tests to verify the interaction between components.
-    - Test complex image processing pipelines.
-    - Use realistic test data.
+def invert_image_bad(image: np.ndarray) -> np.ndarray:
+    """❌ BAD: Slow pixel-wise iteration."""
+    inverted = np.zeros_like(image)
+    for r in range(image.shape[0]):
+        for c in range(image.shape[1]):
+            inverted[r, c] = 255 - image[r, c] # Assuming uint8
+    return inverted
+```
 
-- **End-to-End Testing:**
-    - Write end-to-end tests to verify the entire application workflow.
-    - Use automated testing frameworks (e.g., Selenium).
+✅ GOOD: Vectorized operation
+```python
+import numpy as np
+from numpy.typing import NDArray, Any
 
-- **Test Organization:**
-    - Organize tests into separate directories for unit, integration, and end-to-end tests.
-    - Use descriptive test names.
-    - Follow a consistent testing style.
+def invert_image_good(image: NDArray[Any, Any]) -> NDArray[Any, Any]:
+    """✅ GOOD: Fast vectorized operation."""
+    # Works for both uint8 (255 - pixel) and float (1.0 - pixel)
+    return image.max() - image
+```
 
-- **Mocking and Stubbing:**
-    - Use mocking libraries (e.g., `unittest.mock`) to replace external dependencies with mock objects.
-    - Use stubbing to provide predefined outputs for specific function calls.
+### 4.2. Memory Management
+Be mindful of memory usage with large images. Operations that create many intermediate copies can consume significant RAM. Where possible, use functions that operate in-place (if the function is designed for it and explicitly documented to do so, which is rare in `scikit-image`'s public API for image data).
 
-### 6. Common Pitfalls and Gotchas:
+## 5. Common Pitfalls and Gotchas
 
-- **Data Type Issues:**
-    - Be aware of the data types of images and intermediate results.
-    - Use `img_as_float` or other data type conversion utilities to ensure consistent data types.
-    - Pay attention to data type ranges (e.g., 0-255 for `uint8`, 0.0-1.0 for float).
+### 5.1. Incorrect Data Type Scaling
+Forgetting to convert to float `[0, 1]` before processing, or failing to convert back to `uint8` `[0, 255]` (or `uint16` `[0, 65535]`) before saving, leads to incorrect results or corrupted images.
 
-- **Coordinate Conventions:**
-    - Understand the coordinate conventions used by scikit-image (row, col) and NumPy.
+❌ BAD: Saving float image directly
+```python
+import numpy as np
+from skimage import io, util
 
-- **Memory Consumption:**
-    - Avoid creating unnecessary copies of image data.
-    - Process large images in chunks or tiles.
+float_img = np.random.rand(100, 100) # Image in [0, 1] range
+io.imsave("bad_float_image.png", float_img) # Will save as uint8, clipping values
+```
 
-- **Version Compatibility:**
-    - Be aware of version-specific API changes and deprecations.
-    - Check scikit-image's changelog for breaking changes.
+✅ GOOD: Converting to appropriate integer type before saving
+```python
+import numpy as np
+from skimage import io, util
 
-- **Image I/O Issues:**
-    - Use appropriate image formats for your application.
-    - Handle file I/O errors gracefully.
+float_img = np.random.rand(100, 100)
+uint8_img = util.img_as_ubyte(float_img) # Converts float [0, 1] to uint8 [0, 255]
+io.imsave("good_uint8_image.png", uint8_img)
+```
 
-### 7. Tooling and Environment:
+### 5.2. Misinterpreting `skimage.data`
+`skimage.data` provides example images. These are often `uint8` or `uint16`. **Always** convert them to `float` using `util.img_as_float` before performing image processing operations.
 
-- **Recommended Development Tools:**
-    - IDE: VS Code, PyCharm
-    - Debugger: pdb, ipdb
-    - Profiler: cProfile, line_profiler
+```python
+from skimage import data, util, filters
+import matplotlib.pyplot as plt
 
-- **Build Configuration:**
-    - Use `pyproject.toml` to manage project metadata and build dependencies.
-    - Use `requirements.txt` to specify project dependencies.
+# Load example image
+coins = data.coins()
 
-- **Linting and Formatting:**
-    - Use a linter (e.g., flake8, pylint) to enforce coding style and detect errors.
-    - Use a formatter (e.g., black, autopep8) to automatically format code.
-    - Configure your IDE to run linters and formatters automatically.
+# Process directly (BAD) vs. convert first (GOOD)
+# bad_edges = filters.sobel(coins) # Sobel expects float for proper gradient calculation
+good_edges = filters.sobel(util.img_as_float(coins))
 
-- **Deployment:**
-    - Use virtual environments to isolate project dependencies.
-    - Containerize your scikit-image applications using Docker.
-    - Deploy your applications to cloud platforms (e.g., AWS, Azure, GCP).
+fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+axes[0].imshow(coins, cmap='gray')
+axes[0].set_title('Original (uint8)')
+axes[1].imshow(good_edges, cmap='gray') # Displaying float [0, 1] is fine for matplotlib
+axes[1].set_title('Sobel Edges (float)')
+plt.show()
+```
 
-- **CI/CD Integration:**
-    - Use a CI/CD pipeline (e.g., GitHub Actions, GitLab CI, Jenkins) to automate testing, building, and deployment.
-    - Run linters, formatters, and tests in your CI/CD pipeline.
-    - Use code coverage tools to measure the effectiveness of your tests.
+## 6. Virtual Environments and Packaging
 
-By adhering to these best practices, you can develop robust, maintainable, and performant image processing applications using the scikit-image library.
+### 6.1. Virtual Environments
+**Always** use a virtual environment (`venv` or `conda`) for `scikit-image` projects. This ensures reproducible environments and avoids dependency conflicts.
+
+```bash
+# Create a virtual environment
+python -m venv .venv
+
+# Activate it
+# On macOS/Linux:
+source .venv/bin/activate
+# On Windows:
+.venv\Scripts\activate
+
+# Install scikit-image and other dependencies
+pip install -U scikit-image numpy scipy matplotlib
+```
+
+### 6.2. Packaging
+For project-specific dependencies, use `pyproject.toml` or `requirements.txt`. For development, install in editable mode:
+
+```bash
+# After activating your virtual environment
+pip install -e .
+```
+
+## 7. Testing Approaches
+
+### 7.1. Unit Tests
+**Every** new function and significant change must be covered by unit tests using `pytest`. Tests should verify correctness across various inputs, edge cases, and data types. Use `numpy.testing.assert_array_equal` or `assert_allclose` for comparing image arrays.
+
+```python
+import numpy as np
+from numpy.testing import assert_array_equal, assert_allclose
+from skimage import util
+import pytest
+
+# Assuming normalize_intensity is defined as in Section 2.1
+def test_normalize_intensity_uint8():
+    img = np.array([[0, 127, 255]], dtype=np.uint8)
+    expected = np.array([[0.0, 0.5, 1.0]], dtype=np.float64)
+    result = normalize_intensity(util.img_as_float(img))
+    assert_allclose(result, expected)
+
+def test_normalize_intensity_float():
+    img = np.array([[0.0, 0.5, 1.0]], dtype=np.float64)
+    expected = np.array([[0.0, 0.5, 1.0]], dtype=np.float64)
+    result = normalize_intensity(img)
+    assert_allclose(result, expected)
+
+def test_normalize_intensity_empty_image():
+    img = np.array([], dtype=np.uint8).reshape(0, 0)
+    expected = np.array([], dtype=np.float64).reshape(0, 0)
+    result = normalize_intensity(util.img_as_float(img))
+    assert_allclose(result, expected)
+```

@@ -1,306 +1,330 @@
 ---
-description: This rule file provides comprehensive best practices for Django's Object-Relational Mapper (ORM), covering code organization, performance, security, testing, and common pitfalls. It aims to guide developers in building efficient, maintainable, and secure Django applications.
-globs: *.py
+description: This guide provides opinionated, actionable best practices for writing efficient, maintainable, and performant Django ORM code, focusing on common pitfalls and modern patterns.
+globs: **/*.py
 ---
-## 1. Code Organization and Structure
-
-### 1.1. Directory Structure Best Practices
-
-- **Application-Centric Structure:** Organize your Django project around applications (apps), where each app represents a specific feature or module.
-- **Dedicated 'models' Module:** Keep all model definitions within the `models.py` file of each app.
-- **Separate Queries:** For complex queries, consider creating a `queries.py` or `managers.py` file within your app to house custom querysets and managers.
-- **Consistent Naming:** Use consistent naming conventions for app and model names.
-
-
-myproject/
- ├── myproject/
- │   ├── __init__.py
- │   ├── asgi.py
- │   ├── settings.py
- │   ├── urls.py
- │   ├── wsgi.py
- ├── app1/
- │   ├── __init__.py
- │   ├── admin.py
- │   ├── apps.py
- │   ├── models.py
- │   ├── managers.py  # Custom managers and querysets
- │   ├── views.py
- │   ├── urls.py
- │   ├── forms.py
- │   ├── tests.py
- │   └── migrations/
- ├── app2/
- │   └── ...
- └── manage.py
-
-
-### 1.2. File Naming Conventions
-
-- **Models:** Use singular nouns and CamelCase (e.g., `UserProfile`, `BlogPost`).
-- **Fields:** Use lowercase with underscores (snake_case, e.g., `first_name`, `date_joined`).
-- **Managers/Querysets:** Use descriptive names related to their functionality (e.g., `ActiveUsersManager`, `PublishedPostsQuerySet`).
-- **Files:** Use lowercase with underscores (snake_case, e.g., `models.py`, `forms.py`, `urls.py`).
-
-### 1.3. Module Organization
-
-- **Keep Models Concise:** Limit the number of models in each app to a manageable amount (ideally under 10). If an app becomes too large, refactor it into smaller, more focused apps.
-- **Avoid Circular Imports:** Be mindful of circular dependencies between models and other modules within the same app or across apps.  Use string references in `ForeignKey` and `ManyToManyField` definitions to avoid immediate import requirements.
-- **Utilize Abstract Base Classes:** For common fields across multiple models, define an abstract base class and inherit from it. This promotes code reuse and reduces redundancy. Don't forget to set `abstract = True` in the `Meta` class.
-- **Consider Proxy Models:** Use proxy models (`proxy = True` in `Meta`) to change a model's behavior without altering the database schema. This is useful for adding methods or changing the default ordering.
-
-### 1.4. Component Architecture
-
-- **DRY (Don't Repeat Yourself):** Create reusable components such as custom model fields, managers, and querysets.  
-- **Model Mixins:** Use model mixins to add common functionality to multiple models (e.g., a mixin for soft deletion or timestamping).
-- **Form Abstraction:** Create reusable form classes and widgets for data input and validation.
-- **Template Tags and Filters:** Develop custom template tags and filters to simplify common tasks in templates related to model data.
-
-### 1.5. Code Splitting Strategies
-
-- **App-Based Splitting:** Organize models and related code within distinct Django apps.
-- **Manager-Based Splitting:** Divide complex queries into custom managers and querysets.
-- **Mixin-Based Splitting:** Utilize mixins to compartmentalize functionality across models.
-- **Signal-Based Splitting:** Implement signals for decoupling operations, such as triggering tasks when a model is saved or deleted.
-
-## 2. Common Patterns and Anti-patterns
-
-### 2.1. Design Patterns
-
-- **Repository Pattern:** Abstract data access logic behind a repository interface, allowing you to switch between different data sources without modifying the rest of your application.
-- **Unit of Work Pattern:** Group multiple database operations into a single transaction to ensure atomicity and consistency.
-- **Specification Pattern:** Encapsulate query logic into reusable specification objects, allowing you to combine and reuse queries across different parts of your application.
-- **Model Decorators:** Use decorators to add functionality to models without modifying the original model class. Useful for things like caching calculated properties.
-
-### 2.2. Recommended Approaches for Common Tasks
-
-- **Filtering Data:** Use `filter()` and `exclude()` for efficient data retrieval.
-- **Ordering Data:** Utilize `order_by()` to specify the order of results.
-- **Aggregating Data:** Employ `aggregate()` to calculate summary statistics.
-- **Creating and Updating Objects:** Use `create()` and `save()` for object manipulation.
-- **Deleting Objects:** Use `delete()` for removing objects.
-- **Prefetch Related:** Use `select_related` for ForeignKey and OneToOneField relationships, and `prefetch_related` for ManyToManyField and reverse ForeignKey relationships.
-
-### 2.3. Anti-patterns and Code Smells
-
-- **Overusing `raw()` Queries:** Prefer Django ORM methods over raw SQL queries to maintain database abstraction and security.
-- **Ignoring Database Indexes:** Neglecting to add indexes to frequently queried columns can lead to significant performance bottlenecks. Use `db_index = True` and `Index` in Meta to specify indices.
-- **Using `null=True` for String-Based Fields:** Avoid `null=True` for `CharField` and `TextField` fields. Use `blank=True` and an empty string (`''`) instead.
-- **Creating Large Querysets without Pagination:** Avoid retrieving large datasets without pagination. Use Django's `Paginator` to break results into manageable chunks.
-- **Performing Logic in Templates:** Keep templates focused on presentation. Move complex logic to views or custom template tags.
-- **N+1 Query Problem:** Accessing related objects in a loop can cause the N+1 query problem. Use `select_related()` and `prefetch_related()` to mitigate this.
-- **Inefficient Use of Exists/Count:** Prefer `exists()` over `count()` when simply checking for the existence of objects.
-- **Unnecessary Database Hits:** Optimize data access patterns to minimize the number of database queries.
-
-### 2.4. State Management
-
-- **Database as Primary State:** Rely on the database as the single source of truth for application state.
-- **Session Management:** Utilize Django's session framework for storing user-specific state.
-- **Caching:** Implement caching strategies to reduce database load and improve response times.
-- **Avoid Global Mutable State:**  Minimize the use of global mutable state, as it can lead to unexpected behavior and concurrency issues.
-
-### 2.5. Error Handling
-
-- **Catch Database Exceptions:** Handle database exceptions (e.g., `IntegrityError`, `OperationalError`) gracefully.
-- **Use Transactions:** Wrap multiple database operations in a transaction to ensure atomicity.
-- **Log Errors:** Log errors and exceptions for debugging and monitoring purposes.  Use `logger.exception()` to capture the traceback.
-- **Custom Exception Handling Middleware:** Consider writing custom middleware to catch and handle database errors at a global level, providing user-friendly error messages.
-- **Validate Data Before Saving:** Always validate data before saving it to the database to prevent errors and data inconsistencies. Use Django's built-in validators or create custom validators.
-
-## 3. Performance Considerations
-
-### 3.1. Optimization Techniques
-
-- **Query Optimization:** Use `select_related` and `prefetch_related` to reduce the number of database queries.
-- **Indexing:** Add indexes to frequently queried columns.
-- **Caching:** Implement caching strategies for frequently accessed data.
-- **Pagination:** Use pagination for large datasets.
-- **Batch Operations:** Use `bulk_create`, `bulk_update` and `bulk_delete` for bulk operations.
-- **Defer/Only:** use `defer` to exclude fields from the query or `only` to only include specific fields in the query.
-- **Conditional Expressions:** Use `Case`, `When`, and `Value` within queries to perform conditional logic directly in the database.
-
-### 3.2. Memory Management
-
-- **Limit Queryset Size:** Avoid retrieving large datasets into memory. Use pagination or generators.
-- **Use Generators:** For processing large datasets, use generators to process data in chunks.
-- **Garbage Collection:** Understand Python's garbage collection mechanisms and how they affect memory usage.
-- **Profiling:** Use profiling tools to identify memory leaks and optimize memory usage.
-
-### 3.3. Rendering Optimization
-
-- **Template Caching:** Cache frequently used templates to reduce rendering time.
-- **Context Processors:** Minimize the data passed to templates via context processors.
-- **Lazy Loading:** Use lazy loading for images and other resources to improve initial page load time.  Consider using template tags like `{% static %}` and `{% get_static_prefix %}` effectively.
-
-### 3.4. Bundle Size Optimization
-
-- **Remove Unused Code:** Eliminate unused models, fields, and queries.
-- **Optimize Static Files:** Minify and compress static files (CSS, JavaScript, images).
-- **Code Splitting:**  Split JavaScript and CSS into smaller chunks for efficient loading.
-
-### 3.5. Lazy Loading
-
-- **Load Related Data on Demand:** Use lazy loading for related data to improve initial performance. Consider using Django Rest Framework serializers with `depth=0` and selectively increasing the depth when needed.
-- **Database Views:** Create database views for complex queries to improve performance.
-- **QuerySet Iterators:** Instead of converting large querysets into lists, iterate over them using `.iterator()` for memory efficiency.
-
-## 4. Security Best Practices
-
-### 4.1. Common Vulnerabilities and Prevention
-
-- **SQL Injection:** Prevent SQL injection by using Django ORM methods instead of raw SQL queries. Always parameterize your queries.
-- **Cross-Site Scripting (XSS):** Sanitize user input and escape output in templates.
-- **Cross-Site Request Forgery (CSRF):** Use Django's CSRF protection mechanisms.
-- **Authentication and Authorization:** Implement robust authentication and authorization mechanisms.
-- **Session Hijacking:** Secure sessions using HTTPS and appropriate session settings.
-
-### 4.2. Input Validation
-
-- **Use Django Forms:** Employ Django Forms for validating user input.
-- **Sanitize User Input:** Sanitize user input to prevent XSS attacks.
-- **Validate Data Types:** Validate data types to prevent database errors.
-- **Limit Input Length:** Restrict input length to prevent buffer overflows.
-- **Custom Validators:** Create custom validators for complex validation logic.
-- **Consider using DRF Serializers:** Use Django Rest Framework Serializers to add an extra layer of validation to your models and data.
-
-### 4.3. Authentication and Authorization
-
-- **Use Django's Built-in Authentication:** Leverage Django's built-in authentication framework.
-- **Implement Role-Based Access Control (RBAC):** Define roles and permissions for different user types.
-- **Enforce Password Policies:** Enforce strong password policies.
-- **Use Multi-Factor Authentication (MFA):** Implement MFA for sensitive accounts.
-- **Rate Limiting:** Implement rate limiting to prevent brute-force attacks.
-
-### 4.4. Data Protection
-
-- **Use HTTPS:** Use HTTPS to encrypt data in transit.
-- **Encrypt Sensitive Data:** Encrypt sensitive data at rest.
-- **Store Passwords Securely:** Store passwords using a strong hashing algorithm (e.g., bcrypt, Argon2).
-- **Regularly Back Up Data:** Regularly back up your database.
-- **Audit Logging:** Implement audit logging to track user activity and data changes.
-
-### 4.5. Secure API Communication
-
-- **Use API Keys:** Use API keys for authenticating API requests.
-- **Implement OAuth 2.0:** Implement OAuth 2.0 for secure API authorization.
-- **Validate API Input:** Validate API input to prevent injection attacks.
-- **Rate Limiting:** Implement rate limiting to prevent API abuse.
-- **API Versioning:** Use API versioning to manage changes to your API.
-
-## 5. Testing Approaches
-
-### 5.1. Unit Testing
-
-- **Test Model Methods:** Unit test model methods to ensure they behave as expected.
-- **Test Custom Managers:** Unit test custom managers to verify their query logic.
-- **Test Validators:** Unit test validators to ensure they correctly validate data.
-- **Mock Database Dependencies:** Use mocking to isolate model tests from the database.
-
-### 5.2. Integration Testing
-
-- **Test Views and Models:** Integrate test views and models to ensure they work together correctly.
-- **Test Forms and Models:** Integrate test forms and models to verify data validation and persistence.
-- **Use Test Fixtures:** Use test fixtures to create consistent test data.
-- **Test Database Interactions:** Test database interactions to ensure they are efficient and correct.
-
-### 5.3. End-to-End Testing
-
-- **Test User Workflows:** End-to-end test user workflows to ensure they are functional and user-friendly.
-- **Test API Endpoints:** End-to-end test API endpoints to ensure they are secure and functional.
-- **Use Selenium or Similar Tools:** Use Selenium or similar tools for automating end-to-end tests.
-- **Test Across Different Browsers:** Test across different browsers to ensure compatibility.
-
-### 5.4. Test Organization
-
-- **Organize Tests by App:** Organize tests by app to improve maintainability.
-- **Use Descriptive Test Names:** Use descriptive test names to clearly indicate what is being tested.
-- **Follow a Consistent Test Structure:** Follow a consistent test structure to improve readability.
-- **Use Test Runners:** Use test runners to automate test execution.
-
-### 5.5. Mocking and Stubbing
-
-- **Mock Database Queries:** Mock database queries to isolate tests from the database.
-- **Stub External Dependencies:** Stub external dependencies to control test environments.
-- **Use Django's `override_settings` Decorator:** Use Django's `override_settings` decorator to modify settings during tests.
-- **Use `patch` for Mocking:** Use `unittest.mock.patch` for mocking objects and functions.
-
-## 6. Common Pitfalls and Gotchas
-
-### 6.1. Frequent Mistakes
-
-- **Not Using Indexes:** Forgetting to add indexes to frequently queried columns.
-- **Overusing `null=True`:** Using `null=True` for string-based fields.
-- **Ignoring Database Transactions:** Not using database transactions for critical operations.
-- **Creating Large Querysets:** Creating large querysets without pagination.
-- **Performing Logic in Templates:** Performing logic in templates instead of views.
-- **N+1 Query Problem:** Not addressing the N+1 query problem.
-
-### 6.2. Edge Cases
-
-- **Unicode Handling:** Handling Unicode characters correctly.
-- **Time Zones:** Dealing with time zones accurately.
-- **Concurrency Issues:** Managing concurrency issues in multi-threaded environments.
-- **Database-Specific Differences:** Handling database-specific differences.
-
-### 6.3. Version-Specific Issues
-
-- **Deprecated Features:** Being aware of deprecated features and migrating to newer alternatives.
-- **Compatibility Changes:** Handling compatibility changes between Django versions.
-
-### 6.4. Compatibility Concerns
-
-- **Python Version:** Ensuring compatibility with the supported Python versions.
-- **Database Compatibility:** Ensuring compatibility with the chosen database.
-- **Third-Party Libraries:** Ensuring compatibility with third-party libraries.
-
-### 6.5. Debugging
-
-- **Use Django's Debug Toolbar:** Use Django's Debug Toolbar for profiling and debugging.
-- **Inspect Database Queries:** Inspect database queries to identify performance bottlenecks.
-- **Log Errors and Exceptions:** Log errors and exceptions for debugging purposes.
-- **Use a Debugger:** Use a debugger to step through code and inspect variables.
-- **Read Stack Traces Carefully:** Read stack traces carefully to understand the source of errors.
-
-## 7. Tooling and Environment
-
-### 7.1. Recommended Development Tools
-
-- **IDE:** PyCharm, VS Code with Python extension.
-- **Database Client:** pgAdmin, MySQL Workbench, DB Browser for SQLite.
-- **Virtual Environment Manager:** virtualenv, pipenv, conda.
-- **Debug Toolbar:** Django Debug Toolbar.
-- **Profiling Tools:** cProfile, line_profiler.
-
-### 7.2. Build Configuration
-
-- **Use a Virtual Environment:** Use a virtual environment to isolate project dependencies.
-- **Specify Dependencies:** Specify dependencies in a `requirements.txt` or `Pipfile`.
-- **Use a Build System:** Use a build system (e.g., Make, Fabric) to automate build tasks.
-- **Configure Static File Handling:** Configure static file handling correctly for production.
-
-### 7.3. Linting and Formatting
-
-- **Use a Linter:** Use a linter (e.g., pylint, flake8) to enforce code style.
-- **Use a Formatter:** Use a formatter (e.g., black, autopep8) to automatically format code.
-- **Configure Editor Integration:** Configure editor integration to automatically lint and format code on save.
-- **Follow PEP 8:** Adhere to PEP 8 style guidelines.
-
-### 7.4. Deployment
-
-- **Use a Production-Ready Web Server:** Use a production-ready web server (e.g., Gunicorn, uWSGI).
-- **Use a Reverse Proxy:** Use a reverse proxy (e.g., Nginx, Apache) to handle static files and load balancing.
-- **Use a Database Server:** Use a dedicated database server (e.g., PostgreSQL, MySQL).
-- **Configure Caching:** Configure caching to improve performance.
-- **Secure Deployment:** Secure the deployment environment with appropriate firewalls and security settings.
-- **Use Environment Variables:** Store sensitive configuration data (e.g., database passwords, API keys) in environment variables.
-
-### 7.5. CI/CD Integration
-
-- **Use a CI/CD System:** Use a CI/CD system (e.g., Jenkins, Travis CI, GitLab CI) to automate testing and deployment.
-- **Run Tests Automatically:** Run tests automatically on every commit.
-- **Deploy Automatically:** Deploy automatically on successful builds.
-- **Use Infrastructure as Code:** Use infrastructure as code (e.g., Terraform, Ansible) to automate infrastructure provisioning.
-
----
-
-By consistently applying these best practices, you'll establish a robust foundation for building high-quality Django applications that are performant, maintainable, and secure.
+# django-orm Best Practices
+
+These rules are your definitive guide for writing robust and performant Django ORM code. Adhere to them strictly to ensure consistency, efficiency, and maintainability across our projects.
+
+## 1. Model Structure and Naming Conventions
+
+Always follow the official Django style guide for models. Consistency is paramount.
+
+*   **Naming**:
+    *   **Models**: `PascalCase` and singular.
+    *   **Fields**: `snake_case`.
+*   **Ordering**: Maintain a consistent order within your model definitions.
+
+```python
+# ❌ BAD: Inconsistent naming, poor ordering
+from django.db import models
+
+class books(models.Model):
+    BookTitle = models.CharField(max_length=200)
+    author_name = models.CharField(max_length=100)
+    def __str__(self):
+        return self.BookTitle
+    class Meta:
+        ordering = ['BookTitle']
+
+# ✅ GOOD: Adheres to conventions
+from django.db import models
+from django.urls import reverse
+
+class Book(models.Model):
+    # 1. Choices (if any)
+    class Status(models.TextChoices):
+        DRAFT = "DR", "Draft"
+        PUBLISHED = "PB", "Published"
+
+    # 2. Database Fields
+    title = models.CharField(max_length=200, verbose_name="Book Title")
+    author = models.ForeignKey('Author', on_delete=models.CASCADE, related_name="books")
+    status = models.CharField(max_length=2, choices=Status.choices, default=Status.DRAFT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # 3. Custom Managers (if any)
+    # objects = BookManager()
+
+    # 4. Meta class
+    class Meta:
+        verbose_name = "book"
+        verbose_name_plural = "books"
+        ordering = ["-created_at", "title"] # Default ordering
+        indexes = [
+            models.Index(fields=['title']),
+            models.Index(fields=['author', 'status']),
+        ]
+
+    # 5. __str__ method
+    def __str__(self):
+        return f"{self.title} by {self.author.name}"
+
+    # 6. save() method (if overridden)
+    # def save(self, *args, **kwargs):
+    #     super().save(*args, **kwargs)
+
+    # 7. get_absolute_url() method
+    def get_absolute_url(self):
+        return reverse("book_detail", args=[str(self.id)])
+
+    # 8. Custom methods (if any)
+    def is_published(self):
+        return self.status == self.Status.PUBLISHED
+```
+
+## 2. Explicit Field Definitions
+
+Always be explicit with `null`, `blank`, `verbose_name`, and `related_name`. Avoid relying on Django's defaults for clarity and future maintainability.
+
+*   **`null=True` vs `blank=True`**: `null` affects the database (can store `NULL`), `blank` affects form validation (can be empty). Use them correctly.
+*   **`verbose_name`**: Provide human-readable names for fields.
+*   **`related_name`**: Always define for `ForeignKey`, `ManyToManyField`, `OneToOneField` to avoid `_set` suffixes and prevent naming clashes. Use a plural, descriptive name.
+*   **`choices`**: Use `TextChoices` or `IntegerChoices` for readability and type safety.
+
+```python
+# ❌ BAD: Implicit defaults, confusing related_name
+class Product(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField() # blank=False, null=False implicitly
+    category = models.ForeignKey('Category', on_delete=models.CASCADE) # related_name defaults to 'product_set'
+
+# ✅ GOOD: Explicit, clear, and maintainable
+from django.db import models
+
+class Category(models.Model):
+    name = models.CharField(max_length=50, unique=True, verbose_name="Category Name")
+
+    def __str__(self):
+        return self.name
+
+class Product(models.Model):
+    class AvailabilityStatus(models.TextChoices):
+        IN_STOCK = "IS", "In Stock"
+        OUT_OF_STOCK = "OOS", "Out of Stock"
+        PRE_ORDER = "PO", "Pre-Order"
+
+    name = models.CharField(max_length=100, verbose_name="Product Name")
+    description = models.TextField(blank=True, null=True, verbose_name="Product Description") # Can be empty in forms and DB
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Unit Price")
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT, # Prevent accidental deletion of categories with products
+        related_name="products", # Explicit and clear reverse relation
+        verbose_name="Product Category"
+    )
+    status = models.CharField(
+        max_length=3,
+        choices=AvailabilityStatus.choices,
+        default=AvailabilityStatus.IN_STOCK,
+        verbose_name="Availability Status"
+    )
+
+    def __str__(self):
+        return self.name
+```
+
+## 3. Query Optimization: Avoid N+1 Queries
+
+The N+1 query problem is a major performance killer. Always pre-fetch related data.
+
+*   **`select_related()`**: For `ForeignKey` and `OneToOneField` relationships (single object joins). Fetches related objects in the *same* SQL query.
+*   **`prefetch_related()`**: For `ManyToManyField` and reverse `ForeignKey` relationships (many-to-many or many-to-one). Performs a *separate* query for each related table and then joins them in Python.
+
+```python
+# ❌ BAD: N+1 queries
+products = Product.objects.all()
+for product in products:
+    print(f"{product.name} ({product.category.name})") # Accessing product.category.name hits DB for EACH product
+
+# ✅ GOOD: Single query for products and their categories
+products = Product.objects.select_related('category').all()
+for product in products:
+    print(f"{product.name} ({product.category.name})") # Category is already loaded
+
+# ❌ BAD: N+1 queries for many-to-many
+book_authors = Book.objects.all()
+for book in book_authors:
+    authors = ", ".join([author.name for author in book.authors.all()]) # Hits DB for EACH book's authors
+
+# ✅ GOOD: Efficiently prefetch many-to-many relationships
+book_authors = Book.objects.prefetch_related('authors').all()
+for book in book_authors:
+    authors = ", ".join([author.name for author in book.authors.all()]) # Authors are pre-loaded
+```
+
+## 4. Efficient Data Retrieval
+
+Retrieve only the data you need. Avoid hydrating full model instances when not necessary.
+
+*   **`values()` / `values_list()`**: Use when you only need a subset of fields and don't require full model instances. `values_list(..., flat=True)` for single column lists.
+*   **`exists()` / `count()`**: Use `exists()` when you only need to check if any records match a query, and `count()` when you need the total number. Avoid `len(queryset)` for counting.
+
+```python
+# ❌ BAD: Retrieves full model objects, then extracts titles
+book_titles = [book.title for book in Book.objects.all()]
+
+# ✅ GOOD: Retrieves only the 'title' field, more efficient
+book_titles = Book.objects.values_list('title', flat=True)
+
+# ❌ BAD: Inefficiently checks for existence
+if len(Book.objects.filter(author__name="Jane Austen")) > 0:
+    print("Jane Austen has books.")
+
+# ✅ GOOD: Efficiently checks for existence
+if Book.objects.filter(author__name="Jane Austen").exists():
+    print("Jane Austen has books.")
+
+# ❌ BAD: Retrieves all objects to count
+total_books = len(Book.objects.all())
+
+# ✅ GOOD: Performs a COUNT(*) query
+total_books = Book.objects.count()
+```
+
+## 5. Database-Level Operations
+
+Leverage the database for aggregations and atomic updates.
+
+*   **`annotate()` / `aggregate()`**: Perform calculations (e.g., `Count`, `Sum`, `Avg`) directly in the database.
+*   **`F()` expressions**: For atomic updates, preventing race conditions.
+
+```python
+from django.db.models import Count, Avg, F
+
+# ❌ BAD: Python-level aggregation (N+1 queries or inefficient)
+authors = Author.objects.all()
+for author in authors:
+    author.book_count = author.books.count() # N+1 query if not prefetch_related
+
+# ✅ GOOD: Database-level aggregation
+authors_with_book_counts = Author.objects.annotate(total_books=Count('books'))
+for author in authors_with_book_counts:
+    print(f"{author.name}: {author.total_books} books")
+
+# ❌ BAD: Potential race condition for incrementing a counter
+product = Product.objects.get(id=1)
+product.stock += 1
+product.save()
+
+# ✅ GOOD: Atomic update using F() expression
+Product.objects.filter(id=1).update(stock=F('stock') + 1)
+```
+
+## 6. Bulk Operations
+
+For creating, updating, or deleting many objects, use bulk operations to minimize database round-trips.
+
+```python
+# ❌ BAD: Multiple database inserts
+authors_data = [
+    {"name": "Leo Tolstoy"},
+    {"name": "Jane Austen"},
+]
+for data in authors_data:
+    Author.objects.create(**data)
+
+# ✅ GOOD: Single database insert for multiple objects
+authors_to_create = [
+    Author(name="Leo Tolstoy"),
+    Author(name="Jane Austen"),
+]
+Author.objects.bulk_create(authors_to_create)
+
+# ✅ GOOD: Bulk update
+# Update all books published before 2000 to 'old' status
+Book.objects.filter(published_date__year__lt=2000).update(status=Book.Status.DRAFT)
+```
+
+## 7. Indexing
+
+Add database indexes to frequently filtered or ordered fields. Profile to determine actual benefits.
+
+*   Use `db_index=True` on individual fields or `Meta.indexes` for multi-column indexes.
+
+```python
+# ❌ BAD: No index on a frequently filtered field
+class Order(models.Model):
+    customer = models.ForeignKey('Customer', on_delete=models.CASCADE)
+    order_date = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20) # Frequently filtered by status
+
+# ✅ GOOD: Add index for performance on common filters
+class Order(models.Model):
+    customer = models.ForeignKey('Customer', on_delete=models.CASCADE)
+    order_date = models.DateTimeField(auto_now_add=True, db_index=True) # Index for date range queries
+    status = models.CharField(max_length=20, db_index=True) # Index for status filtering
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['customer', 'order_date']), # Multi-column index
+        ]
+```
+
+## 8. Asynchronous ORM (Django 5.x+)
+
+For high-concurrency applications, leverage Django 5.x's native async ORM capabilities. Wrap synchronous ORM calls in `sync_to_async` if working in an async context with older Django versions or mixed codebases.
+
+```python
+# ❌ BAD: Blocking ORM call in an async view
+import asyncio
+from django.http import JsonResponse
+from .models import Book
+
+async def get_books_blocking(request):
+    # This will block the event loop
+    books = Book.objects.all()
+    data = [{"title": book.title} for book in books]
+    return JsonResponse(data, safe=False)
+
+# ✅ GOOD: Native async ORM (Django 5.x+)
+from django.http import JsonResponse
+from .models import Book
+
+async def get_books_async(request):
+    books = await Book.objects.filter(status=Book.Status.PUBLISHED).values_list('title', flat=True)
+    return JsonResponse(list(books), safe=False)
+
+# ✅ GOOD: Using sync_to_async for older Django or mixed contexts
+from asgiref.sync import sync_to_async
+from django.http import JsonResponse
+from .models import Book
+
+async def get_books_sync_to_async(request):
+    # Wrap synchronous ORM calls
+    books = await sync_to_async(Book.objects.all)()
+    data = await sync_to_async(lambda: [{"title": book.title} for book in books])()
+    return JsonResponse(data, safe=False)
+```
+
+## 9. Debugging and Profiling
+
+Always use the Django Debug Toolbar to inspect queries. It's your most valuable tool for identifying N+1 problems and slow queries.
+
+## 10. Security
+
+The ORM provides robust protection against SQL injection. Avoid raw SQL unless absolutely necessary, and always use parameterized queries if you do.
+
+```python
+# ❌ BAD: Vulnerable to SQL injection
+from django.db import connection
+
+def get_user_bad(username):
+    with connection.cursor() as cursor:
+        cursor.execute(f"SELECT * FROM myapp_user WHERE username = '{username}'")
+        return cursor.fetchone()
+
+# ✅ GOOD: ORM handles sanitization
+from .models import User
+
+def get_user_good(username):
+    return User.objects.filter(username=username).first()
+
+# ✅ GOOD: Raw SQL with parameterized query (if ORM cannot express it)
+from django.db import connection
+
+def get_user_safe_raw_sql(username):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM myapp_user WHERE username = %s", [username])
+        return cursor.fetchone()
+```

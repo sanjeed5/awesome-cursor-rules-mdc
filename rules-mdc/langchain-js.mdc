@@ -1,179 +1,520 @@
 ---
-description: Comprehensive best practices and coding standards for developing applications using LangChain.js. Focuses on code organization, performance, security, testing, and common pitfalls to ensure robust and maintainable AI-driven solutions.
-globs: *.js,*.ts,*.jsx,*.tsx
+description: This guide provides opinionated, actionable best practices for building robust and maintainable LLM applications with langchain-js, emphasizing modularity, type safety, observability, and testing.
+globs: **/*.{js,jsx}
 ---
-- **Monitor and Evaluate LLM applications**: Utilize tools like LangSmith for monitoring application performance, including logging traces, analyzing latency, and evaluating LLM outputs against predefined metrics. This helps identify bottlenecks and ensures the application meets quality standards. Enable tracing by setting environment variables:
-	`export LANGCHAIN_TRACING_V2="true"`
-	`export LANGCHAIN_API_KEY="..."`
+# langchain-js Best Practices
 
-- **Implement Stateful Agents**: Use LangGraph to build stateful agents, crucial for applications like chatbots where remembering past interactions enhances user experience. Model interactions as a graph with nodes (states) and edges (transitions).
-
-- **Maintain High Code Quality**: Enforce strict code quality through regular testing, ESLint, and Prettier for consistent code formatting and linting.
-
-- **Comprehensive Documentation**: Ensure all components and their interactions are well-documented for maintainability and scalability.
-
-- **Use LangChain Expression Language (LCEL)**: Employ LCEL for composing chains in a declarative way, supporting production deployment without code changes.
-
-- **Explore Trade-offs in Deployment**: Choose between using external LLM providers or self-hosting open-source models based on cost, latency, and privacy considerations.
-
-- **Secure Coding Practices**: Read up on our Security best practices to make sure you're developing safely with LangChain.
+Building LLM-powered applications with `langchain-js` requires a disciplined approach to ensure maintainability, performance, and reliability. This guide outlines our team's definitive best practices.
 
 ## 1. Code Organization and Structure
 
-- **Directory Structure**: Organize code into logical modules based on functionality (e.g., `chains`, `agents`, `tools`, `memory`).
-  
-  src/
-  ├── chains/
-  │   ├── conversationalChain.ts
-  │   └── summarizationChain.ts
-  ├── agents/
-  │   ├── agent.ts
-  │   └── agentExecutor.ts
-  ├── tools/
-  │   ├── searchTool.ts
-  │   └── calculatorTool.ts
-  ├── memory/
-  │   ├── bufferMemory.ts
-  │   └── conversationBufferMemory.ts
-  ├── utils/
-  │   ├── api.ts
-  │   └── helpers.ts
-  ├── index.ts
-  └── types.ts
-  
+Always prioritize modularity and explicit typing. Break down complex logic into small, reusable components.
 
-- **File Naming Conventions**: Use descriptive names, typically in `camelCase` for variables and functions, and `PascalCase` for classes and interfaces.  Consider prefixes or suffixes to denote the type of module e.g., `*_chain.ts` or `*_agent.ts`
+### 1.1. Modular Components & Single Responsibility
 
-- **Module Organization**: Group related functionalities into modules with clear interfaces. Use `index.ts` files to export module members for cleaner imports.
-  typescript
-  // chains/index.ts
-  export * from './conversationalChain';
-  export * from './summarizationChain';
-  
-  // Usage:
-  import { ConversationalChain, SummarizationChain } from '@/chains';
-  
+Each LangChain component (Agent, Tool, Chain, Model) should reside in its own file or a dedicated module, adhering to the Single Responsibility Principle.
 
-- **Component Architecture**: Design modular components for reusability. Implement interfaces to define contracts between components.
-  typescript
-  // Define an interface for a Tool
-  interface ToolInterface {
-      name: string;
-      description: string;
-      execute(input: string): Promise<string>;
+❌ **BAD: Monolithic file**
+```javascript
+// src/agent.js
+import { ChatOpenAI } from "@langchain/openai";
+import { createAgent, tool } from "langchain";
+import { z } from "zod";
+
+const getStockPrice = tool(async ({ ticker }) => { /* ... */ }, { /* ... */ });
+const getNews = tool(async ({ query }) => { /* ... */ }, { /* ... */ });
+
+const model = new ChatOpenAI({ temperature: 0.7 });
+const agent = createAgent({
+  model,
+  tools: [getStockPrice, getNews],
+});
+
+export async function runFinancialAgent(input) {
+  return agent.invoke(input);
+}
+```
+
+✅ **GOOD: Modular, reusable components**
+```typescript
+// src/tools/getStockPrice.ts
+import { tool } from "langchain";
+import { z } from "zod";
+
+export const getStockPriceTool = tool(
+  async ({ ticker }: { ticker: string }) => {
+    // Simulate API call
+    if (ticker === "AAPL") return "$170.00";
+    return "Price not found.";
+  },
+  {
+    name: "get_stock_price",
+    description: "Get the current stock price for a given ticker symbol.",
+    schema: z.object({
+      ticker: z.string().describe("The stock ticker symbol (e.g., AAPL)"),
+    }),
   }
+);
 
-  // Implement the interface in a specific Tool
-  class SearchTool implements ToolInterface {
-      name = 'search';
-      description = 'Useful for searching the internet.';
-      async execute(input: string): Promise<string> {
-          // Implementation
-      }
-  }
-  
+// src/tools/getNews.ts
+import { tool } from "langchain";
+import { z } from "zod";
 
-- **Code Splitting**: Implement code splitting using dynamic imports to reduce initial load time, especially for large applications.
-  typescript
-  async function loadLargeModule() {
-      const largeModule = await import('./largeModule');
-      largeModule.initialize();
+export const getNewsTool = tool(
+  async ({ query }: { query: string }) => {
+    // Simulate API call
+    return `Latest news for ${query}: Market is up!`;
+  },
+  {
+    name: "get_news",
+    description: "Get the latest news for a given query.",
+    schema: z.object({
+      query: z.string().describe("The news query"),
+    }),
   }
-  
+);
+
+// src/agents/financialAgent.ts
+import { ChatOpenAI } from "@langchain/openai";
+import { createAgent } from "langchain";
+import { getStockPriceTool } from "../tools/getStockPrice";
+import { getNewsTool } from "../tools/getNews";
+
+const model = new ChatOpenAI({ temperature: 0.7 });
+
+export const financialAgent = createAgent({
+  model,
+  tools: [getStockPriceTool, getNewsTool],
+});
+
+// src/index.ts (or wherever the agent is invoked)
+import { financialAgent } from "./agents/financialAgent";
+
+async function main() {
+  const result = await financialAgent.invoke({
+    messages: [{ role: "user", content: "What's the price of AAPL and the latest market news?" }],
+  });
+  console.log(result);
+}
+
+main();
+```
+
+### 1.2. Explicit TypeScript Types
+
+Always use explicit types for prompts, models, and tool interfaces. Avoid `any`.
+
+❌ **BAD: Implicit types, no schema validation**
+```javascript
+const myTool = tool((input) => { /* ... */ }, { name: "my_tool" });
+```
+
+✅ **GOOD: Explicit types with Zod schema**
+```typescript
+import { tool } from "langchain";
+import { z } from "zod";
+
+const MyToolInputSchema = z.object({
+  param1: z.string().describe("Description for param1"),
+  param2: z.number().optional().describe("Description for param2"),
+});
+
+export const myTypedTool = tool(
+  async (input: z.infer<typeof MyToolInputSchema>) => {
+    console.log(`Received: ${input.param1}, ${input.param2}`);
+    return "Processed successfully";
+  },
+  {
+    name: "my_typed_tool",
+    description: "A tool that takes typed input.",
+    schema: MyToolInputSchema,
+  }
+);
+```
+
+### 1.3. Configuration Management
+
+Store API keys, model parameters, and external service URLs in environment variables. Never hardcode secrets.
+
+❌ **BAD: Hardcoded API key**
+```javascript
+const model = new ChatOpenAI({
+  openAIApiKey: "sk-YOUR_HARDCODED_KEY",
+});
+```
+
+✅ **GOOD: Environment variables**
+```typescript
+// .env
+// OPENAI_API_KEY=sk-YOUR_OPENAI_KEY
+// LANGSMITH_API_KEY=ls__YOUR_LANGSMITH_KEY
+// MONGODB_URI=mongodb+srv://...
+
+// src/config.ts
+import "dotenv/config"; // Ensure dotenv is loaded early
+
+export const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
+export const LANGSMITH_API_KEY = process.env.LANGSMITH_API_KEY!;
+export const MONGODB_URI = process.env.MONGODB_URI!;
+
+// src/models/chatModel.ts
+import { ChatOpenAI } from "@langchain/openai";
+import { OPENAI_API_KEY } from "../config";
+
+export const chatModel = new ChatOpenAI({
+  openAIApiKey: OPENAI_API_KEY,
+  temperature: 0.7,
+  modelName: "gpt-4o",
+});
+```
 
 ## 2. Common Patterns and Anti-patterns
 
-- **Design Patterns**: Use the Factory pattern for creating different types of chains or agents, and the Strategy pattern for choosing different LLMs.
-  typescript
-  // Factory Pattern for creating chains
-  class ChainFactory {
-      static createChain(type: 'conversational' | 'summarization', llm: LLM) {
-          if (type === 'conversational') {
-              return new ConversationalChain(llm);
-          } else if (type === 'summarization') {
-              return new SummarizationChain(llm);
-          } else {
-              throw new Error('Invalid chain type');
-          }
-      }
+Leverage LangChain's core abstractions effectively.
+
+### 2.1. Robust Tool Definitions
+
+Always define tools with `zod` schemas for clear input validation and better agent reasoning.
+
+❌ **BAD: Undefined tool schema**
+```javascript
+const simpleTool = tool((input) => `Processed ${input}`, { name: "simple_tool" });
+```
+
+✅ **GOOD: Tool with Zod schema**
+```typescript
+import { tool } from "langchain";
+import { z } from "zod";
+
+export const calculateSumTool = tool(
+  async ({ a, b }: { a: number; b: number }) => (a + b).toString(),
+  {
+    name: "calculate_sum",
+    description: "Calculates the sum of two numbers.",
+    schema: z.object({
+      a: z.number().describe("The first number"),
+      b: z.number().describe("The second number"),
+    }),
   }
+);
+```
 
-  const chain = ChainFactory.createChain('conversational', new OpenAIChat());
-  
+### 2.2. Retrieval-Augmented Generation (RAG)
 
-- **Recommended Approaches**: Leverage LangChain's built-in modules and chains when possible, and customize them as needed. Prioritize asynchronous operations to prevent blocking the main thread.
+For knowledge retrieval, use `VectorStoreRetriever` within a `RunnableSequence`.
 
-- **Anti-patterns**: Avoid deeply nested callbacks, which can lead to callback hell. Use `async/await` and promises for cleaner asynchronous code.
+```typescript
+// src/retrievers/documentRetriever.ts
+import { MongoDBAtlasVectorSearch } from "@langchain/mongodb";
+import { VoyageEmbeddings } from "@langchain/community/embeddings/voyage";
+import { MongoClient } from "mongodb";
+import { MONGODB_URI } from "../config";
 
-- **State Management**: For simple applications, manage state with React's `useState` or similar. For complex applications, consider state management libraries like Zustand or Redux.
+const client = new MongoClient(MONGODB_URI);
+const collection = client.db("langchain_db").collection("documents");
 
-- **Error Handling**: Implement robust error handling with `try/catch` blocks and global error handlers. Log errors with context for debugging.
-  typescript
-  async function processData() {
-      try {
-          const result = await fetchData();
-          // Process result
-      } catch (error) {
-          console.error('Error processing data:', error);
-          // Handle error (e.g., display error message to user)
-      }
+export async function getVectorStoreRetriever() {
+  const embeddings = new VoyageEmbeddings();
+  const vectorStore = new MongoDBAtlasVectorSearch(embeddings, {
+    collection,
+    indexName: "vector_index", // Your Atlas Vector Search index name
+    textKey: "content", // Field containing the text
+    embeddingKey: "embedding", // Field containing the vector embedding
+  });
+  return vectorStore.asRetriever();
+}
+
+// src/chains/ragChain.ts
+import { ChatOpenAI } from "@langchain/openai";
+import { PromptTemplate } from "@langchain/core/prompts";
+import { RunnableSequence, RunnablePassthrough } from "@langchain/core/runnables";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import { formatDocumentsAsString } from "langchain/util/document";
+import { chatModel } from "../models/chatModel";
+import { getVectorStoreRetriever } from "../retrievers/documentRetriever";
+
+const RAG_PROMPT_TEMPLATE = `
+You are an AI assistant for answering questions about documents.
+Use the following context to answer the question.
+If you don't know the answer, just say that you don't know.
+Context: {context}
+Question: {question}
+`;
+
+export async function createRagChain() {
+  const retriever = await getVectorStoreRetriever();
+  const ragPrompt = PromptTemplate.fromTemplate(RAG_PROMPT_TEMPLATE);
+
+  return RunnableSequence.from([
+    RunnablePassthrough.assign({
+      context: async (input: { question: string }) => {
+        const docs = await retriever.invoke(input.question);
+        return formatDocumentsAsString(docs);
+      },
+    }),
+    ragPrompt,
+    chatModel,
+    new StringOutputParser(),
+  ]);
+}
+
+// src/index.ts
+import { createRagChain } from "./chains/ragChain";
+
+async function runRagExample() {
+  const ragChain = await createRagChain();
+  const question = "What are the best practices for MongoDB Atlas?";
+  const answer = await ragChain.invoke({ question });
+  console.log(answer);
+}
+
+runRagExample();
+```
+
+### 2.3. Streaming for Responsiveness
+
+Implement streaming for LLM responses to improve user experience, especially for long generations.
+
+```typescript
+// src/models/streamingChatModel.ts
+import { ChatOpenAI } from "@langchain/openai";
+import { OPENAI_API_KEY } from "../config";
+
+export const streamingChatModel = new ChatOpenAI({
+  openAIApiKey: OPENAI_API_KEY,
+  temperature: 0.7,
+  modelName: "gpt-4o",
+  streaming: true, // Enable streaming
+});
+
+// src/index.ts
+import { streamingChatModel } from "./models/streamingChatModel";
+
+async function streamResponse() {
+  const stream = await streamingChatModel.stream("Tell me a long story about a space cat.");
+  for await (const chunk of stream) {
+    process.stdout.write(chunk.content);
   }
-  
+  console.log("\n--- Stream Finished ---");
+}
+
+streamResponse();
+```
+
+### 2.4. Error Handling and Retries
+
+Wrap external LLM and API calls with robust retry logic to handle transient failures. Use a library like `p-retry`.
+
+❌ **BAD: No retry logic**
+```typescript
+import { ChatOpenAI } from "@langchain/openai";
+const model = new ChatOpenAI();
+try {
+  await model.invoke("...");
+} catch (error) {
+  console.error("LLM call failed:", error); // Fails on first error
+}
+```
+
+✅ **GOOD: Retry logic with exponential backoff**
+```typescript
+import { ChatOpenAI } from "@langchain/openai";
+import pRetry from "p-retry";
+import { OPENAI_API_KEY } from "../config";
+
+const model = new ChatOpenAI({ openAIApiKey: OPENAI_API_KEY });
+
+async function reliableLLMCall(prompt: string) {
+  return pRetry(
+    async () => {
+      console.log("Attempting LLM call...");
+      return await model.invoke(prompt);
+    },
+    {
+      retries: 5,
+      minTimeout: 1000, // 1 second
+      maxTimeout: 10000, // 10 seconds
+      onFailedAttempt: (error) => {
+        console.warn(`Attempt ${error.attemptNumber} failed. Retrying...`);
+      },
+    }
+  );
+}
+
+// Usage
+reliableLLMCall("Generate a creative story about a robot chef.")
+  .then((res) => console.log(res))
+  .catch((err) => console.error("Final LLM call failed after retries:", err));
+```
 
 ## 3. Performance Considerations
 
-- **Optimization Techniques**: Use caching to store and reuse LLM responses. Optimize prompts to reduce token usage. Debounce computationally expensive operations.
+Optimize for speed and resource usage.
 
-- **Memory Management**: Be mindful of memory leaks, especially when using streams or subscriptions. Properly clean up resources when components unmount.
+### 3.1. Asynchronous Callbacks
 
-- **Bundle Size Optimization**: Use tools like Webpack Bundle Analyzer to identify large dependencies. Use tree shaking to remove unused code.
+For non-serverless environments, set `LANGCHAIN_CALLBACKS_BACKGROUND=true` to process LangSmith traces asynchronously, reducing latency. In serverless, ensure it's `false` or unset for traces to complete before function exit.
 
-- **Lazy Loading**: Implement lazy loading for components and modules that are not immediately needed to improve initial load time.
+```bash
+# In your development/production environment (non-serverless)
+export LANGCHAIN_CALLBACKS_BACKGROUND=true
 
-## 4. Security Best Practices
+# In your serverless environment (e.g., AWS Lambda)
+# Ensure this is NOT set to true, or explicitly set to false if needed.
+# export LANGCHAIN_CALLBACKS_BACKGROUND=false
+```
 
-- **Vulnerabilities**: Prevent prompt injection attacks by carefully validating user inputs and using sandboxed execution environments.
+### 3.2. Efficient Vector Search
 
-- **Input Validation**: Sanitize user inputs to prevent malicious code execution. Limit the length of inputs to prevent denial-of-service attacks.
+When using vector stores, leverage metadata filtering to narrow down search space *before* vector similarity search, if applicable.
 
-- **Authentication/Authorization**: Use secure authentication and authorization mechanisms to protect sensitive data and prevent unauthorized access.
+```typescript
+// Example: Filtering by document source
+const retriever = vectorStore.asRetriever({
+  filter: {
+    source: "internal_docs",
+  },
+});
+```
 
-- **Data Protection**: Encrypt sensitive data at rest and in transit. Comply with data privacy regulations like GDPR and CCPA.
+## 4. Common Pitfalls and Gotchas
 
-- **Secure API Communication**: Use HTTPS for all API communication. Validate API responses to prevent data corruption.
+Avoid these common mistakes to prevent headaches.
+
+### 4.1. Ignoring LangSmith for Observability
+
+Not integrating with LangSmith means flying blind. Every chain, agent step, and retrieval call should be traced.
+
+❌ **BAD: No LangSmith setup**
+```bash
+# Missing environment variables
+# LANGSMITH_TRACING=true
+# LANGSMITH_API_KEY=...
+```
+
+✅ **GOOD: LangSmith enabled**
+```bash
+# Set these in your .env or deployment environment
+export LANGSMITH_TRACING=true
+export LANGSMITH_API_KEY=<your-api-key>
+export LANGSMITH_PROJECT=<your-project-name> # Optional, but recommended
+export LANGSMITH_WORKSPACE_ID=<your-workspace-id> # If using multiple workspaces
+```
+With these set, LangChain automatically instruments your runs.
+
+### 4.2. Over-privileged Agents
+
+Agents should operate with the principle of least privilege. Limit tool access and permissions.
+
+❌ **BAD: Agent with access to sensitive file system operations**
+```typescript
+import { tool } from "langchain";
+import * as fs from "fs/promises";
+import { z } from "zod";
+
+// This tool can delete any file! DANGEROUS!
+const deleteFileTool = tool(
+  async ({ path }: { path: string }) => {
+    await fs.unlink(path);
+    return `Deleted ${path}`;
+  },
+  {
+    name: "delete_file",
+    description: "Deletes a file at the given path.",
+    schema: z.object({ path: z.string() }),
+  }
+);
+// ... agent given deleteFileTool
+```
+
+✅ **GOOD: Sandboxed or read-only tools**
+```typescript
+import { tool } from "langchain";
+import * as fs from "fs/promises";
+import { z } from "zod";
+import path from "path";
+
+const SAFE_DIR = "/app/data/safe_uploads"; // Define a safe, restricted directory
+
+const readFileSafeTool = tool(
+  async ({ filename }: { filename: string }) => {
+    const filePath = path.join(SAFE_DIR, filename);
+    if (!filePath.startsWith(SAFE_DIR)) { // Prevent path traversal
+      throw new Error("Access denied: Cannot read outside safe directory.");
+    }
+    return await fs.readFile(filePath, "utf-8");
+  },
+  {
+    name: "read_safe_file",
+    description: "Reads a file from the designated safe directory.",
+    schema: z.object({ filename: z.string() }),
+  }
+);
+// ... agent given readFileSafeTool, NOT deleteFileTool
+```
 
 ## 5. Testing Approaches
 
-- **Unit Testing**: Test individual components in isolation using Jest or Mocha. Mock dependencies to control test environments.
+Treat testing as a first-class concern.
 
-- **Integration Testing**: Test interactions between components to ensure they work together correctly. Use in-memory databases or mock APIs for integration tests.
+### 5.1. Unit Testing with `FakeLLM` / `MockChatModel`
 
-- **End-to-end Testing**: Test the entire application flow using tools like Cypress or Puppeteer. Simulate user interactions to verify functionality.
+Isolate and test individual components by mocking LLM responses.
 
-- **Test Organization**: Organize tests into separate directories based on component or module. Use clear and descriptive test names.
+```typescript
+// src/chains/greetingChain.ts
+import { PromptTemplate } from "@langchain/core/prompts";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import { RunnableSequence } from "@langchain/core/runnables";
+import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
-- **Mocking/Stubbing**: Use mocking libraries like Jest's `jest.mock()` or Sinon.js to replace dependencies with controlled test doubles.
+export function createGreetingChain(model: BaseChatModel) {
+  const prompt = PromptTemplate.fromTemplate("Say hello to {name}.");
+  return RunnableSequence.from([prompt, model, new StringOutputParser()]);
+}
 
-## 6. Common Pitfalls and Gotchas
+// src/chains/greetingChain.test.ts
+import { test, expect, vi } from "vitest";
+import { FakeChatModel } from "@langchain/core/utils/testing";
+import { createGreetingChain } from "./greetingChain";
 
-- **Frequent Mistakes**: Incorrectly configuring API keys, not handling errors properly, and overlooking prompt injection vulnerabilities.
+test("createGreetingChain generates correct greeting", async () => {
+  const mockModel = new FakeChatModel({});
+  mockModel.predict = vi.fn((input) => Promise.resolve(`Hello, ${input.split(" ")[3]}!`)); // Mock response based on prompt
 
-- **Edge Cases**: Handling unexpected input formats, dealing with rate limits from LLM providers, and managing long-running operations.
+  const chain = createGreetingChain(mockModel);
+  const result = await chain.invoke({ name: "Alice" });
 
-- **Version-Specific Issues**: Check release notes for breaking changes when upgrading LangChain.js versions.
+  expect(mockModel.predict).toHaveBeenCalledWith("Human: Say hello to Alice.");
+  expect(result).toBe("Hello, Alice!");
+});
+```
 
-- **Compatibility Concerns**: Ensure compatibility between LangChain.js and other libraries, especially those related to data processing or UI frameworks.
+### 5.2. Integration Testing with LangSmith
 
-- **Debugging Strategies**: Use console logging, debuggers, and monitoring tools like LangSmith to diagnose issues.
+Run end-to-end tests against a dedicated sandbox LangSmith project to verify real-world behavior and catch regressions.
 
-## 7. Tooling and Environment
+```typescript
+// .env.test
+// LANGSMITH_TRACING=true
+// LANGSMITH_API_KEY=ls__YOUR_TEST_API_KEY
+// LANGSMITH_PROJECT=my-app-integration-tests
 
-- **Recommended Tools**: VS Code with TypeScript support, ESLint, Prettier, and Jest.
+// src/integration.test.ts
+import { test, expect } from "vitest";
+import { createRagChain } from "./chains/ragChain"; // Your actual RAG chain
+import { Client } from "langsmith"; // For querying test results
 
-- **Build Configuration**: Use Webpack, Parcel, or Rollup for bundling and optimization. Configure TypeScript compiler options for strict type checking.
+// Ensure LangSmith is configured for this test run via .env.test
+// or by setting process.env variables directly in test setup.
 
-- **Linting/Formatting**: Enforce consistent code style with ESLint and Prettier. Use linting rules to catch potential errors and enforce best practices.
+test("RAG chain answers question correctly with real LLM and retriever", async () => {
+  const ragChain = await createRagChain(); // Uses real LLM and vector store
+  const question = "What is the capital of France?";
+  const answer = await ragChain.invoke({ question });
 
-- **Deployment Best Practices**: Use serverless functions or containerization for deployment. Implement monitoring and alerting to detect issues in production.
-
-- **CI/CD Integration**: Automate testing, linting, and deployment with CI/CD pipelines using tools like GitHub Actions or Jenkins.
+  expect(answer).toContain("Paris"); // Basic assertion
+  // For more advanced validation, inspect the trace in LangSmith manually
+  // or programmatically using the LangSmith SDK if needed.
+});
+```

@@ -1,210 +1,340 @@
 ---
-description: This rule covers best practices for developing, deploying, and maintaining applications using AWS Elastic Container Service (ECS). It includes guidance on code organization, performance, security, testing, and common pitfalls.
-globs: *.tf,*.yml,*.yaml,*.json,*.sh,*.dockerfile
+description: Definitive guidelines for building, deploying, and operating applications on AWS ECS, emphasizing immutable containers, secure secrets management, and robust operational patterns.
+globs: **/*
 ---
-- **General Principles:**
-  - **Infrastructure as Code (IaC):** Treat your ECS infrastructure as code. Use tools like Terraform, AWS CloudFormation, or AWS CDK to define and manage your ECS clusters, task definitions, and services.
-  - **Configuration Management:** Externalize configuration from your application code. Use environment variables, AWS Secrets Manager, or AWS Systems Manager Parameter Store to manage configuration data.
-  - **Idempotency:** Ensure that your deployment scripts and automation are idempotent. This means that running the same script multiple times should have the same result as running it once.
-  - **Automation:** Automate all aspects of your ECS deployment, from building container images to deploying services and scaling resources.
+# aws-ecs Best Practices
 
-- **1. Code Organization and Structure:**
-  - **1.1 Directory Structure:**
-    - **Project Root:** The base directory containing all project-related files.
-    - `infrastructure/`: Contains IaC code (Terraform, CloudFormation) for ECS clusters, task definitions, services, VPC, etc.
-    - `application/`: Contains source code for your containerized application.
-      - `src/`: Application source code.
-      - `tests/`: Unit, integration, and end-to-end tests.
-      - `Dockerfile`: Dockerfile for building the application container image.
-    - `scripts/`: Contains deployment, build, and other utility scripts.
-    - `docs/`: Documentation for the project.
-    - `README.md`: Project README file.
+This guide outlines the definitive best practices for developing and deploying applications on Amazon Elastic Container Service (ECS). Adhere to these principles to ensure your applications are secure, performant, and maintainable.
 
-  - **1.2 File Naming Conventions:**
-    - **Terraform:** `main.tf`, `variables.tf`, `outputs.tf`, `<module_name>.tf`
-    - **CloudFormation:** `<stack_name>.yml` or `<stack_name>.yaml`
-    - **Docker:** `Dockerfile` (no extension), `.dockerignore`
-    - **Scripts:** `<script_name>.sh` (Bash), `<script_name>.py` (Python)
-    - **Configuration:** `config.yml`, `config.json`, `.env`
+## 1. Code Organization and Structure
 
-  - **1.3 Module Organization:**
-    - **Terraform Modules:** Create reusable Terraform modules for common ECS infrastructure components (e.g., ECS cluster, task definition, load balancer).
-    - **Application Modules:** Organize your application code into logical modules based on functionality (e.g., authentication, API, database access).
-    -  Use separate git repositories for independent services/applications, and ECS services accordingly. This avoids monolithic deployments and allows independent scaling and versioning.
+### 1.1. Immutable Container Images
 
-  - **1.4 Component Architecture:**
-    - **Microservices:** Design your application as a collection of microservices, each deployed as an independent ECS service.
-    - **API Gateway:** Use an API gateway (e.g., Amazon API Gateway) to route requests to different ECS services.
-    - **Message Queue:** Use a message queue (e.g., Amazon SQS, Amazon MQ) for asynchronous communication between services.
-    - **Database:** Use a managed database service (e.g., Amazon RDS, Amazon DynamoDB) for data persistence. Ensure proper security and access control configurations.
+Always build immutable container images. Any change to code or dependencies *must* trigger a new image build and deployment. This ensures reproducibility and simplifies rollbacks.
 
-  - **1.5 Code Splitting:**
-    - Break down large applications or services into smaller, more manageable components that can be deployed independently.
-    - Optimize container images to only include code required for each specific component.
-    - Utilize ECS services to deploy each component separately, enabling independent scaling and upgrades.
+❌ BAD: Modifying container contents at runtime (e.g., downloading dependencies on startup).
+```dockerfile
+# Dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package.json .
+RUN npm install # Installs dependencies during build
+COPY . .
+CMD ["sh", "-c", "npm install && npm start"] # Re-installs on every run!
+```
 
-- **2. Common Patterns and Anti-patterns:**
-  - **2.1 Design Patterns:**
-    - **Sidecar:** Use sidecar containers (e.g., for logging, monitoring, or service mesh) to add functionality to your main application container without modifying the application code. Use a separate container in the same task definition.
-    - **Backend for Frontend (BFF):** Create a BFF layer that provides a specific API for each client application, improving performance and security.
-    - **Strangler Fig:** Gradually migrate a legacy application to ECS by introducing new microservices and slowly replacing the old functionality.
-    - **Aggregator Pattern:** Use an aggregator service to combine data from multiple backend services into a single response.
+✅ GOOD: Bake all dependencies into the image during the build process.
+```dockerfile
+# Dockerfile
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev # Install production dependencies
+COPY . .
+RUN npm run build # Build application assets
 
-  - **2.2 Recommended Approaches:**
-    - **Health Checks:** Implement robust health checks for your containers and configure ECS to use them.  Use both `HEALTHCHECK` in the `Dockerfile` for initial container health and ECS health checks (ELB health checks) for service availability.
-    - **Service Discovery:** Use service discovery (e.g., AWS Cloud Map) to enable services to find each other dynamically.
-    - **Load Balancing:** Use a load balancer (e.g., Application Load Balancer, Network Load Balancer) to distribute traffic across multiple ECS tasks.
-    - **Auto Scaling:** Configure auto scaling to automatically adjust the number of ECS tasks based on demand.  Use CloudWatch metrics (CPU, memory, request count) as scaling triggers.
-    - **Immutable Infrastructure:** Avoid making changes to running containers. Instead, redeploy a new container image with the changes.
-    - **Use ECS Exec for debugging** avoid SSH into running EC2 instances
+FROM node:18-alpine AS runner
+WORKDIR /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist # Copy built assets
+EXPOSE 3000
+CMD ["node", "dist/main.js"] # Run the built application
+```
 
-  - **2.3 Anti-patterns:**
-    - **Hardcoding Configuration:** Avoid hardcoding configuration values in your application code.
-    - **Large Container Images:** Keep your container images small by using multi-stage builds and removing unnecessary dependencies.
-    - **Ignoring Security Best Practices:** Neglecting security best practices can lead to vulnerabilities. Always follow security best practices for container images, task definitions, and IAM roles.
-    - **Manual Scaling:** Manually scaling ECS tasks is inefficient and error-prone. Use auto scaling instead.
-    - **Monolithic Containers:** Avoid creating single containers that run multiple applications. Break them down into smaller, single-purpose containers.
+### 1.2. Single Process Per Container
 
-  - **2.4 State Management:**
-    - **Stateless Applications:** Design your applications to be stateless whenever possible. Store state in a database or other external storage service.
-    - **Persistent Storage:** Use persistent storage volumes (e.g., Amazon EFS, Amazon EBS) for stateful applications.
-    - **Container Lifecycle:** Understand the container lifecycle and how ECS manages container restarts and replacements.
+Each container must run only one foreground application process. This allows ECS to effectively manage the container's lifecycle, health checks, and resource allocation.
 
-  - **2.5 Error Handling:**
-    - **Logging:** Implement comprehensive logging and monitoring for your applications. Log to stdout/stderr, and use a logging driver (e.g., FireLens) to ship logs to a central logging service (e.g., CloudWatch Logs, Splunk).
-    - **Exception Handling:** Implement proper exception handling in your application code.
-    - **Retry Logic:** Implement retry logic for transient errors.
-    - **Dead Letter Queues:** Use dead letter queues (DLQs) to handle messages that cannot be processed after multiple retries.
+❌ BAD: Using process managers like `supervisord` to run multiple applications.
+```dockerfile
+# Dockerfile
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]
+# supervisord.conf might start Nginx, a Python app, and a cron job.
+```
 
-- **3. Performance Considerations:**
-  - **3.1 Optimization Techniques:**
-    - **Resource Allocation:** Properly size your ECS tasks based on the application's resource requirements (CPU, memory).  Monitor resource utilization and adjust task sizes as needed.
-    - **Container Image Optimization:** Optimize container images by minimizing size, using efficient base images, and leveraging layer caching.  Use tools like `docker image prune` to remove unused images.
-    - **Load Balancing:** Configure load balancing algorithms and connection draining to optimize traffic distribution and minimize downtime.
-    - **Caching:** Implement caching at various levels (e.g., application, CDN) to reduce latency and improve performance.
-    - **Connection Pooling:** Reuse database connections to minimize overhead.
+✅ GOOD: Decouple services into separate containers and task definitions.
+```dockerfile
+# Dockerfile for a single application
+CMD ["python", "app.py"]
+```
+*Context*: If services are tightly coupled (e.g., a web server and a sidecar agent that *must* run on the same host), use a multi-container task definition. Otherwise, deploy them as separate services.
 
-  - **3.2 Memory Management:**
-    - **Memory Limits:** Set appropriate memory limits for your containers.  Monitor memory usage and adjust limits to prevent out-of-memory errors.
-    - **Garbage Collection:** Optimize garbage collection settings for your application's runtime environment.
-    - **Memory Leaks:** Identify and fix memory leaks in your application code.
+## 2. Common Patterns and Anti-patterns
 
-  - **3.3 Bundle Size Optimization:**
-    - **Code Splitting:** Split your application code into smaller bundles to reduce the initial load time.  Utilize dynamic imports to only load code when it's needed.
-    - **Tree Shaking:** Remove unused code from your application bundle.
-    - **Minification:** Minify your application code to reduce its size.
-    - **Compression:** Compress your application code to reduce its size.
+### 2.1. Graceful Shutdown Handling (SIGTERM)
 
-  - **3.4 Lazy Loading:**
-    - Load resources (e.g., images, data) only when they are needed.
-    - Use lazy-loading techniques to improve the initial load time of your application.
+Your application must gracefully handle `SIGTERM` signals. ECS sends `SIGTERM` to allow your application to finish in-flight requests and clean up before `SIGKILL` is sent.
 
-- **4. Security Best Practices:**
-  - **4.1 Common Vulnerabilities:**
-    - **Container Image Vulnerabilities:** Unpatched vulnerabilities in container images can be exploited by attackers. Regularly scan container images for vulnerabilities and apply patches.
-    - **IAM Role Misconfiguration:** Overly permissive IAM roles can allow attackers to access sensitive resources. Follow the principle of least privilege and grant only the necessary permissions.
-    - **Network Security Misconfiguration:** Misconfigured network security can expose your ECS services to unauthorized access. Use security groups and network ACLs to restrict network access.
-    - **Secrets Management Vulnerabilities:** Storing secrets in plain text can expose them to attackers. Use a secrets management service (e.g., AWS Secrets Manager) to securely store and manage secrets.
+❌ BAD: Ignoring `SIGTERM`, leading to abrupt shutdowns and potential data loss.
+```javascript
+// Node.js example
+process.on('SIGINT', () => { /* Handles Ctrl+C, but not SIGTERM from orchestrator */ });
+// No SIGTERM handler, process exits immediately on SIGTERM.
+```
 
-  - **4.2 Input Validation:**
-    - Validate all input data to prevent injection attacks (e.g., SQL injection, command injection).
-    - Use a framework or library to perform input validation.
+✅ GOOD: Implement a `SIGTERM` handler to allow for graceful exit.
+```javascript
+// Node.js example
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received. Initiating graceful shutdown...');
+  // Stop accepting new connections
+  server.close(() => {
+    console.log('HTTP server closed.');
+    // Perform any cleanup (e.g., close DB connections, flush logs)
+    process.exit(0);
+  });
+  // Force exit after a timeout if cleanup takes too long
+  setTimeout(() => {
+    console.error('Graceful shutdown timed out. Forcing exit.');
+    process.exit(1);
+  }, 10000); // 10 seconds timeout
+});
+```
 
-  - **4.3 Authentication and Authorization:**
-    - Implement authentication and authorization to control access to your ECS services.
-    - Use a standard authentication protocol (e.g., OAuth 2.0, OpenID Connect).
-    - Use fine-grained authorization policies to restrict access to specific resources.
+### 2.2. Secrets Management
 
-  - **4.4 Data Protection:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use HTTPS to encrypt data in transit.
-    - Use AWS KMS to encrypt data at rest.
-    - Implement data masking and tokenization to protect sensitive data.
+Never hard-code secrets into container images or environment variables directly in Dockerfiles. Use AWS Secrets Manager or AWS Systems Manager Parameter Store, injected at runtime via the task definition.
 
-  - **4.5 Secure API Communication:**
-    - Use HTTPS for all API communication.
-    - Implement authentication and authorization for all API endpoints.
-    - Validate all input data to prevent injection attacks.
-    - Protect against Cross-Site Request Forgery (CSRF) attacks.
+❌ BAD: Hardcoding secrets or passing them as plain environment variables.
+```dockerfile
+# Dockerfile
+ENV DB_PASSWORD=mysecretpassword
+```
+```json
+// Task Definition (bad practice)
+{
+  "environment": [
+    { "name": "DB_PASSWORD", "value": "mysecretpassword" }
+  ]
+}
+```
 
-- **5. Testing Approaches:**
-  - **5.1 Unit Testing:**
-    - Write unit tests for individual components of your application.
-    - Use a unit testing framework (e.g., JUnit, pytest).
-    - Mock external dependencies to isolate the component being tested.
+✅ GOOD: Reference secrets from Secrets Manager in your task definition.
+```json
+// Task Definition
+{
+  "containerDefinitions": [
+    {
+      "name": "my-app",
+      "image": "my-ecr-repo/my-app:latest",
+      "secrets": [
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:my-db-secret-abcdef:DB_PASSWORD::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/my-app",
+          "awslogs-region": "REGION",
+          "awslogs-stream-prefix": "ecs"
+        },
+        "secretOptions": [
+          {
+            "name": "awslogs-secret-token",
+            "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:my-log-auth-token:token::"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
 
-  - **5.2 Integration Testing:**
-    - Write integration tests to verify the interaction between different components of your application.
-    - Use a test environment that is similar to the production environment.
-    - Test the integration with external services (e.g., databases, message queues).
+### 2.3. Logging
 
-  - **5.3 End-to-End Testing:**
-    - Write end-to-end tests to verify the functionality of the entire application.
-    - Use an end-to-end testing framework (e.g., Selenium, Cypress).
-    - Test the application from the user's perspective.
+Containers must write logs to `stdout` and `stderr`. Decouple log handling from your application code using the `awslogs` driver.
 
-  - **5.4 Test Organization:**
-    - Organize your tests into a logical directory structure.
-    - Use meaningful names for your test files and test methods.
-    - Use a test runner to execute your tests.
+❌ BAD: Writing logs to local files within the container.
+```python
+# Python app
+import logging
+logging.basicConfig(filename='app.log', level=logging.INFO)
+```
 
-  - **5.5 Mocking and Stubbing:**
-    - Use mocking and stubbing to isolate components during testing.
-    - Use a mocking framework (e.g., Mockito, EasyMock).
-    - Create mock objects that simulate the behavior of external dependencies.
+✅ GOOD: Log to `stdout`/`stderr` and configure `awslogs` in the task definition.
+```python
+# Python app
+import logging
+logging.basicConfig(level=logging.INFO) # Logs to stderr by default
+logging.info("Application started.")
+```
+```json
+// Task Definition (excerpt)
+{
+  "containerDefinitions": [
+    {
+      "name": "my-app",
+      "image": "my-ecr-repo/my-app:latest",
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/my-app",
+          "awslogs-region": "REGION",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
+```
 
-- **6. Common Pitfalls and Gotchas:**
-  - **6.1 Frequent Mistakes:**
-    - **Incorrect IAM Permissions:** Granting insufficient or excessive IAM permissions can lead to security vulnerabilities or application failures.
-    - **Misconfigured Network Settings:** Misconfigured network settings can prevent containers from communicating with each other or with external services.
-    - **Insufficient Resource Limits:** Setting insufficient resource limits (CPU, memory) can cause containers to crash or become unresponsive.
-    - **Ignoring Health Checks:** Ignoring health checks can lead to ECS tasks being considered healthy even when they are not.
-    - **Failing to handle SIGTERM signals:**  Applications in containers must gracefully handle SIGTERM signals to allow ECS to shutdown tasks cleanly.
+## 3. Performance Considerations
 
-  - **6.2 Edge Cases:**
-    - **Task Placement Constraints:** Be aware of task placement constraints (e.g., availability zone, instance type) and how they can affect task scheduling.
-    - **Service Discovery Limitations:** Understand the limitations of service discovery and how it can affect service resolution.
-    - **Load Balancer Connection Draining:** Be aware of load balancer connection draining and how it can affect application availability during deployments.
+### 3.1. Resource Limits
 
-  - **6.3 Version-Specific Issues:**
-    - Stay up-to-date with the latest ECS agent and Docker versions to avoid known issues and security vulnerabilities.
-    - Check the AWS documentation for any version-specific issues or known bugs.
+Always define CPU and memory limits in your task definitions. This prevents resource exhaustion on the underlying host and ensures fair scheduling.
 
-  - **6.4 Compatibility Concerns:**
-    - Be aware of compatibility issues between ECS and other AWS services (e.g., VPC, IAM, CloudWatch).
-    - Test your application with different versions of these services to ensure compatibility.
+❌ BAD: Omitting resource limits, leading to potential noisy neighbor issues or task failures.
+```json
+// Task Definition (no limits)
+{
+  "containerDefinitions": [
+    {
+      "name": "my-app",
+      "image": "my-ecr-repo/my-app:latest"
+      // No cpu or memory specified
+    }
+  ]
+}
+```
 
-  - **6.5 Debugging Strategies:**
-    - **Logging:** Use comprehensive logging to track application behavior and identify errors.
-    - **Monitoring:** Use monitoring tools (e.g., CloudWatch) to track resource utilization and application performance.
-    - **Debugging Tools:** Use debugging tools (e.g., Docker exec, AWS Systems Manager Session Manager) to troubleshoot running containers.
-    - **ECS Exec:** Utilize the ECS Exec feature to directly connect to containers for debugging purposes.
+✅ GOOD: Explicitly set CPU and memory limits.
+```json
+// Task Definition
+{
+  "containerDefinitions": [
+    {
+      "name": "my-app",
+      "image": "my-ecr-repo/my-app:latest",
+      "cpu": 256,   // 0.25 vCPU
+      "memory": 512 // 512 MB
+    }
+  ],
+  "cpu": "256", // Total CPU for the task
+  "memory": "512" // Total Memory for the task
+}
+```
+*Context*: For Fargate, `cpu` and `memory` must be defined at the task level, and container limits must be less than or equal to the task limits.
 
-- **7. Tooling and Environment:**
-  - **7.1 Recommended Tools:**
-    - **Terraform:** For infrastructure as code.
-    - **AWS CLI:** For interacting with AWS services from the command line.
-    - **Docker:** For building and managing container images.
-    - **AWS SAM CLI:** For local development of serverless applications.
-    - **Visual Studio Code (VS Code):** With AWS and Docker extensions for development and debugging.
-    - **cdk8s:** Define Kubernetes applications and ECS using general purpose programming languages.
+### 3.2. Fargate First
 
-  - **7.2 Build Configuration:**
-    - **Makefile:** Use a Makefile to automate build, test, and deployment tasks.
-    - **Build Scripts:** Use build scripts to customize the build process.
-    - **CI/CD Pipeline:** Integrate your build process with a CI/CD pipeline (e.g., AWS CodePipeline, Jenkins).
+Prioritize AWS Fargate for most workloads. It abstracts away server management, offering a serverless compute engine that scales automatically and provides strong task isolation. Only use EC2 launch types if you have specialized hardware requirements (e.g., GPUs), need privileged access, or have specific licensing needs.
 
-  - **7.3 Linting and Formatting:**
-    - **Linters:** Use linters (e.g., ESLint, Pylint) to enforce code style and identify potential errors.
-    - **Formatters:** Use formatters (e.g., Prettier, Black) to automatically format your code.
-    - **Editor Integration:** Integrate linters and formatters with your code editor.
+## 4. Common Pitfalls and Gotchas
 
-  - **7.4 Deployment:**
-    - **Blue/Green Deployments:** Use blue/green deployments to minimize downtime during deployments.
-    - **Canary Deployments:** Use canary deployments to gradually roll out new versions of your application.
-    - **Rolling Updates:** Use rolling updates to gradually update ECS tasks with the new version.
+### 4.1. IAM Task Roles
 
-  - **7.5 CI/CD Integration:**
-    - **Automated Builds:** Automate the build process using a CI/CD pipeline.
-    - **Automated Tests:** Run automated tests as part of the CI/CD pipeline.
-    - **Automated Deployments:** Automate the deployment process using a CI/CD pipeline.
+Always assign a dedicated IAM role to each task (`taskRoleArn`). This enforces the principle of least privilege, granting containers only the permissions they need to interact with other AWS services.
+
+❌ BAD: Relying on the EC2 instance profile for permissions (if using EC2 launch type), which grants all tasks on that instance the same, potentially overly broad, permissions.
+```json
+// Task Definition (missing taskRoleArn)
+{
+  "containerDefinitions": [
+    {
+      "name": "my-app",
+      "image": "my-ecr-repo/my-app:latest"
+    }
+  ]
+}
+```
+
+✅ GOOD: Define a specific `taskRoleArn` for the task.
+```json
+// Task Definition
+{
+  "family": "my-app-task",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecs-my-app-task-role",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "my-app",
+      "image": "my-ecr-repo/my-app:latest"
+    }
+  ]
+}
+```
+*Context*: `executionRoleArn` is required for tasks to pull images from ECR and send logs to CloudWatch. `taskRoleArn` is for your *application's* permissions.
+
+### 4.2. Container Image Tagging
+
+Use immutable, unique tags for container images, preferably based on the Git SHA or a semantic version. Never rely solely on the `latest` tag for production deployments. Enable immutable image tags in ECR.
+
+❌ BAD: Using `latest` or mutable tags in production.
+```dockerfile
+# Dockerfile
+# ...
+docker build -t my-ecr-repo/my-app:latest .
+```
+
+✅ GOOD: Tag with Git SHA and enable ECR immutable tags.
+```bash
+# CI/CD Pipeline
+GIT_SHA=$(git rev-parse --short HEAD)
+docker build -t my-ecr-repo/my-app:"$GIT_SHA" .
+docker push my-ecr-repo/my-app:"$GIT_SHA"
+```
+*Context*: Configure your ECR repository to enforce immutable tags.
+
+## 5. Testing Approaches
+
+### 5.1. Health Checks
+
+Implement robust health checks (HTTP, TCP, or command) in your task definitions. This allows ECS to identify unhealthy containers and replace them, ensuring service availability.
+
+❌ BAD: Omitting health checks, leading to traffic being routed to unhealthy containers.
+```json
+// Task Definition (no health check)
+{
+  "containerDefinitions": [
+    {
+      "name": "my-app",
+      "image": "my-ecr-repo/my-app:latest"
+    }
+  ]
+}
+```
+
+✅ GOOD: Configure an HTTP health check.
+```json
+// Task Definition
+{
+  "containerDefinitions": [
+    {
+      "name": "my-app",
+      "image": "my-ecr-repo/my-app:latest",
+      "portMappings": [
+        { "containerPort": 3000, "hostPort": 3000 }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"],
+        "interval": 30,  // Check every 30 seconds
+        "timeout": 5,    // Timeout after 5 seconds
+        "retries": 3,    // 3 retries before marking unhealthy
+        "startPeriod": 60 // Allow 60 seconds for startup
+      }
+    }
+  ]
+}
+```
+
+### 5.2. Automated CI/CD with AWS Copilot
+
+Automate image builds, testing, and deployments using AWS Copilot or similar CI/CD pipelines (e.g., AWS CodePipeline, GitHub Actions). This ensures consistent, repeatable deployments and adheres to the Well-Architected Framework.
+
+❌ BAD: Manual deployments or custom scripts that are not version-controlled.
+
+✅ GOOD: Use AWS Copilot for opinionated, automated deployments.
+```bash
+# Initialize a new service
+copilot init
+
+# Deploy to a test environment
+copilot deploy --name my-app --env test
+
+# Deploy to production
+copilot deploy --name my-app --env prod
+```
+*Context*: Copilot simplifies the creation of ECS services, including load balancers, CI/CD pipelines, and service discovery.

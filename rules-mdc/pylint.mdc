@@ -1,324 +1,249 @@
 ---
-description: This rule file provides comprehensive best practices for using Pylint to ensure high-quality, maintainable, and secure Python code. It covers code organization, common patterns, performance, security, testing, and tooling.
-globs: *.py
+description: Definitive guidelines for configuring and using pylint for deep semantic analysis and code quality in Python projects.
+globs: **/*.py
 ---
-# Pylint Best Practices: A Comprehensive Guide
-
-This document outlines the best practices for using Pylint, a widely used static code analysis tool for Python. Following these guidelines will help you write cleaner, more maintainable, and secure code.
-
-## 1. Code Organization and Structure
-
-### 1.1 Directory Structure Best Practices
-
-*   **Project Root:** Contains core project files (`README.md`, `LICENSE`, `.gitignore`, `setup.py` or `pyproject.toml`, `.pylintrc`).
-*   **Source Directory (`src/` or project_name/`):** Holds the main application code.
-    *   Organize code into modules and subpackages based on functionality (e.g., `src/models`, `src/views`, `src/controllers`, `src/utils`).
-    *   Use clear and descriptive names for modules and packages.
-*   **Tests Directory (`tests/`):** Contains unit, integration, and end-to-end tests.
-    *   Mirror the source directory structure for easier navigation (e.g., `tests/models`, `tests/views`).
-*   **Docs Directory (`docs/`):** Stores project documentation (using Sphinx, MkDocs, etc.).
-*   **Scripts Directory (`scripts/`):** Contains utility scripts for development, deployment, etc.
-*   **Configuration Directory (`config/`):** Stores configuration files for different environments (development, staging, production).
-
-Example:
-
-
-my_project/
-├── .gitignore
-├── .pylintrc
-├── pyproject.toml
-├── README.md
-├── src/
-│   ├── __init__.py
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── user.py
-│   │   └── item.py
-│   ├── views/
-│   │   ├── __init__.py
-│   │   ├── user_view.py
-│   │   └── item_view.py
-│   └── utils/
-│       ├── __init__.py
-│       └── helper_functions.py
-├── tests/
-│   ├── __init__.py
-│   ├── models/
-│   │   ├── test_user.py
-│   │   └── test_item.py
-│   └── views/
-│       ├── __init__.py
-│       └── test_user_view.py
-└── docs/
-    └── ...
-
-
-### 1.2 File Naming Conventions
-
-*   Use lowercase with underscores for module and package names (e.g., `user_model.py`, `data_processing/`).
-*   Class names should use CamelCase (e.g., `UserModel`).
-*   Constants should be in uppercase with underscores (e.g., `MAX_USERS`).
-*   Test files should be named `test_*.py`.
-
-### 1.3 Module Organization
-
-*   Each module should have a single, well-defined responsibility.
-*   Avoid circular dependencies between modules.
-*   Use `__init__.py` files to define packages and control imports.
-*   Keep modules relatively small (e.g., less than 500 lines of code).
-*   Follow the "Explicit is better than implicit" principle. Use explicit imports rather than `from module import *`.
-
-### 1.4 Component Architecture
-
-*   **Layered Architecture:** Separate concerns into distinct layers (e.g., presentation, business logic, data access).
-*   **Microservices Architecture:** Decompose the application into small, independent services.
-*   **Hexagonal Architecture (Ports and Adapters):** Decouple the core logic from external dependencies.
-*   **MVC (Model-View-Controller):** A common pattern, separating data (Model), presentation (View), and user input handling (Controller).
+# pylint Best Practices
 
-Choose an architecture that suits the complexity and scale of your project. Ensure that pylint can analyze each component effectively by providing clear interfaces and minimal inter-component dependencies.
-
-### 1.5 Code Splitting Strategies
-
-*   **Functional Decomposition:** Split code into functions based on specific tasks.
-*   **Class-Based Decomposition:** Group related functions and data into classes.
-*   **Module-Based Decomposition:** Organize classes and functions into modules based on their domain.
-*   **Package-Based Decomposition:** Group related modules into packages.
-*   **Vertical Slicing**: Create independent, deployable features from end-to-end (UI to database)
-
-Apply these strategies iteratively as your codebase grows.  Keep pylint's static analysis capabilities in mind; avoid excessively complex functions or classes that can become difficult for pylint to analyze effectively.
-
-## 2. Common Patterns and Anti-patterns
-
-### 2.1 Design Patterns
+Pylint is our go-to for **deep semantic analysis** and identifying complex code smells in Python. While Ruff handles fast style checks and MyPy ensures type correctness, Pylint focuses on broader architectural and logical issues. This guide ensures Pylint is a powerful, not noisy, part of our workflow.
 
-*   **Factory Pattern:** Use factory functions or classes to create objects, promoting loose coupling and testability.
-*   **Singleton Pattern:** Ensure that a class has only one instance, providing a global point of access.
-*   **Observer Pattern:** Define a one-to-many dependency between objects, so that when one object changes state, all its dependents are notified and updated automatically.
-*   **Strategy Pattern:** Define a family of algorithms, encapsulate each one, and make them interchangeable. Strategy lets the algorithm vary independently from clients that use it.
-*   **Dependency Injection:** Provide dependencies to a component rather than having it create them internally, increasing flexibility and testability.
+## 1. Configuration is King: `pyproject.toml`
+
+Always use `pyproject.toml` for Pylint configuration. This ensures consistency across all environments and developers.
+
+**Action**: Generate a baseline config and commit it.
+```bash
+pylint --generate-toml-config > pyproject.toml
+```
+
+### 1.1. Silence the Noise, Enable What Matters
+
+Pylint is notoriously noisy by default. Start by disabling everything and selectively enabling relevant categories. Focus on `convention`, `refactor`, `warning`, and `error` for semantic checks.
+
+❌ BAD: Default Pylint output (overwhelming)
+```bash
+pylint your_module.py # Flooded with style and minor issues
+```
+
+✅ GOOD: Targeted Pylint checks in `pyproject.toml`
+```toml
+# pyproject.toml
+[tool.pylint.main]
+disable = "all"
+enable = [
+    "convention",
+    "refactor",
+    "warning",
+    "error",
+    # Add specific messages if needed, e.g., "W0611", "R0913"
+]
+```
+
+### 1.2. Filter by Confidence
+
+Reduce false positives by only showing warnings with high confidence.
 
-### 2.2 Recommended Approaches for Common Tasks
-
-*   **Configuration Management:** Use libraries like `ConfigParser`, `Dynaconf` or `pydantic-settings` to manage application configuration.
-*   **Logging:** Use the `logging` module for structured logging.
-*   **Data Validation:** Use libraries like `Pydantic` or `Marshmallow` to validate data.
-*   **API Requests:** Use the `requests` library for making HTTP requests.
-*   **Date and Time Handling:** Use the `datetime` module for date and time operations.
-*   **Use Context Managers (`with` statements) whenever working with external resources like files, network connections, etc. to ensure proper cleanup.
-
-### 2.3 Anti-patterns and Code Smells
-
-*   **Long Methods/Functions:** Functions or methods exceeding a reasonable length (e.g., 50 lines) are hard to understand and maintain. Split them into smaller, more focused units.
-*   **Duplicate Code:** Avoid copy-pasting code. Extract common logic into reusable functions or classes.
-*   **Magic Numbers:** Use named constants instead of hardcoded values.
-*   **Feature Envy:** A method accesses the data of another object more than its own. Move the method to the object it uses the most.
-*   **God Class/Object:** A class that knows or does too much. Split it into smaller, more specialized classes.
-*   **Spaghetti Code:** Code with a complex and tangled control structure, making it difficult to follow the logic. Refactor it into a more structured design.
-*   **Shotgun Surgery:** Whenever you make one kind of change, you have to make many small changes to a lot of different classes. Consolidate changes into fewer classes.
-*   **Primitive Obsession:** Using primitive data types to represent domain concepts. Create dedicated classes instead.
-*   **Data Clumps:** Groups of variables that appear together in many places. Create a class to encapsulate them.
-
-### 2.4 State Management
-
-*   **Minimize Mutable State:** Favor immutable data structures to reduce complexity and potential errors.
-*   **Centralized State Management:** Use patterns like Redux or Context API (if applicable) to manage application state in a central location.
-*   **Clear State Transitions:** Define clear and predictable state transitions to avoid unexpected behavior.
-*   **Avoid Global State:** Global state can make code harder to reason about and test. Use dependency injection or other techniques to manage dependencies.
-
-### 2.5 Error Handling
-
-*   **Specific Exception Handling:** Catch specific exceptions rather than generic `Exception` to handle errors appropriately.
-*   **Use `try...except...finally`:** Ensure that resources are released properly, even if an exception occurs.
-*   **Avoid Bare `except` Clauses:**  Always specify the exception type you are catching.
-*   **Logging Exceptions:** Log detailed information about exceptions for debugging purposes.
-*   **Raise Exceptions Responsibly:** Raise exceptions when an error occurs that cannot be handled locally. Provide meaningful error messages.
-*   **Use Custom Exceptions:**  Create custom exception classes for specific error scenarios in your application, improving clarity and maintainability.
-
-## 3. Performance Considerations
-
-### 3.1 Optimization Techniques
-
-*   **Profiling:** Use profiling tools like `cProfile` to identify performance bottlenecks.
-*   **Algorithmic Optimization:** Choose efficient algorithms and data structures for critical tasks.
-*   **Caching:** Use caching techniques to store frequently accessed data and reduce computation time (e.g., `functools.lru_cache`).
-*   **List Comprehensions and Generators:** Use list comprehensions and generators for concise and efficient code.
-*   **Avoid Premature Optimization:** Optimize code only after identifying actual performance bottlenecks.
-*   **Use vectorized operations with NumPy when dealing with numerical computations to leverage performance.
-
-### 3.2 Memory Management
-
-*   **Avoid Memory Leaks:** Ensure that objects are properly deallocated when they are no longer needed.
-*   **Use Generators:** Use generators to process large datasets in chunks, reducing memory usage.
-*   **Minimize Object Creation:** Avoid creating unnecessary objects to reduce memory overhead.
-*   **Use Data Structures Wisely:** Choose appropriate data structures based on memory usage and performance characteristics.
-*   **Use the `del` keyword when you are completely finished with a variable that is holding a large data structure, allowing the garbage collector to reclaim the memory.
-
-### 3.3 Rendering Optimization (If Applicable)
-
-*   This is more relevant to UI applications or cases where Pylint is integrated into a tool with a visual output.
-*   **Virtualization/Windowing**: Only render what is visible on the screen, especially for long lists or tables.
-*   **Debouncing/Throttling**: Limit the frequency of updates to the display.
-
-### 3.4 Bundle Size Optimization (If Applicable)
-
-*   This mainly applies if you are building a web application or a desktop app where Pylint analysis is integrated as part of the build process.  Minimize dependencies, tree shake (remove unused code), and compress the output.
-
-### 3.5 Lazy Loading
-
-*   **Lazy Loading Modules:** Use lazy loading to load modules only when they are needed.
-*   **Lazy Loading Data:** Fetch data only when it is required by the user or the application.
-*   **Avoid Eager Loading:** Avoid loading large datasets or resources upfront.
-
-## 4. Security Best Practices
-
-### 4.1 Common Vulnerabilities and Prevention
-
-*   **SQL Injection:** Use parameterized queries or an ORM to prevent SQL injection attacks.
-*   **Cross-Site Scripting (XSS):** Sanitize user input to prevent XSS attacks.
-*   **Cross-Site Request Forgery (CSRF):** Use CSRF tokens to protect against CSRF attacks.
-*   **Command Injection:** Avoid executing arbitrary commands based on user input.
-*   **Path Traversal:** Validate file paths to prevent path traversal attacks.
-*   **Regularly update your dependencies to patch security vulnerabilities.
-
-### 4.2 Input Validation
-
-*   **Validate All User Input:** Validate all user input to ensure that it is valid and safe.
-*   **Use Regular Expressions:** Use regular expressions to validate input patterns.
-*   **Sanitize Input:** Sanitize input to remove or escape potentially harmful characters.
-*   **Limit Input Length:** Limit the length of input fields to prevent buffer overflows.
-
-### 4.3 Authentication and Authorization
-
-*   **Use Strong Passwords:** Enforce strong password policies and use password hashing algorithms (e.g., bcrypt, Argon2).
-*   **Implement Role-Based Access Control (RBAC):** Define roles and permissions to control access to resources.
-*   **Use Multi-Factor Authentication (MFA):** Add an extra layer of security with MFA.
-*   **Secure Session Management:** Use secure session management techniques to protect user sessions.
-
-### 4.4 Data Protection
-
-*   **Encrypt Sensitive Data:** Encrypt sensitive data at rest and in transit.
-*   **Use Secure Protocols:** Use secure protocols like HTTPS for communication.
-*   **Data Masking:** Mask sensitive data when it is not needed.
-*   **Data Anonymization:** Anonymize data to protect user privacy.
-
-### 4.5 Secure API Communication
-
-*   **Use Authentication Tokens:** Use authentication tokens to authenticate API requests (e.g., JWT).
-*   **Rate Limiting:** Implement rate limiting to prevent abuse.
-*   **Input Validation:** Validate all input to API endpoints.
-*   **Output Sanitization:** Sanitize output from API endpoints to prevent injection attacks.
-
-## 5. Testing Approaches
-
-### 5.1 Unit Testing
-
-*   **Test Individual Components:** Write unit tests for individual functions, classes, and modules.
-*   **Use Assertions:** Use assertions to verify that the code behaves as expected.
-*   **Test Edge Cases:** Test edge cases and boundary conditions.
-*   **Test Exception Handling:** Test that exceptions are raised and handled correctly.
-*   **Isolate Tests:** Ensure that unit tests are isolated and do not depend on external resources.
-
-### 5.2 Integration Testing
-
-*   **Test Interactions:** Write integration tests to verify that different components work together correctly.
-*   **Test API Endpoints:** Test API endpoints to ensure that they are functioning as expected.
-*   **Test Database Interactions:** Test database interactions to ensure that data is being stored and retrieved correctly.
-
-### 5.3 End-to-End Testing
-
-*   **Simulate User Flows:** Write end-to-end tests to simulate user flows and verify that the application behaves as expected from a user's perspective.
-*   **Test UI Interactions:** Test UI interactions to ensure that the UI is functioning correctly.
-*   **Test System Behavior:** Test overall system behavior and performance.
-
-### 5.4 Test Organization
-
-*   **Mirror Source Directory:** Organize tests in a directory structure that mirrors the source directory structure.
-*   **Use Descriptive Names:** Use descriptive names for test files and test functions.
-*   **Separate Test Files:** Separate unit tests, integration tests, and end-to-end tests into separate files.
-*   **Use a Test Runner:** Use a test runner like `pytest` or `unittest` to run tests.
-
-### 5.5 Mocking and Stubbing
-
-*   **Use Mocks:** Use mocks to replace external dependencies with controlled test doubles.
-*   **Use Stubs:** Use stubs to provide predefined responses for external dependencies.
-*   **Isolate Units Under Test:** Use mocking and stubbing to isolate the unit under test and prevent dependencies from affecting test results.
-
-## 6. Common Pitfalls and Gotchas
-
-### 6.1 Frequent Mistakes
-
-*   **Ignoring Pylint Warnings:** Ignoring Pylint warnings can lead to code quality issues and potential bugs. Always address Pylint warnings promptly.
-*   **Over-Suppressing Messages:** Over-suppressing Pylint messages can hide important issues. Only suppress messages when you are certain that they are not relevant.
-*   **Not Customizing Pylint Configuration:** Not customizing the Pylint configuration to match your project's needs can result in irrelevant warnings and missed issues. Customize the configuration to suit your project.
-*   **Using Broad Exceptions:** Using broad exception clauses (e.g., `except Exception:`) can catch unintended exceptions and hide potential problems.
-*   **Not Testing Edge Cases:** Not testing edge cases can lead to unexpected behavior and bugs.
-*   **Not Using Virtual Environments:** Failing to use virtual environments can lead to dependency conflicts and deployment issues.
-
-### 6.2 Edge Cases
-
-*   **Dynamic Code Generation:** Pylint may have difficulty analyzing code that is dynamically generated at runtime.
-*   **Complex Metaclasses:** Complex metaclasses can confuse Pylint and lead to false positives.
-*   **Third-Party Libraries:** Pylint may not fully support all third-party libraries.
-*   **Cython Extensions:** Cython extensions may not be analyzed correctly by Pylint.
-*   **Monkey Patching**: Dynamic modification of code at runtime can confuse pylint and potentially lead to incorrect analysis.
-
-### 6.3 Version-Specific Issues
-
-*   **Compatibility Issues:** Different versions of Pylint may have compatibility issues with different versions of Python and third-party libraries.
-*   **Message Changes:** Pylint messages may change between versions, requiring updates to your configuration.
-*   **Checker Updates:** New checkers may be added in new versions of Pylint, requiring updates to your codebase.
-
-### 6.4 Compatibility Concerns
-
-*   **Black/Autopep8:** Ensure that Pylint's formatting rules are compatible with formatters like Black or Autopep8 to avoid conflicts.
-*   **Mypy:** Use Mypy to complement Pylint's static analysis with type checking.
-*   **Flake8:** Consider using Flake8 alongside Pylint for additional linting checks.
-
-### 6.5 Debugging Strategies
-
-*   **Read Error Messages Carefully:** Pylint error messages provide valuable information about the cause of the error.
-*   **Use `--verbose`:** Use the `--verbose` flag to get more detailed output from Pylint.
-*   **Isolate the Problem:** Try to isolate the problem to a specific function, class, or module.
-*   **Use a Debugger:** Use a debugger to step through the code and identify the cause of the error.
-*   **Consult the Pylint Documentation:** The Pylint documentation provides detailed information about all of Pylint's features and messages.
-
-## 7. Tooling and Environment
-
-### 7.1 Recommended Development Tools
-
-*   **VS Code with Python Extension:** VS Code is a popular code editor with excellent Python support.
-*   **PyCharm:** PyCharm is a powerful IDE for Python development.
-*   **Pylance (VS Code extension):** A fast, feature-rich language server for Python in VS Code.
-*   **Docker:** Use Docker for consistent and reproducible development environments.
-
-### 7.2 Build Configuration
-
-*   **Use a Build System:** Use a build system like `Make`, `Poetry`, or `tox` to automate build tasks.
-*   **Define Dependencies:** Define dependencies in a `requirements.txt` or `pyproject.toml` file.
-*   **Use Virtual Environments:** Use virtual environments to isolate project dependencies.
-*   **Automate Pylint Execution:** Automate Pylint execution as part of the build process.
-*   **Include .pylintrc:** Ensure that the `.pylintrc` file is included in the project repository.
-
-### 7.3 Linting and Formatting
-
-*   **Use a Code Formatter:** Use a code formatter like `Black` or `Autopep8` to automatically format code.
-*   **Integrate with Editor:** Integrate Pylint and the code formatter with your code editor for real-time feedback.
-*   **Use Pre-Commit Hooks:** Use pre-commit hooks to run Pylint and the code formatter before committing changes.
-*   **Address all linting and formatting issues consistently.
-
-### 7.4 Deployment
-
-*   **Use a Deployment Pipeline:** Use a deployment pipeline to automate the deployment process.
-*   **Test Before Deployment:** Run unit tests, integration tests, and end-to-end tests before deploying the application.
-*   **Monitor Application:** Monitor the application after deployment to detect and resolve issues.
-*   **Use a Configuration Management Tool:** Use a configuration management tool like Ansible or Chef to manage application configuration in production.
-
-### 7.5 CI/CD Integration
-
-*   **Integrate with CI/CD System:** Integrate Pylint with your CI/CD system (e.g., Jenkins, GitLab CI, GitHub Actions).
-*   **Run Pylint in CI/CD Pipeline:** Run Pylint as part of the CI/CD pipeline to automatically check code quality.
-*   **Fail Build on Errors:** Configure the CI/CD pipeline to fail the build if Pylint reports any errors.
-*   **Collect Metrics:** Collect metrics from Pylint runs to track code quality over time.
-*   **Use code review processes and tools to enforce coding standards.
-
-By adhering to these best practices, you can leverage Pylint to create high-quality, maintainable, and secure Python code.
+✅ GOOD: Filter low-confidence warnings in `pyproject.toml`
+```toml
+# pyproject.toml
+[tool.pylint.main]
+confidence = ["HIGH", "CONTROL_FLOW"] # Focus on reliable detections
+```
+
+## 2. Code Organization & Readability
+
+Pylint helps enforce structural best practices beyond basic style.
+
+### 2.1. Docstrings for Everything
+
+Every module, class, and function **must** have a docstring. Pylint enforces this.
+
+❌ BAD: Missing docstrings
+```python
+def calculate_sum(a, b):
+    return a + b
+```
+
+✅ GOOD: Clear and concise docstrings
+```python
+"""This module provides basic arithmetic operations."""
+
+def calculate_sum(a: int, b: int) -> int:
+    """
+    Calculates the sum of two integers.
+
+    :param a: The first integer.
+    :param b: The second integer.
+    :return: The sum of a and b.
+    """
+    return a + b
+```
+*Pylint messages: `C0114` (module), `C0115` (class), `C0116` (function/method)*
+
+### 2.2. Naming Conventions
+
+Adhere to PEP 8 naming. Pylint helps catch deviations, especially for constants.
+
+❌ BAD: Inconsistent naming
+```python
+shift = 3 # Pylint will flag as C0103: invalid-name
+def my_function(): pass
+```
+
+✅ GOOD: PEP 8 compliant naming
+```python
+SHIFT_AMOUNT = 3 # Constants are UPPER_CASE
+def my_function(): pass # Functions are snake_case
+```
+*Pylint message: `C0103` (invalid-name)*
+
+### 2.3. Manage Complexity
+
+Pylint flags overly complex functions or classes, indicating a need for refactoring.
+
+❌ BAD: Monolithic function (Pylint `R0915` too-many-statements, `R0912` too-many-branches)
+```python
+def process_data_and_save(data, config):
+    # ... 50 lines of data validation ...
+    # ... 30 lines of data transformation ...
+    # ... 20 lines of database interaction ...
+    # ... 10 lines of logging ...
+    pass
+```
+
+✅ GOOD: Break down into smaller, focused units
+```python
+def _validate_data(data):
+    # ... validation logic ...
+    pass
+
+def _transform_data(data):
+    # ... transformation logic ...
+    pass
+
+def _save_to_db(data, config):
+    # ... database interaction ...
+    pass
+
+def process_data_and_save(data, config):
+    _validate_data(data)
+    transformed_data = _transform_data(data)
+    _save_to_db(transformed_data, config)
+    # ... logging ...
+```
+*Pylint messages: `R0913` (too-many-arguments), `R0914` (too-many-locals), `R0915` (too-many-statements), `R0902` (too-many-instance-attributes), `R0904` (too-many-public-methods)*
+
+## 3. Robustness & Error Prevention
+
+Pylint identifies patterns that lead to bugs or make debugging difficult.
+
+### 3.1. Specific Exception Handling
+
+Always catch specific exceptions. Broad `except Exception:` blocks hide issues.
+
+❌ BAD: Catching all exceptions
+```python
+try:
+    # risky operation
+    pass
+except Exception: # W0703: broad-exception-caught
+    print("An error occurred")
+```
+
+✅ GOOD: Catching specific exceptions
+```python
+try:
+    # risky operation
+    pass
+except (ValueError, TypeError) as e:
+    print(f"Data error: {e}")
+except IOError as e:
+    print(f"File error: {e}")
+```
+*Pylint message: `W0703` (broad-exception-caught)*
+
+### 3.2. Avoid Unused Code
+
+Remove unused imports and variables to keep the codebase clean. Ruff handles import sorting, but Pylint still catches unused declarations.
+
+❌ BAD: Unused import/variable
+```python
+import os # W0611: unused-import
+def my_func():
+    x = 10 # W0612: unused-variable
+    return 5
+```
+
+✅ GOOD: Clean code
+```python
+def my_func():
+    result = 5
+    return result
+```
+*Pylint messages: `W0611` (unused-import), `W0612` (unused-variable)*
+
+## 4. Integration into Workflow
+
+Pylint is most effective when integrated into development and CI.
+
+### 4.1. Pre-commit Hooks
+
+Run Pylint automatically before commits. Ensure it runs *after* Ruff and Black.
+
+✅ GOOD: `.pre-commit-config.yaml` snippet
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.8 # Use latest stable version
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/PyCQA/pylint
+    rev: v3.0.0 # Use latest stable version
+    hooks:
+      - id: pylint
+        args: ["--rcfile=pyproject.toml"] # Ensure it uses our config
+```
+*Install with `pre-commit install`*
+
+### 4.2. CI/CD Integration
+
+Integrate Pylint into your CI pipeline to enforce quality on every push. Use JSON output for machine readability and `--fail-under` to set a quality gate.
+
+✅ GOOD: GitHub Actions workflow snippet
+```yaml
+# .github/workflows/lint.yml
+name: Lint
+on: [push, pull_request]
+jobs:
+  pylint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Or your project's version
+      - name: Install dependencies
+        run: pip install pylint
+      - name: Run Pylint
+        run: pylint --output-format=json --fail-under=8.0 --clear-cache-post-run . > pylint_report.json
+      - name: Upload Pylint report (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pylint-report
+          path: pylint_report.json
+```
+*Set `--fail-under` to a score that makes sense for your project (e.g., 8.0 or 9.0). Use `--clear-cache-post-run` to prevent stale AST caches in long-running CI agents.*
+
+## 5. Pylint in the Modern Python Stack
+
+Pylint is one piece of a comprehensive linting strategy.
+
+*   **Ruff**: Handles fast style checks, basic errors, and import sorting (replaces Flake8, isort, pyupgrade).
+*   **Black**: Uncompromising code formatter.
+*   **MyPy**: Static type checking.
+*   **Pylint**: Deeper semantic analysis, code smells, and architectural issues.
+
+This layered approach ensures maximum code quality with minimal developer friction.

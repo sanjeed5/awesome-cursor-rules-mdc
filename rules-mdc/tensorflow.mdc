@@ -1,185 +1,320 @@
 ---
-description: Comprehensive guide to TensorFlow best practices, covering code organization, performance, testing, and security for robust and maintainable machine learning projects.
-globs: *.py,*.tf,*.keras
+description: This guide defines the definitive best practices for writing TensorFlow code, focusing on `tf.keras` for models, `tf.data` for input pipelines, and `@tf.function` for performance, ensuring reproducible, scalable, and production-ready ML systems.
+globs: **/*.py
 ---
-- **Code Organization and Structure:**
-  - **Directory Structure:**
-    -   Structure your project into logical directories. For example:
-        
-        project_root/
-        ├── data/
-        │   ├── raw/
-        │   └── processed/
-        ├── models/
-        │   ├── training/
-        │   └── saved_models/
-        ├── src/
-        │   ├── utils/
-        │   ├── layers/
-        │   ├── models/
-        │   ├── training/
-        │   └── evaluation/
-        ├── notebooks/  #Jupyter notebooks for experimentation
-        ├── tests/
-        ├── configs/
-        └── README.md
-        
+# tensorflow Best Practices
 
-  - **File Naming Conventions:**
-    -   Use descriptive and consistent names. For example:
-        -   `model_name.py`
-        -   `data_processing.py`
-        -   `train.py`
-        -   `evaluate.py`
-        -   `layer_name.py`
+This document outlines our team's definitive guidelines for writing TensorFlow code. Adhering to these practices ensures maintainable, performant, and reproducible machine learning systems.
 
-  - **Module Organization:**
-    -   Break down code into reusable modules and functions.
-    -   Use `tf.Module` and Keras layers to manage variables. This enables encapsulation and avoids global variable pollution.
-    -   Import modules using explicit relative or absolute paths, such as `from src.models import MyModel`.
-    - Group related functionality into modules/packages.
+## 1. Code Organization and Structure
 
-  - **Component Architecture:**
-    - Employ modular design principles.
-    - Keras `Layers` and `Models` promote a component-based architecture.  Custom layers should inherit from `tf.keras.layers.Layer`. Custom models inherit from `tf.keras.Model`.
-    -   Use dependency injection to decouple components and facilitate testing.
+Always structure your TensorFlow projects for clarity and modularity. Separate concerns into distinct files or functions.
 
-  - **Code Splitting Strategies:**
-    -   Refactor code into smaller, manageable modules.
-    -   Separate data loading, preprocessing, model definition, training, and evaluation into distinct modules.
-    -   Implement generator functions or `tf.data.Dataset` pipelines for large datasets to avoid loading all data into memory at once.
+### 1.1. Model Definition: Use `tf.keras`
 
-- **Common Patterns and Anti-patterns:**
-  - **Design Patterns:**
-    -   **Strategy Pattern:** Use different strategies for optimization or regularization.
-    -   **Factory Pattern:**  Create model architectures dynamically based on configuration.
-    -   **Observer Pattern:** Monitor training progress and trigger actions based on metrics.
+Always define models using the `tf.keras` API. It's the high-level, declarative standard for TensorFlow. Prefer the Functional API for complex models and `Sequential` for simple stacks.
 
-  - **Recommended Approaches:**
-    -   Use Keras layers and models to manage variables. Keras handles the underlying TensorFlow operations.
-    -   Leverage `tf.data.Dataset` for efficient data loading and preprocessing.
-    -   Use `tf.function` to compile Python functions into TensorFlow graphs for improved performance.
+❌ BAD: Raw `tf.Variable` and custom loops for model architecture.
+```python
+import tensorflow as tf
 
-  - **Anti-patterns and Code Smells:**
-    -   **God Classes:** Avoid monolithic classes that perform too many tasks. Break them into smaller, more focused classes or functions.
-    -   **Copy-Pasted Code:**  Refactor duplicated code into reusable functions or modules.
-    -   **Magic Numbers:** Use named constants instead of hardcoded values.
-    -   **Global Variables:** Minimize the use of global variables, especially for model parameters.
+class BadCustomModel:
+    def __init__(self):
+        self.w1 = tf.Variable(tf.random.normal([784, 128]))
+        self.b1 = tf.Variable(tf.zeros([128]))
+        # ... more manual variables
+```
 
-  - **State Management:**
-    -   Use Keras layers and models for managing model state (weights, biases).
-    -   Use `tf.Variable` objects for persistent state that needs to be tracked during training.
-    -  When creating a model subclass, define trainable weights as tf.Variable objects within the `build()` method.
-    -   Consider using `tf.saved_model` to save and load the entire model state, including the computation graph and variable values.
+✅ GOOD: `tf.keras.Model` or `tf.keras.Sequential`.
+```python
+import tensorflow as tf
 
-  - **Error Handling:**
-    -   Use `tf.debugging.assert_*` functions to check tensor values during development and debugging.
-    -   Implement try-except blocks to handle potential exceptions, such as `tf.errors.InvalidArgumentError` or `tf.errors.OutOfRangeError`.
-    -   Log errors and warnings using `tf.compat.v1.logging` or the standard `logging` module.
-    - Ensure error messages are informative and actionable.
+def build_model(input_shape: tuple[int, ...], num_classes: int) -> tf.keras.Model:
+    inputs = tf.keras.Input(shape=input_shape)
+    x = tf.keras.layers.Flatten()(inputs)
+    x = tf.keras.layers.Dense(128, activation='relu')(x)
+    x = tf.keras.layers.Dropout(0.2)(x)
+    outputs = tf.keras.layers.Dense(num_classes, activation='softmax')(x)
+    return tf.keras.Model(inputs=inputs, outputs=outputs)
 
-- **Performance Considerations:**
-  - **Optimization Techniques:**
-    -   Use `tf.function` to compile Python functions into TensorFlow graphs for improved performance. Use autograph (automatic graph construction).
-    -   Optimize data input pipelines using `tf.data.Dataset.prefetch` and `tf.data.Dataset.cache`.
-    -   Experiment with different optimizers (e.g., Adam, SGD) and learning rates.
-    -  Adjust the default learning rate for some `tf.keras.*` optimizers.
-    -   Use mixed precision training with `tf.keras.mixed_precision.Policy` to reduce memory usage and improve performance on GPUs.
+# Usage:
+model = build_model((28, 28), 10)
+```
 
-  - **Memory Management:**
-    -   Use `tf.data.Dataset` to stream data from disk instead of loading it all into memory.
-    -   Release unnecessary tensors using `del` to free up memory.
-    -   Use `tf.GradientTape` to compute gradients efficiently, and avoid keeping unnecessary tensors alive within the tape.
+### 1.2. Data Pipelines: Use `tf.data`
 
-  - **GPU Utilization:**
-    -   Ensure that TensorFlow is using the GPU by checking `tf.config.list_physical_devices('GPU')`.
-    -   Use larger batch sizes to maximize GPU utilization.
-    -   Profile your code using TensorFlow Profiler to identify bottlenecks and optimize GPU usage.
+Always use the `tf.data` API for building robust and efficient input pipelines. This is critical for scaling to large datasets and optimizing I/O.
 
-- **Security Best Practices:**
-  - **Common Vulnerabilities:**
-    -   **Untrusted Input:**  Validate all user-provided input to prevent malicious code injection or data poisoning attacks.
-    -   **Model Poisoning:** Protect against adversarial attacks that can manipulate the training data and degrade model performance.
-    -   **Model Inversion:**  Implement techniques to protect sensitive data from being extracted from the model.
+❌ BAD: Loading all data into memory or using `numpy` arrays for large datasets.
+```python
+import numpy as np
+# ... load huge_data into numpy array
+# x_train, y_train = np.load('huge_data.npy')
+# model.fit(x_train, y_train, batch_size=32) # Inefficient for large data
+```
 
-  - **Input Validation:**
-    -   Sanitize and validate all input data to prevent SQL injection, cross-site scripting (XSS), and other security vulnerabilities.
-    -   Use `tf.io.decode_image` to decode images safely and prevent potential vulnerabilities related to malformed image files.
-    -  Input validation for image and text data is critical.
+✅ GOOD: Stream data with `tf.data.Dataset`.
+```python
+import tensorflow as tf
+import tensorflow_datasets as tfds
 
-  - **Data Protection:**
-    -   Encrypt sensitive data at rest and in transit.
-    -   Use differential privacy techniques to protect the privacy of training data.
-    -   Regularly audit your code and infrastructure for security vulnerabilities.
+def create_dataset(split: str, batch_size: int) -> tf.data.Dataset:
+    ds = tfds.load('mnist', split=split, as_supervised=True)
+    ds = ds.map(lambda img, label: (tf.cast(img, tf.float32) / 255.0, label))
+    ds = ds.shuffle(1024).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    return ds
 
-  - **Secure API Communication:**
-    -   Use HTTPS to encrypt communication between the client and the server.
-    -   Implement authentication and authorization mechanisms to restrict access to sensitive data and functionality.
+# Usage:
+train_ds = create_dataset('train', 128)
+test_ds = create_dataset('test', 128)
+```
 
-- **Testing Approaches:**
-  - **Unit Testing:**
-    -   Write unit tests for individual functions and classes using `unittest` or `pytest`.
-    -   Use `tf.test.TestCase` for testing TensorFlow-specific code.
-    -   Mock external dependencies to isolate the code being tested.
+## 2. Common Patterns and Anti-patterns
 
-  - **Integration Testing:**
-    -   Test the integration of different modules and components.
-    -   Verify that the data pipeline is working correctly.
-    -   Ensure that the model is producing accurate predictions on real-world data.
+### 2.1. Performance Critical Code: Use `@tf.function`
 
-  - **End-to-End Testing:**
-    -   Test the entire workflow from data loading to model deployment.
-    -   Use tools like Selenium or Cypress to automate end-to-end tests.
-    -   Test for performance and scalability.
+Always wrap pure TensorFlow operations and custom training loops in `@tf.function` to enable graph compilation and performance optimizations (e.g., XLA). Understand its graph-building semantics.
 
-  - **Test Organization:**
-    -   Organize tests into logical directories and modules.
-    -   Use clear and descriptive test names.
-    -   Follow the Arrange-Act-Assert pattern for writing tests.
+❌ BAD: Relying solely on eager execution for production training/inference.
+```python
+# Slower due to Python overhead per operation
+for epoch in range(epochs):
+    for x_batch, y_batch in train_ds:
+        with tf.GradientTape() as tape:
+            logits = model(x_batch, training=True)
+            loss = loss_fn(y_batch, logits)
+        grads = tape.gradient(loss, model.trainable_variables)
+        optimizer.apply_gradients(zip(grads, model.trainable_variables))
+```
 
-  - **Mocking and Stubbing:**
-    -   Use mocking frameworks like `unittest.mock` or `pytest-mock` to replace external dependencies with mock objects.
-    -   Use stubs to provide controlled responses from external dependencies.
+✅ GOOD: Compile with `@tf.function`.
+```python
+import tensorflow as tf
 
-- **Common Pitfalls and Gotchas:**
-  - **Version Compatibility:**
-    -   Be aware of version-specific issues and compatibility concerns when upgrading TensorFlow versions.
-    -   Use `tf.compat.v1` or `tf.compat.v2` to maintain compatibility with older versions of TensorFlow.
+@tf.function
+def train_step(model: tf.keras.Model, optimizer: tf.keras.optimizers.Optimizer,
+               loss_fn: tf.keras.losses.Loss, x_batch: tf.Tensor, y_batch: tf.Tensor):
+    with tf.GradientTape() as tape:
+        logits = model(x_batch, training=True)
+        loss = loss_fn(y_batch, logits)
+    grads = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
-  - **Eager Execution:**
-    -   Understand the differences between eager execution and graph execution.
-    -   Use `tf.function` to compile functions into graphs for improved performance in production.
+# Usage in training loop:
+# for epoch in range(epochs):
+#     for x_batch, y_batch in train_ds:
+#         train_step(model, optimizer, loss_fn, x_batch, y_batch)
+```
 
-  - **Tensor Shapes and Data Types:**
-    -   Pay attention to tensor shapes and data types to avoid errors.
-    -   Use `tf.debugging.assert_shapes` and `tf.debugging.assert_type` to check tensor shapes and data types during development.
+### 2.2. Reproducibility: Pin Random Seeds
 
-  - **Variable Scope:**
-    -   Be aware of variable scope when using `tf.Variable` objects.
-    -   Use `tf.compat.v1.get_variable` to create or reuse variables within a specific scope.
+Always set global and operational random seeds to ensure reproducibility across runs. This is non-negotiable for reliable experimentation.
 
-- **Tooling and Environment:**
-  - **Recommended Development Tools:**
-    -   Jupyter Notebooks or Google Colab for interactive development and experimentation.
-    -   TensorBoard for visualizing training progress and model graphs.
-    -   TensorFlow Profiler for identifying performance bottlenecks.
-    -   Debuggers such as the Python Debugger (pdb) for stepping through code and inspecting variables.
+❌ BAD: Not setting any seeds, leading to non-deterministic results.
+```python
+# Results will vary between runs
+model = tf.keras.Sequential([...])
+```
 
-  - **Linting and Formatting:**
-    -   Use linters like pylint or flake8 to enforce code style guidelines.
-    -   Use formatters like black or autopep8 to automatically format your code.
+✅ GOOD: Set all relevant seeds.
+```python
+import tensorflow as tf
+import numpy as np
+import random
 
-  - **Deployment Best Practices:**
-    -   Use TensorFlow Serving to deploy models in production.
-    -   Use Docker to containerize your application and ensure consistent deployments.
-    -  Use a platform like Vertex AI for scalable model training and deployment.
+def set_all_seeds(seed: int = 42):
+    np.random.seed(seed)
+    random.seed(seed)
+    tf.random.set_seed(seed)
+    # For CUDA operations, if applicable
+    # os.environ['TF_DETERMINISTIC_OPS'] = '1'
 
-  - **CI/CD Integration:**
-    -   Integrate your code with a continuous integration/continuous delivery (CI/CD) pipeline.
-    -   Use tools like Jenkins, Travis CI, or CircleCI to automate testing and deployment.
+set_all_seeds(42)
+model = tf.keras.Sequential([...])
+```
 
-- **References:**
-  - [TensorFlow Core](https://www.tensorflow.org/guide/effective_tf2)
-  - [TensorFlow testing best practices](https://www.tensorflow.org/community/contribute/tests)
-  - [Medium - 10 tips to improve your machine learning models with tensorflow](https://medium.com/decathlondigital/10-tips-to-improve-your-machine-learning-models-with-tensorflow-ba7c724761e2)
-  - [Quora - What are the best practices with TensorFlow](https://www.quora.com/What-are-the-best-practices-with-TensorFlow)
+## 3. Performance Considerations
+
+### 3.1. Data Preprocessing: Optimize `tf.data`
+
+Leverage `tf.data` features like `cache()`, `prefetch()`, and `num_parallel_calls` for `map()` to prevent I/O bottlenecks.
+
+✅ GOOD: Efficient `tf.data` pipeline.
+```python
+import tensorflow as tf
+
+def optimized_dataset(filepaths: list[str], batch_size: int) -> tf.data.Dataset:
+    ds = tf.data.TFRecordDataset(filepaths) # Or from_tensor_slices, etc.
+    ds = ds.map(parse_example_fn, num_parallel_calls=tf.data.AUTOTUNE)
+    ds = ds.cache() # Cache data after initial processing
+    ds = ds.shuffle(buffer_size=10000)
+    ds = ds.batch(batch_size)
+    ds = ds.prefetch(tf.data.AUTOTUNE) # Preload next batch
+    return ds
+```
+
+## 4. Common Pitfalls and Gotchas
+
+### 4.1. `tf.function` Side Effects
+
+Avoid Python side effects (e.g., printing, appending to lists) within `@tf.function` decorated functions if you expect them to execute every time. Graph compilation can hoist or ignore them.
+
+❌ BAD: Expecting Python `print` to execute on every graph call.
+```python
+@tf.function
+def my_func(x):
+    tf.print("Tracing or executing once!") # Only prints on first call/trace
+    return x + 1
+```
+
+✅ GOOD: Use `tf.print` for debugging inside graphs.
+```python
+@tf.function
+def my_func(x):
+    tf.print("This prints every time the graph executes:", x)
+    return x + 1
+```
+
+## 5. Type Hints
+
+Always use Python type hints for all function signatures and variables. This improves code readability, maintainability, and enables static analysis. Use `tf.Tensor` for TensorFlow tensors.
+
+❌ BAD: Untyped functions.
+```python
+def process_data(data, label):
+    return data / 255.0, label
+```
+
+✅ GOOD: Fully type-hinted functions.
+```python
+import tensorflow as tf
+
+def process_data(data: tf.Tensor, label: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
+    """Scales image data and returns it with the label."""
+    return tf.cast(data, tf.float32) / 255.0, label
+```
+
+## 6. Virtual Environments
+
+Always use a virtual environment (`venv` or `conda`) for every project. This isolates dependencies and prevents conflicts.
+
+✅ GOOD: Project-specific virtual environment.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install tensorflow mlflow
+```
+
+## 7. Packaging and Experiment Tracking
+
+### 7.1. Project Packaging
+
+Structure your project as a Python package (`src/my_project/`). Use `pyproject.toml` for dependency management and `setuptools` for packaging.
+
+✅ GOOD: Standard Python package structure.
+```
+my_project/
+├── src/
+│   └── my_project/
+│       ├── __init__.py
+│       ├── models.py
+│       ├── data_pipeline.py
+│       └── train.py
+├── tests/
+│   ├── test_models.py
+│   └── test_data.py
+├── pyproject.toml
+└── README.md
+```
+
+### 7.2. Experiment Tracking with MLflow
+
+Always integrate MLflow for experiment tracking. Log parameters, metrics, and model artifacts. This is crucial for reproducibility and collaboration.
+
+✅ GOOD: MLflow integration.
+```python
+import mlflow
+import tensorflow as tf
+
+# Configure MLflow tracking URI (e.g., local, remote server)
+mlflow.set_tracking_uri("http://localhost:5000")
+mlflow.set_experiment("mnist_classification")
+
+with mlflow.start_run():
+    # Log hyperparameters
+    mlflow.log_param("epochs", 5)
+    mlflow.log_param("optimizer", "adam")
+
+    model = tf.keras.models.Sequential([...])
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+    # Use MLflow Keras callback for automatic metric logging
+    mlflow.tensorflow.autolog() # Enables auto-logging of metrics, params, model
+
+    model.fit(train_ds, epochs=5, validation_data=test_ds)
+
+    # Evaluate and log final metrics if not using autolog
+    # results = model.evaluate(test_ds)
+    # mlflow.log_metric("test_loss", results[0])
+    # mlflow.log_metric("test_accuracy", results[1])
+
+    # Save the model
+    # mlflow.tensorflow.log_model(model, "mnist_model")
+```
+
+## 8. Testing Approaches
+
+Always implement comprehensive testing for your TensorFlow code.
+
+### 8.1. Unit Tests
+
+Write unit tests for custom layers, preprocessing functions, and utility modules. Use `tf.test.TestCase` for tests involving TensorFlow operations.
+
+✅ GOOD: Unit test for a custom layer.
+```python
+import tensorflow as tf
+from tensorflow.python.platform import test
+
+class MyCustomLayer(tf.keras.layers.Layer):
+    def call(self, inputs):
+        return inputs * 2
+
+class MyCustomLayerTest(test.TestCase):
+    def test_output_shape(self):
+        layer = MyCustomLayer()
+        input_tensor = tf.zeros((10, 5))
+        output_tensor = layer(input_tensor)
+        self.assertEqual(output_tensor.shape, (10, 5))
+
+    def test_output_values(self):
+        layer = MyCustomLayer()
+        input_tensor = tf.constant([1.0, 2.0, 3.0])
+        output_tensor = layer(input_tensor)
+        self.assertAllEqual(output_tensor, tf.constant([2.0, 4.0, 6.0]))
+
+if __name__ == '__main__':
+    test.main()
+```
+
+### 8.2. Data Sanity Checks
+
+Implement sanity checks for all input data sources to catch issues early.
+
+✅ GOOD: Basic data validation.
+```python
+import tensorflow as tf
+
+def validate_image_dataset(dataset: tf.data.Dataset, expected_shape: tuple, expected_dtype: tf.DType):
+    for images, labels in dataset.take(1):
+        tf.Assert(tf.equal(tf.shape(images)[1:], expected_shape), ["Image shape mismatch"])
+        tf.Assert(tf.equal(images.dtype, expected_dtype), ["Image dtype mismatch"])
+        tf.Assert(tf.reduce_all(images >= 0.0) and tf.reduce_all(images <= 1.0), ["Image pixel values out of range"])
+        tf.print("Data sanity check passed for one batch.")
+
+# Usage:
+# validate_image_dataset(train_ds, (28, 28, 1), tf.float32)
+```
+
+### 8.3. Integration Tests
+
+Test the full data pipeline and model training loop end-to-end with small, representative datasets.

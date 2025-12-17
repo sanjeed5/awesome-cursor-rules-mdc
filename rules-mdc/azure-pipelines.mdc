@@ -1,176 +1,421 @@
 ---
-description: Comprehensive guidelines for Azure Pipelines, covering code structure, security, performance, testing, and deployment. Provides actionable advice for developers working with Azure Pipelines YAML definitions to enhance code quality and CI/CD processes.
-globs: *.yml,*.yaml
+description: This guide provides opinionated, actionable best practices for writing secure, performant, and maintainable Azure Pipelines using YAML, focusing on modern CI/CD patterns and common pitfalls.
+globs: **/*
 ---
-- # General Guidelines
-  - Utilize YAML pipelines for version control and ease of replication.
-  - Integrate security practices throughout the pipeline using Azure Key Vault for secret management.
-  - Implement role-based access controls (RBAC) to limit permissions.
-  - Establish monitoring and alerting mechanisms for maintaining pipeline health and addressing issues.
-  - Use Infrastructure as Code (IaC) for consistent deployments.
+# azure-pipelines Best Practices
 
-- # 1. Code Organization and Structure
-  - **Directory Structure Best Practices:**
-    - Organize pipeline definitions into a dedicated directory (e.g., `azure-pipelines`).
-    - Use subdirectories to categorize pipelines based on application, environment, or team (e.g., `azure-pipelines/app1/dev`, `azure-pipelines/app1/prod`).
-    - Store reusable templates and scripts in a separate `templates` or `scripts` directory.
-    - Consider using a `modules` directory for custom modules or extensions related to pipeline functionality.
-  - **File Naming Conventions:**
-    - Use descriptive names for pipeline definitions (e.g., `ci-cd-app1-dev.yml`, `deploy-to-staging.yml`).
-    - Prefix or suffix template files with `template` or `tmpl` (e.g., `build-template.yml`, `deploy-tmpl.yml`).
-    - Use consistent naming for variables, parameters, and stages within YAML files.
-  - **Module Organization Best Practices:**
-    - Break down complex pipelines into smaller, reusable modules using templates.
-    - Use parameters to configure templates for different scenarios.
-    - Store modules in a central repository for sharing across projects.
-  - **Component Architecture Recommendations:**
-    - Design pipelines with a clear separation of concerns (e.g., build, test, deploy).
-    - Use stages to represent distinct phases of the CI/CD process.
-    - Leverage tasks to perform specific actions within each stage.
-    - Define clear inputs and outputs for each component (stage/task).
-  - **Code Splitting Strategies:**
-    - Split large YAML files into smaller, more manageable files using the `extends` keyword.
-    - Use templates to define reusable pipeline components.
-    - Implement parameterization to customize pipeline behavior without duplicating code.
+Azure Pipelines are the backbone of modern CI/CD. This guide enforces a YAML-first, security-conscious, and highly automated approach to pipeline development.
 
-- # 2. Common Patterns and Anti-patterns
-  - **Design Patterns:**
-    - **Template Pattern:** Define a base template with placeholders for customization, allowing for consistent pipeline structure with varying configurations.
-    - **Strategy Pattern:** Use parameters to select different deployment strategies (e.g., blue-green, canary) within a single pipeline.
-    - **Chain of Responsibility:** Implement a sequence of tasks or stages, where each component handles a specific aspect of the deployment process.
-  - **Recommended Approaches for Common Tasks:**
-    - **Secret Management:** Use Azure Key Vault to store sensitive information such as passwords, API keys, and connection strings. Reference secrets in pipelines using variables or tasks.
-    - **Environment Configuration:** Define environment-specific variables and settings using variable groups. Use conditional execution to apply different configurations based on the target environment.
-    - **Artifact Management:** Publish and consume artifacts using the `PublishBuildArtifacts` and `DownloadBuildArtifacts` tasks. Use artifact feeds to store and manage dependencies.
-    - **Rollback Strategies:** Implement rollback mechanisms to revert to a previous version in case of deployment failures. Use deployment slots or blue-green deployments for seamless rollbacks.
-  - **Anti-patterns and Code Smells:**
-    - Hardcoding secrets in pipeline definitions.
-    - Duplicating code across multiple pipelines.
-    - Overly complex and monolithic YAML files.
-    - Lack of error handling and logging.
-    - Insufficient testing and validation.
-  - **State Management Best Practices:**
-    - Use Azure DevOps variables or variable groups to store pipeline state.
-    - Consider using external storage (e.g., Azure Blob Storage, Azure Table Storage) for persistent state.
-    - Implement idempotency to ensure that pipeline operations can be safely retried.
-  - **Error Handling Patterns:**
-    - Use the `try...catch` construct to handle exceptions within pipeline tasks.
-    - Implement retry mechanisms for transient failures.
-    - Configure alerts and notifications for pipeline failures.
+## Code Organization and Structure
 
-- # 3. Performance Considerations
-  - **Optimization Techniques:**
-    - **Parallel Execution:** Use parallel jobs to run multiple tasks concurrently, reducing overall pipeline execution time.
-    - **Caching:** Cache dependencies and build artifacts to speed up subsequent builds.
-    - **Agent Selection:** Choose the appropriate agent size and type based on the workload requirements.
-    - **Task Optimization:** Optimize individual tasks to minimize execution time (e.g., using efficient scripts, optimizing database queries).
-  - **Memory Management:**
-    - Monitor pipeline memory usage and identify potential memory leaks.
-    - Use appropriate data structures and algorithms to minimize memory consumption.
-    - Optimize image sizes for containerized applications.
-  - **Bundle Size Optimization:**
-    - Minimize the size of build artifacts by removing unnecessary files and dependencies.
-    - Use code splitting and tree shaking techniques to reduce bundle size.
-    - Compress artifacts before publishing.
-  - **Lazy Loading:**
-    - Implement lazy loading for large files or datasets to improve pipeline startup time.
+Always define pipelines using YAML for version control, reusability, and clarity. Structure your pipelines using multi-stage designs and leverage templates for common patterns.
 
-- # 4. Security Best Practices
-  - **Common Vulnerabilities and Prevention:**
-    - **Credential Leaks:** Avoid storing secrets in pipeline definitions or source code. Use Azure Key Vault for secure secret management.
-    - **Command Injection:** Sanitize user inputs and avoid executing untrusted code. Use parameterized tasks and scripts to prevent command injection attacks.
-    - **Unauthorized Access:** Implement RBAC to restrict access to sensitive resources and operations.
-    - **Dependency Vulnerabilities:** Regularly scan dependencies for known vulnerabilities and update them to the latest versions.
-  - **Input Validation:**
-    - Validate all user inputs to prevent injection attacks and other security vulnerabilities.
-    - Use regular expressions or other validation techniques to ensure that inputs conform to expected formats.
-    - Implement input sanitization to remove or escape potentially malicious characters.
-  - **Authentication and Authorization:**
-    - Use service principals or managed identities for authentication with Azure resources.
-    - Implement RBAC to control access to pipelines, resources, and environments.
-    - Enforce multi-factor authentication (MFA) for privileged accounts.
-  - **Data Protection:**
-    - Encrypt sensitive data at rest and in transit.
-    - Use secure protocols (e.g., HTTPS, TLS) for API communication.
-    - Mask sensitive information in pipeline logs and outputs.
-  - **Secure API Communication:**
-    - Use API keys or access tokens for authentication.
-    - Implement rate limiting to prevent denial-of-service attacks.
-    - Validate API responses to prevent data corruption.
+### 1. Embrace Multi-Stage Pipelines
 
-- # 5. Testing Approaches
-  - **Unit Testing:**
-    - Write unit tests for individual pipeline tasks and components.
-    - Use mocking frameworks to isolate components and simulate dependencies.
-    - Ensure that unit tests cover all critical code paths.
-  - **Integration Testing:**
-    - Perform integration tests to verify the interaction between different pipeline stages and tasks.
-    - Test the integration with external services and resources.
-    - Use test environments that closely resemble production environments.
-  - **End-to-end Testing:**
-    - Conduct end-to-end tests to validate the entire CI/CD pipeline from code commit to deployment.
-    - Use automated testing frameworks to automate end-to-end tests.
-    - Test the deployed application in a production-like environment.
-  - **Test Organization:**
-    - Organize tests into a dedicated `tests` directory.
-    - Use a consistent naming convention for test files and methods.
-    - Group tests based on functionality or component.
-  - **Mocking and Stubbing:**
-    - Use mocking frameworks (e.g., Moq, NSubstitute) to create mock objects for dependencies.
-    - Use stubbing to replace complex dependencies with simple, predictable implementations.
+Separate distinct phases (Build, Test, Deploy) into stages. This provides clear logical separation, enables independent quality gates, and improves visibility.
 
-- # 6. Common Pitfalls and Gotchas
-  - **Frequent Mistakes:**
-    - Using incorrect YAML syntax.
-    - Forgetting to parameterize reusable components.
-    - Neglecting error handling and logging.
-    - Insufficient testing.
-    - Ignoring security best practices.
-  - **Edge Cases:**
-    - Handling large files or datasets.
-    - Dealing with complex dependencies.
-    - Managing concurrency and race conditions.
-    - Recovering from catastrophic failures.
-  - **Version-Specific Issues:**
-    - Be aware of breaking changes in Azure DevOps updates.
-    - Test pipelines after upgrading Azure DevOps versions.
-    - Use version control to track changes to pipeline definitions.
-  - **Compatibility Concerns:**
-    - Ensure compatibility between pipeline tasks and agent versions.
-    - Verify compatibility with external services and resources.
-  - **Debugging Strategies:**
-    - Use pipeline logs to identify errors and warnings.
-    - Enable verbose logging for detailed troubleshooting.
-    - Use remote debugging to step through pipeline execution.
+❌ BAD: Monolithic pipeline with all steps in one job.
 
-- # 7. Tooling and Environment
-  - **Recommended Development Tools:**
-    - Visual Studio Code with the Azure Pipelines extension.
-    - Azure CLI.
-    - PowerShell.
-    - YAML linters and validators.
-  - **Build Configuration Best Practices:**
-    - Use a consistent build configuration across environments.
-    - Store build configuration in version control.
-    - Use environment variables to customize build behavior.
-  - **Linting and Formatting:**
-    - Use YAML linters (e.g., yamllint) to enforce consistent formatting and syntax.
-    - Configure linters to automatically fix formatting issues.
-  - **Deployment Best Practices:**
-    - Use deployment slots for zero-downtime deployments.
-    - Implement rollback mechanisms for failed deployments.
-    - Monitor deployed applications for performance and errors.
-  - **CI/CD Integration:**
-    - Integrate Azure Pipelines with source control systems (e.g., Azure Repos, GitHub).
-    - Automate build, test, and deployment processes.
-    - Use triggers to automatically start pipelines on code changes.
+```yaml
+# azure-pipelines.yml
+jobs:
+- job: BuildAndDeploy
+  steps:
+  - script: dotnet build
+  - script: dotnet test
+  - script: az webapp deploy
+```
 
-- # Additional Best Practices
-  - **Infrastructure as Code (IaC):** Use tools like ARM templates or Terraform for consistent deployments.
-  - **Automated Testing:** Automate builds, run tests, and perform code quality checks with each commit.
-  - **Secret Management:** Securely manage secrets using Azure Key Vault.
-  - **Monitoring and Alerting:** Implement robust monitoring and alerting for pipeline health.
-  - **Role-Based Access Control (RBAC):** Enforce RBAC to limit access to sensitive resources.
-  - **Regular Audits:** Perform regular security audits to identify and address vulnerabilities.
+✅ GOOD: Clearly defined stages for build, test, and deployment.
 
-By adhering to these guidelines, developers can create robust, secure, and efficient Azure Pipelines for continuous integration and continuous delivery.
+```yaml
+# azure-pipelines.yml
+stages:
+- stage: Build
+  jobs:
+  - job: BuildApp
+    steps:
+    - script: dotnet build
+    - publish: $(Build.ArtifactStagingDirectory)
+      artifact: drop
+
+- stage: Test
+  dependsOn: Build
+  jobs:
+  - job: RunTests
+    steps:
+    - download: current
+      artifact: drop
+    - script: dotnet test --logger "trx;LogFileName=test-results.trx"
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'VSTest'
+        testResultsFiles: '**/*.trx'
+
+- stage: Deploy
+  dependsOn: Test
+  condition: succeeded('Test') # Only deploy if tests pass
+  jobs:
+  - deployment: DeployApp
+    environment: 'Production' # Use environments for approvals and checks
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+          - script: az webapp deploy --resource-group MyResourceGroup --name MyApp --src-path $(Pipeline.Workspace)/drop
+```
+
+### 2. Leverage Templates for Reusability
+
+Define common stages, jobs, or steps in reusable templates. This keeps your pipelines DRY, consistent, and easier to maintain.
+
+❌ BAD: Copy-pasting build steps across multiple `azure-pipelines.yml` files.
+
+```yaml
+# service-a/azure-pipelines.yml
+stages:
+- stage: Build
+  jobs:
+  - job: BuildServiceA
+    steps:
+    - script: npm install
+    - script: npm run build
+    # ... more steps
+```
+
+```yaml
+# service-b/azure-pipelines.yml
+stages:
+- stage: Build
+  jobs:
+  - job: BuildServiceB
+    steps:
+    - script: npm install
+    - script: npm run build
+    # ... identical steps
+```
+
+✅ GOOD: Centralize common build logic in a template.
+
+```yaml
+# templates/build-node-app.yml
+parameters:
+- name: appName
+  type: string
+  default: 'app'
+
+jobs:
+- job: BuildNodeApp
+  displayName: Build ${{ parameters.appName }}
+  steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '18.x'
+    displayName: 'Install Node.js'
+  - script: npm install
+    displayName: 'Install Dependencies'
+  - script: npm run build
+    displayName: 'Build App'
+  - publish: $(Build.ArtifactStagingDirectory)
+    artifact: drop-${{ parameters.appName }}
+    displayName: 'Publish Build Artifact'
+```
+
+```yaml
+# service-a/azure-pipelines.yml
+stages:
+- stage: Build
+  jobs:
+  - template: ../templates/build-node-app.yml
+    parameters:
+      appName: ServiceA
+```
+
+```yaml
+# service-b/azure-pipelines.yml
+stages:
+- stage: Build
+  jobs:
+  - template: ../templates/build-node-app.yml
+    parameters:
+      appName: ServiceB
+```
+
+## Common Patterns and Anti-patterns
+
+### 3. Secure Secrets with Azure Key Vault
+
+Never hardcode secrets. Always use Azure Key Vault linked to Variable Groups for secure secret management.
+
+❌ BAD: Storing secrets directly in Variable Groups or YAML.
+
+```yaml
+# Variable Group 'MySecrets' (in Azure DevOps UI)
+#   MyApiKey: "SuperSecretKey123" (plaintext)
+```
+
+```yaml
+# azure-pipelines.yml
+variables:
+  MyApiKey: 'SuperSecretKey123' # Directly in YAML
+```
+
+✅ GOOD: Link Variable Group to Azure Key Vault.
+
+```yaml
+# Azure Key Vault: Create a secret named 'MyApiKey'
+# Azure DevOps Variable Group 'MySecrets': Link to Key Vault, select 'MyApiKey'
+```
+
+```yaml
+# azure-pipelines.yml
+variables:
+- group: MySecrets # Link to the Variable Group
+stages:
+- stage: Deploy
+  jobs:
+  - job: DeployApp
+    steps:
+    - script: echo "Using API Key: $(MyApiKey)" # Access as a regular variable
+```
+*Note: `$(MyApiKey)` will be masked in logs if it's a secret variable.*
+
+### 4. Use Workload Identity Federation for Service Connections
+
+Prefer Workload Identity Federation (OIDC) over Service Principals for Azure Service Connections. It eliminates the need for manual secret management.
+
+❌ BAD: Service Connection using a Service Principal with a client secret.
+
+```yaml
+# Azure DevOps Service Connection: Azure Resource Manager
+#   Authentication Method: Service principal (manual)
+#   Client secret: Manually managed and rotated
+```
+
+✅ GOOD: Service Connection using Workload Identity Federation.
+
+```yaml
+# Azure DevOps Service Connection: Azure Resource Manager
+#   Authentication Method: Workload Identity Federation (automatic)
+#   No client secret to manage
+```
+*When creating a new Azure Resource Manager service connection, choose "Workload Identity Federation (automatic)" if available.*
+
+## Performance Considerations
+
+### 5. Cache Dependencies
+
+Speed up builds by caching frequently used dependencies (e.g., `node_modules`, `pip` packages, `dotnet` NuGet packages).
+
+❌ BAD: Installing dependencies from scratch on every build.
+
+```yaml
+# azure-pipelines.yml
+steps:
+- script: npm install
+  displayName: 'Install Node Modules'
+- script: dotnet restore
+  displayName: 'Restore NuGet Packages'
+```
+
+✅ GOOD: Use the `Cache@2` task.
+
+```yaml
+# azure-pipelines.yml
+steps:
+- task: Cache@2
+  inputs:
+    key: 'npm | "$(Agent.OS)" | **/package-lock.json'
+    path: '$(npm_config_cache)'
+    cacheHitVar: 'NPM_CACHE_RESTORED'
+  displayName: 'Cache npm packages'
+- script: npm install
+  displayName: 'Install Node Modules'
+  condition: ne(variables.NPM_CACHE_RESTORED, 'true')
+
+- task: Cache@2
+  inputs:
+    key: 'nuget | "$(Agent.OS)" | $(Build.SourcesDirectory)/**/*.csproj'
+    path: '$(NUGET_PACKAGES)'
+    cacheHitVar: 'NUGET_CACHE_RESTORED'
+  displayName: 'Cache NuGet packages'
+- script: dotnet restore
+  displayName: 'Restore NuGet Packages'
+  condition: ne(variables.NUGET_CACHE_RESTORED, 'true')
+```
+
+### 6. Run Jobs in Parallel
+
+For independent tasks, run jobs in parallel to reduce overall pipeline execution time.
+
+❌ BAD: Sequential jobs when they could run concurrently.
+
+```yaml
+jobs:
+- job: Build
+  # ...
+- job: Lint
+  dependsOn: Build # Unnecessary dependency
+  # ...
+- job: UnitTests
+  dependsOn: Build # Unnecessary dependency
+  # ...
+```
+
+✅ GOOD: Parallelize independent jobs.
+
+```yaml
+jobs:
+- job: Build
+  # ...
+- job: Lint
+  dependsOn: [] # No dependency on Build
+  # ...
+- job: UnitTests
+  dependsOn: Build # Unit tests might need build artifacts
+  # ...
+```
+
+## Common Pitfalls and Gotchas
+
+### 7. Avoid Exposing Secrets to Fork Builds
+
+When working with public repositories, prevent secrets from being exposed to builds from forks.
+
+❌ BAD: Enabling "Make secrets available to builds of forks" in pipeline settings.
+
+✅ GOOD: Keep "Make secrets available to builds of forks" **disabled**. Manually trigger fork builds after review if necessary.
+
+### 8. Use Project-Scoped Build Identities
+
+Restrict pipeline permissions to the project level to minimize lateral exposure.
+
+❌ BAD: Using a collection-level build identity (`Project Collection Build Service (YourCollectionName)`).
+
+✅ GOOD: Use the default project-level build identity (`YourProjectName Build Service (YourOrganizationName)`).
+*This is the default for new YAML pipelines. Verify `Job authorization scope` is set to `Project Collection` or `Current project` as appropriate for your needs, but generally `Current project` is more secure.*
+
+## Configuration Management
+
+### 9. Define Infrastructure as Code (IaC)
+
+Manage your infrastructure (Azure resources, environments) as code (e.g., Bicep, ARM templates, Terraform) and deploy it via pipelines.
+
+❌ BAD: Manually provisioning environments or using UI-driven deployments only.
+
+✅ GOOD: Deploy infrastructure using a dedicated IaC stage.
+
+```yaml
+# azure-pipelines.yml
+stages:
+- stage: DeployInfrastructure
+  jobs:
+  - deployment: DeployBicep
+    environment: 'DevEnvironment'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: 'MyAzureSubscription'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az group create --name $(ResourceGroupName) --location $(Location)
+                az deployment group create \
+                  --resource-group $(ResourceGroupName) \
+                  --template-file ./infra/main.bicep \
+                  --parameters environmentType=dev
+```
+
+## Environment Variables
+
+### 10. Use Predefined Variables Correctly
+
+Leverage Azure Pipelines' predefined variables for consistent and reliable access to build, release, and agent information.
+
+❌ BAD: Hardcoding paths or trying to guess build numbers.
+
+```yaml
+steps:
+- script: echo "Build number: 1.0.0.$(date +%s)" # Inconsistent
+- script: cp ./dist/* /home/vsts/work/1/a/ # Fragile path
+```
+
+✅ GOOD: Use predefined variables.
+
+```yaml
+steps:
+- script: echo "Build number: $(Build.BuildNumber)"
+- script: cp $(Build.SourcesDirectory)/dist/* $(Build.ArtifactStagingDirectory)/
+```
+
+## Logging
+
+### 11. Mask Sensitive Information in Logs
+
+Ensure secrets are never printed to logs. Azure Pipelines automatically masks variables marked as secret.
+
+❌ BAD: Printing a secret directly.
+
+```yaml
+steps:
+- script: echo "My secret key is $(MyApiKey)" # Key will be visible
+```
+
+✅ GOOD: Access secret variables, which are automatically masked.
+
+```yaml
+steps:
+- script: echo "Attempting to use API Key..."
+- script: az login --service-principal -u $(ServicePrincipalId) -p $(ServicePrincipalKey) --tenant $(TenantId) # ServicePrincipalKey is a secret variable
+```
+
+## Testing Approaches
+
+### 12. Integrate Comprehensive Testing Early
+
+Run unit tests and static analysis (SAST) as early as possible in the CI stage. Dedicate separate stages for integration and end-to-end tests.
+
+❌ BAD: Only running manual tests or basic compilation.
+
+✅ GOOD: Multi-layered testing strategy.
+
+```yaml
+stages:
+- stage: Build
+  jobs:
+  - job: BuildAndScan
+    steps:
+    - script: dotnet build
+    - task: SonarQubePrepare@5 # SAST integration
+    - task: SonarQubeAnalyze@5
+    - task: SonarQubePublish@5
+
+- stage: Test
+  dependsOn: Build
+  jobs:
+  - job: UnitAndIntegrationTests
+    steps:
+    - script: dotnet test --filter "Category=Unit"
+    - script: dotnet test --filter "Category=Integration"
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'VSTest'
+        testResultsFiles: '**/*.trx'
+
+- stage: E2ETest
+  dependsOn: Test
+  condition: succeeded('Test')
+  jobs:
+  - deployment: DeployToTestEnv
+    environment: 'Test'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: npm run e2e-tests # Run Cypress/Selenium tests
+```

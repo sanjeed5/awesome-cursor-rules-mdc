@@ -1,294 +1,509 @@
 ---
-description: This rule provides comprehensive guidelines for developing AI applications with LlamaIndex-JS, covering code organization, performance, security, and testing best practices. It aims to ensure robust, efficient, and secure LLM-powered applications.
-globs: *.js,*.ts,*.jsx,*.tsx
+description: Definitive guidelines for writing robust, performant, and maintainable `llamaindex-js` applications using modern TypeScript best practices.
+globs: **/*.{js,jsx,ts,tsx}
 ---
-# LlamaIndex-JS Best Practices and Coding Standards
+# llamaindex-js Best Practices
 
-This document outlines the best practices and coding standards for developing AI and ML applications using the LlamaIndex-JS library. Following these guidelines will help you build robust, efficient, secure, and maintainable applications.
+This document outlines the definitive best practices for developing with `llamaindex-js` (LlamaIndex.TS). Adhering to these guidelines ensures your applications are type-safe, performant, scalable, and easy to maintain.
 
-## 1. Code Organization and Structure
+## 1. Embrace TypeScript End-to-End
 
-### 1.1. Directory Structure
+`llamaindex-js` is built in TypeScript for a reason. Leverage its type system to prevent runtime errors, improve code clarity, and enable robust refactoring.
 
-Adopt a modular directory structure to organize your LlamaIndex-JS project. Here’s a recommended structure:
+**✅ GOOD:** Explicitly type all `llamaindex` objects and function parameters.
 
+```typescript
+import { Document, VectorStoreIndex, QueryEngine } from "llamaindex";
+import { OpenAIEmbedding } from "llamaindex/embeddings/OpenAIEmbedding";
+import { Settings } from "llamaindex/Settings";
 
-my-llamaindex-app/
-├── src/
-│   ├── components/          # Reusable UI components (if applicable)
-│   │   ├── MyComponent.tsx
-│   │   └── ...
-│   ├── services/           # API services and data fetching logic
-│   │   ├── llamaIndexService.ts  # LlamaIndex specific functionalities
-│   │   └── ...
-│   ├── utils/              # Utility functions and helpers
-│   │   ├── dataProcessing.ts
-│   │   └── ...
-│   ├── index/                # Index management
-│   │   ├── documentLoaders.ts  # Custom document loaders
-│   │   ├── indexBuilders.ts    # Logic for building indices
-│   │   └── ...
-│   ├── prompts/            # Custom prompt templates
-│   │   ├── summarizationPrompt.ts
-│   │   └── ...
-│   ├── models/             # Data models and interfaces
-│   │   ├── document.ts
-│   │   └── ...
-│   ├── app.ts               # Main application entry point
-│   └── ...
-├── tests/
-│   ├── unit/
-│   │   └── ...
-│   ├── integration/
-│   │   └── ...
-│   └── ...
-├── .env                   # Environment variables
-├── package.json
-├── tsconfig.json          # TypeScript configuration
-├── README.md
-└── ...
+// Centralize LLM and embedding model configuration
+Settings.llm = new OpenAI({ model: "gpt-4o-mini" });
+Settings.embedModel = new OpenAIEmbedding({ model: "text-embedding-3-small" });
 
+async function buildAndQueryIndex(documents: Document[]): Promise<string> {
+  const index: VectorStoreIndex = await VectorStoreIndex.fromDocuments(documents);
+  const queryEngine: QueryEngine = index.asQueryEngine();
+  const response = await queryEngine.query({ query: "Summarize the key points." });
+  return response.response;
+}
+```
 
-### 1.2. File Naming Conventions
+**❌ BAD:** Using `any` or omitting types where `llamaindex` types are available.
 
-*   Use descriptive and consistent file names.
-*   For components, use PascalCase (e.g., `MyComponent.tsx`).
-*   For utility functions and services, use camelCase (e.g., `llamaIndexService.ts`, `dataProcessing.ts`).
-*   For configuration files, use kebab-case (e.g., `tsconfig.json`).
+```typescript
+// Avoid 'any' - it defeats the purpose of TypeScript
+async function processData(docs: any[]): Promise<any> {
+  const index = await VectorStoreIndex.fromDocuments(docs);
+  const engine = index.asQueryEngine();
+  const res = await engine.query({ query: "What's up?" });
+  return res.response;
+}
+```
 
-### 1.3. Module Organization
+## 2. Structure Code in Three Distinct Layers
 
-*   **Encapsulation:** Group related functions, classes, and interfaces into modules.
-*   **Single Responsibility Principle:** Each module should have a clear and specific purpose.
-*   **Explicit Exports:** Use explicit `export` statements to define the public API of each module.
-*   **Avoid Circular Dependencies:** Be mindful of circular dependencies between modules, as they can lead to runtime errors and make code harder to understand.
+Organize your `llamaindex` applications into logical layers: Data Ingestion, Index Construction, and Query/Agent Execution. This promotes modularity, testability, and separation of concerns.
 
-### 1.4. Component Architecture (If Applicable)
+### 2.1. Data Ingestion (Readers/Connectors)
 
-*   If your LlamaIndex-JS application includes a user interface (e.g., using React), follow a component-based architecture.
-*   **Presentational Components:** Focus on rendering UI elements and receiving data as props.
-*   **Container Components:** Handle data fetching, state management, and logic.
-*   **Component Composition:** Build complex UIs by composing smaller, reusable components.
+Responsible for loading and transforming raw data into `Document` objects.
 
-### 1.5. Code Splitting
+**✅ GOOD:** Use `SimpleDirectoryReader` or specific `Reader` implementations.
 
-*   Use dynamic imports (`import()`) to split your code into smaller chunks.
-*   Lazy-load components or modules that are not immediately needed.
-*   This can significantly improve initial load time and reduce the overall bundle size.
+```typescript
+// src/data/documentLoader.ts
+import { Document, SimpleDirectoryReader } from "llamaindex";
 
-typescript
-// Example of lazy loading a module
-async function loadMyModule() {
-  const myModule = await import('./myModule');
-  myModule.doSomething();
+export async function loadDocumentsFromDirectory(path: string): Promise<Document[]> {
+  const reader = new SimpleDirectoryReader();
+  const documents = await reader.loadData(path);
+  console.log(`Loaded ${documents.length} documents from ${path}`);
+  return documents;
+}
+```
+
+**❌ BAD:** Manually creating `Document` objects from raw strings without leveraging readers for common formats.
+
+```typescript
+// Avoid manual parsing for complex data types
+function createDocumentFromText(text: string): Document {
+  return new Document({ text: text }); // Okay for simple strings, but not for files/APIs
+}
+```
+
+### 2.2. Index Construction
+
+Responsible for taking `Document` objects, splitting them into `Node`s, generating embeddings, and storing them in an `Index`.
+
+**✅ GOOD:** Use `VectorStoreIndex.fromDocuments` for simplicity and `IngestionPipeline` for advanced control.
+
+```typescript
+// src/indexing/indexBuilder.ts
+import { Document, VectorStoreIndex, IngestionPipeline, SentenceSplitter } from "llamaindex";
+import { OpenAIEmbedding } from "llamaindex/embeddings/OpenAIEmbedding";
+import { Settings } from "llamaindex/Settings";
+
+export async function buildVectorIndex(documents: Document[]): Promise<VectorStoreIndex> {
+  // For basic cases, fromDocuments is sufficient
+  // const index = await VectorStoreIndex.fromDocuments(documents);
+
+  // For advanced control (e.g., custom transformations, caching)
+  const pipeline = new IngestionPipeline({
+    transformations: [
+      new SentenceSplitter({ chunkSize: 512, chunkOverlap: 20 }),
+      Settings.embedModel, // Use the configured embed model
+    ],
+    // Consider adding a DocumentStore and VectorStore for persistence
+    // docstore: new SimpleDocumentStore(),
+    // vectorStore: new SimpleVectorStore(),
+  });
+
+  const nodes = await pipeline.run({ documents });
+  const index = await VectorStoreIndex.init({ nodes });
+  console.log("Vector index built successfully.");
+  return index;
+}
+```
+
+**❌ BAD:** Manually creating `Node`s and embeddings. This is error-prone and bypasses `llamaindex`'s optimized pipeline.
+
+```typescript
+// Avoid this complexity unless absolutely necessary for custom scenarios
+async function manualIndexCreation(documents: Document[]): Promise<VectorStoreIndex> {
+  const nodes = documents.map(doc => new NodeWith  ({ text: doc.text })); // Missing splitting, metadata
+  // Manually generate embeddings for each node...
+  // Store in a vector store...
+  return new VectorStoreIndex({ nodes: nodes }); // Incomplete
+}
+```
+
+### 2.3. Query/Agent Execution
+
+Responsible for interacting with the constructed index or agents to answer user queries or perform tasks.
+
+**✅ GOOD:** Use `index.asQueryEngine()` for RAG or `agent()` for agentic workflows.
+
+```typescript
+// src/querying/queryService.ts
+import { VectorStoreIndex, QueryEngine } from "llamaindex";
+import { agent } from "@llamaindex/workflow";
+import { OpenAI } from "llamaindex/llm/OpenAI";
+import { tool } from "llamaindex";
+import { z } from "zod";
+
+export async function queryIndex(index: VectorStoreIndex, query: string): Promise<string> {
+  const queryEngine: QueryEngine = index.asQueryEngine();
+  const response = await queryEngine.query({ query });
+  return response.response;
 }
 
+// src/agents/chatAgent.ts
+const sumNumbersTool = tool({
+  name: "sumNumbers",
+  description: "Use this function to sum two numbers",
+  parameters: z.object({ a: z.number(), b: z.number() }),
+  execute: ({ a, b }) => `${a + b}`,
+});
 
-## 2. Common Patterns and Anti-Patterns
+export async function runChatAgent(message: string): Promise<string> {
+  const chatAgent = agent({
+    llm: new OpenAI({ model: "gpt-4o-mini" }),
+    verbose: true,
+    systemPrompt: "You are a helpful assistant.",
+    tools: [sumNumbersTool],
+  });
+  const result = await chatAgent.run(message);
+  return result.data.result;
+}
+```
 
-### 2.1. Design Patterns
+**❌ BAD:** Directly calling the LLM for RAG without a `QueryEngine`, or building agents from scratch.
 
-*   **Retrieval-Augmented Generation (RAG):** Implement RAG to enhance LLM responses by retrieving relevant data from external sources.
-*   **Factory Pattern:** Use factory functions to create instances of LlamaIndex objects, abstracting the creation logic.
-*   **Strategy Pattern:** Employ different indexing or query strategies based on the specific use case.
-*   **Observer Pattern:** Use this to react to changes in the underlying data or model.
+```typescript
+// Avoid direct LLM calls when RAG is needed
+import { OpenAI } from "llamaindex/llm/OpenAI";
 
-### 2.2. Recommended Approaches for Common Tasks
+async function directLLMQuery(query: string): Promise<string> {
+  const llm = new OpenAI({ model: "gpt-4o-mini" });
+  const response = await llm.chat({ messages: [{ role: "user", content: query }] });
+  return response.message.content || ""; // Lacks context from your data
+}
+```
 
-*   **Data Loading:** Use `Document` objects and `BaseReader` classes for loading data from various sources.
-*   **Indexing:** Choose appropriate index types (e.g., `VectorStoreIndex`, `SummaryIndex`) based on your data and query requirements.
-*   **Querying:** Use `QueryEngine` to orchestrate complex queries and retrieve relevant information.
-*   **Evaluation:** Implement evaluation metrics to measure the performance of your RAG pipeline.
+## 3. Prefer `async/await` for All I/O Operations
 
-### 2.3. Anti-Patterns and Code Smells
+`llamaindex-js` is inherently asynchronous. Always use `async/await` for clarity and error handling, especially for file reads, API calls, and LLM interactions.
 
-*   **Tight Coupling:** Avoid tight coupling between LlamaIndex-JS components and other parts of your application.
-*   **Global State:** Minimize the use of global state, as it can make your application harder to reason about.
-*   **Ignoring Errors:** Always handle errors gracefully and provide informative error messages.
-*   **Over-Complicating Queries:** Keep queries simple and focused on retrieving the most relevant information.
-*   **Not using `async/await`:** Use `async/await` when dealing with asynchronous operations to avoid callback hell.
+**✅ GOOD:** Structured `async/await` with proper error handling.
 
-### 2.4. State Management
+```typescript
+async function executePipeline(): Promise<void> {
+  try {
+    const documents = await loadDocumentsFromDirectory("./data");
+    const index = await buildVectorIndex(documents);
+    const response = await queryIndex(index, "What is the main theme?");
+    console.log("Query Response:", response);
+  } catch (error) {
+    console.error("Pipeline failed:", error);
+  }
+}
+```
 
-*   Choose a state management library or pattern that fits your application's needs (e.g., React Context, Redux, Zustand).
-*   Keep state minimal and derive values as needed.
-*   Use immutable data structures to simplify state updates.
+**❌ BAD:** Chaining `.then()` and `.catch()` without `async/await` for complex flows.
 
-### 2.5. Error Handling
+```javascript
+// Harder to read and debug for multi-step async operations
+loadDocumentsFromDirectory("./data")
+  .then(documents => buildVectorIndex(documents))
+  .then(index => queryIndex(index, "What is the main theme?"))
+  .then(response => console.log("Query Response:", response))
+  .catch(error => console.error("Pipeline failed:", error));
+```
 
-*   Use `try...catch` blocks to handle exceptions.
-*   Provide informative error messages to the user.
-*   Log errors for debugging purposes.
-*   Consider using a centralized error handling mechanism.
+## 4. Leverage LlamaCloud for Production-Grade Pipelines
 
-## 3. Performance Considerations
+For heavy-weight document parsing (e.g., PDFs, complex layouts) and managed retrieval, integrate with LlamaCloud services like LlamaParse. This offloads computational burden and improves accuracy.
 
-### 3.1. Optimization Techniques
+**✅ GOOD:** Using LlamaParse for robust document processing.
 
-*   **Efficient Indexing:** Optimize indexing by selecting appropriate chunk sizes and embedding models. Experiment to find optimal values.
-*   **Caching:** Cache frequently accessed data to reduce latency.
-*   **Asynchronous Operations:** Use asynchronous operations to avoid blocking the main thread.
-*   **Vector Store Selection:** Choose vector stores that support efficient similarity search (e.g., FAISS, Annoy, Qdrant).
+```typescript
+import { Document, VectorStoreIndex } from "llamaindex";
+import { LlamaParseReader } from "llamaindex/readers/LlamaParseReader"; // Assuming LlamaParseReader is available
 
-### 3.2. Memory Management
+async function parseAndIndexWithLlamaCloud(filePath: string): Promise<VectorStoreIndex> {
+  // Ensure LLAMA_CLOUD_API_KEY is set in your environment
+  const parser = new LlamaParseReader({
+    resultType: "markdown", // or "text"
+    // Add other LlamaParse options as needed
+  });
+  const documents: Document[] = await parser.loadData(filePath);
+  const index = await VectorStoreIndex.fromDocuments(documents);
+  console.log("Indexed documents parsed by LlamaCloud.");
+  return index;
+}
+```
 
-*   Be mindful of memory usage, especially when dealing with large datasets.
-*   Use garbage collection effectively.
-*   Avoid creating unnecessary objects.
-*   Use streams for processing large files.
+**❌ BAD:** Attempting to implement complex document parsing logic locally for production use cases.
 
-### 3.3. Rendering Optimization (If Applicable)
+```typescript
+// Avoid custom, brittle parsing for complex documents
+import { Document } from "llamaindex";
+import fs from "fs/promises";
 
-*   Use virtualization techniques to render large lists efficiently.
-*   Memoize components to prevent unnecessary re-renders.
-*   Optimize images and other assets.
+async function localPdfParse(filePath: string): Promise<Document[]> {
+  const pdfBuffer = await fs.readFile(filePath);
+  // This would involve a complex, error-prone local PDF parsing library
+  // which is unlikely to match LlamaParse's quality.
+  console.warn("Using local PDF parsing, consider LlamaParse for robustness.");
+  return [new Document({ text: "Simulated PDF content" })];
+}
+```
 
-### 3.4. Bundle Size Optimization
+## 5. Performance: Batching, Caching, and Streaming
 
-*   Use tree shaking to remove unused code.
-*   Minify and compress your code.
-*   Use code splitting to load only the code that is needed for each page.
-*   Analyze bundle size using tools like Webpack Bundle Analyzer.
+Optimize `llamaindex` applications for speed and responsiveness.
 
-### 3.5. Lazy Loading
+### 5.1. Batch Document Processing
 
-*   Implement lazy loading for non-critical components or modules.
-*   This can improve initial load time and reduce the overall bundle size.
+When ingesting many documents, process them in batches to manage memory and network requests.
 
-## 4. Security Best Practices
+**✅ GOOD:** Processing documents in chunks.
 
-### 4.1. Common Vulnerabilities
+```typescript
+import { Document, VectorStoreIndex } from "llamaindex";
 
-*   **Prompt Injection:** Protect against prompt injection attacks by sanitizing user input and validating LLM responses. Consider using libraries such as LLM Guard by Protect AI.
-*   **Data Leakage:** Prevent data leakage by carefully controlling access to sensitive information.
-*   **Cross-Site Scripting (XSS):** Sanitize user input to prevent XSS attacks (if applicable, in UI components).
-*   **API Key Exposure:** Protect API keys and other sensitive credentials by storing them securely and avoiding hardcoding them in your code.
+async function batchIndexDocuments(allDocuments: Document[], batchSize: number = 100): Promise<VectorStoreIndex> {
+  const index = new VectorStoreIndex(); // Initialize an empty index
+  for (let i = 0; i < allDocuments.length; i += batchSize) {
+    const batch = allDocuments.slice(i, i + batchSize);
+    console.log(`Processing batch ${i / batchSize + 1}/${Math.ceil(allDocuments.length / batchSize)}`);
+    await index.insertAll(batch); // Or use pipeline.run({ documents: batch })
+  }
+  return index;
+}
+```
 
-### 4.2. Input Validation
+### 5.2. Utilize Ingestion Pipeline Caching
 
-*   Validate all user input to prevent malicious data from entering your application.
-*   Use appropriate validation techniques for each type of input.
-*   Sanitize input to remove potentially harmful characters.
+For repeated ingestion of the same data, use the `cache` option in `IngestionPipeline` to avoid re-embedding.
 
-### 4.3. Authentication and Authorization
+**✅ GOOD:** Configuring a cache for the ingestion pipeline.
 
-*   Implement authentication to verify the identity of users.
-*   Implement authorization to control access to resources.
-*   Use strong passwords and encryption.
-*   Follow the principle of least privilege.
+```typescript
+import { Document, IngestionPipeline, SentenceSplitter, SimpleNodeParser } from "llamaindex";
+import { SimpleCache } from "llamaindex/ingestion/SimpleCache"; // Example cache
+import { Settings } from "llamaindex/Settings";
 
-### 4.4. Data Protection
+async function buildCachedIndex(documents: Document[]): Promise<void> {
+  const pipeline = new IngestionPipeline({
+    transformations: [
+      new SentenceSplitter(),
+      new SimpleNodeParser(),
+      Settings.embedModel,
+    ],
+    cache: new SimpleCache(), // Persists cached embeddings
+  });
+  await pipeline.run({ documents });
+  console.log("Ingestion pipeline ran with caching.");
+}
+```
 
-*   Encrypt sensitive data at rest and in transit.
-*   Use secure storage mechanisms.
-*   Implement data loss prevention (DLP) measures.
-*   Regularly back up your data.
+### 5.3. Implement Streaming for Chat Responses
 
-### 4.5. Secure API Communication
+For interactive chat applications, stream LLM responses to provide immediate feedback to the user.
 
-*   Use HTTPS for all API communication.
-*   Validate API responses to ensure data integrity.
-*   Implement rate limiting to prevent abuse.
-*   Use API keys or other authentication mechanisms.
+**✅ GOOD:** Using `stream: true` with agents or LLMs.
 
-## 5. Testing Approaches
+```typescript
+import { OpenAIAgent } from "llamaindex";
+import { createStreamableUI } from "ai/rsc"; // For Next.js RSC
 
-### 5.1. Unit Testing
+async function streamAgentChat(question: string): Promise<JSX.Element> {
+  const agent = new OpenAIAgent({
+    // ... agent configuration ...
+  });
 
-*   Write unit tests to verify the functionality of individual components and functions.
-*   Use mocking and stubbing to isolate units of code.
-*   Aim for high code coverage.
+  const responseStream = await agent.chat({
+    stream: true,
+    message: question,
+  });
 
-### 5.2. Integration Testing
+  const uiStream = createStreamableUI(<div>Thinking...</div>);
 
-*   Write integration tests to verify the interaction between different components and modules.
-*   Test the integration with external services and APIs.
+  // Pipe the response stream to update the UI
+  responseStream.pipeTo(
+    new WritableStream({
+      start: () => uiStream.update(""), // Clear initial "Thinking..."
+      write: (chunk) => uiStream.append(chunk.response.delta),
+      close: () => uiStream.done(),
+      abort: (err) => console.error("Stream aborted:", err),
+    }),
+  ).catch(console.error);
 
-### 5.3. End-to-End Testing
-
-*   Write end-to-end tests to verify the overall functionality of the application.
-*   Simulate user interactions and verify the expected behavior.
-
-### 5.4. Test Organization
-
-*   Organize your tests into separate directories for unit, integration, and end-to-end tests.
-*   Use descriptive test names.
-*   Keep tests concise and focused.
-
-### 5.5. Mocking and Stubbing
-
-*   Use mocking and stubbing to isolate units of code during testing.
-*   Use a mocking library such as Jest or Sinon.
-*   Avoid over-mocking, as it can make your tests less effective.
+  return uiStream.value;
+}
+```
 
 ## 6. Common Pitfalls and Gotchas
 
-### 6.1. Frequent Mistakes
+### 6.1. Avoid Browser Environments
 
-*   Incorrectly configuring the LlamaIndex-JS client.
-*   Using the wrong index type for your data.
-*   Not handling errors properly.
-*   Ignoring performance considerations.
-*   Not securing your application against vulnerabilities.
+`llamaindex-js` relies on `AsyncLocalStorage`-like APIs which are not fully supported in browser environments. Restrict `llamaindex` code to Node.js, Deno, Bun, Cloudflare Workers, or Next.js Server Components.
 
-### 6.2. Edge Cases
+**✅ GOOD:** Deploy `llamaindex` logic on the server-side (e.g., API routes, serverless functions, RSC).
 
-*   Handling large documents or datasets.
-*   Dealing with complex queries.
-*   Handling different data formats.
-*   Dealing with rate limits from external APIs.
+```typescript
+// src/actions/chat.ts (Next.js Server Action)
+"use server";
+import { runChatAgent } from "@/agents/chatAgent";
 
-### 6.3. Version-Specific Issues
+export async function serverChatAction(message: string): Promise<string> {
+  return runChatAgent(message);
+}
 
-*   Be aware of breaking changes between LlamaIndex-JS versions.
-*   Consult the release notes and migration guides when upgrading.
-*   Test your application thoroughly after upgrading.
+// src/app/page.tsx (Client component calling server action)
+"use client";
+import { serverChatAction } from "@/actions/chat";
+import { useState } from "react";
 
-### 6.4. Compatibility Concerns
+export default function HomePage() {
+  const [response, setResponse] = useState<string>("");
+  const handleChat = async (input: string) => {
+    const result = await serverChatAction(input);
+    setResponse(result);
+  };
+  // ... UI to call handleChat ...
+}
+```
 
-*   Ensure compatibility between LlamaIndex-JS and other libraries or frameworks that you are using.
-*   Test your application in different environments.
+**❌ BAD:** Directly importing and running `llamaindex` code in a client-side React component.
 
-### 6.5. Debugging Strategies
+```javascript
+// components/ChatInput.tsx (Client component)
+"use client";
+import { OpenAIAgent } from "llamaindex"; // ❌ This will likely fail in the browser
 
-*   Use a debugger to step through your code and inspect variables.
-*   Log messages to the console to track the execution flow.
-*   Use error monitoring tools to track errors in production.
-*   Use the LlamaIndex-JS documentation and community forums to find solutions to common problems.
+export default function ChatInput() {
+  const agent = new OpenAIAgent({ /* ... */ });
+  // ...
+}
+```
 
-## 7. Tooling and Environment
+### 6.2. Securely Manage Environment Variables
 
-### 7.1. Recommended Development Tools
+Never hardcode API keys or sensitive credentials. Use environment variables and ensure they are loaded correctly for your runtime.
 
-*   Node.js
-*   npm or yarn
-*   TypeScript (recommended)
-*   VS Code or other IDE
-*   LlamaIndex Studio for visualization
-*   Postman or Insomnia for testing APIs
+**✅ GOOD:** Using `process.env` (Node.js) or equivalent.
 
-### 7.2. Build Configuration
+```typescript
+// Ensure your .env file is loaded (e.g., with dotenv)
+// .env:
+// OPENAI_API_KEY=sk-...
+// LLAMA_CLOUD_API_KEY=lcsk-...
 
-*   Use a build tool such as Webpack or Parcel to bundle your code.
-*   Configure your build tool to optimize your code for production.
-*   Use environment variables to configure your application.
+import { Settings } from "llamaindex/Settings";
+import { OpenAI } from "llamaindex/llm/OpenAI";
 
-### 7.3. Linting and Formatting
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error("OPENAI_API_KEY is not set.");
+}
+Settings.llm = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+```
 
-*   Use a linter such as ESLint to enforce coding standards.
-*   Use a formatter such as Prettier to format your code consistently.
-*   Configure your IDE to automatically lint and format your code.
+**❌ BAD:** Hardcoding API keys directly in code.
 
-### 7.4. Deployment
+```typescript
+import { OpenAI } from "llamaindex/llm/OpenAI";
+const llm = new OpenAI({ apiKey: "sk-YOUR_HARDCODED_KEY_HERE" }); // ❌ Security vulnerability
+```
 
-*   Choose a deployment platform that meets your needs (e.g., Vercel, Netlify, AWS).
-*   Configure your deployment environment to use environment variables.
-*   Set up monitoring and logging to track the performance of your application.
+## 7. Robust Testing Approaches
 
-### 7.5. CI/CD Integration
+Implement a comprehensive testing strategy to ensure the reliability and correctness of your `llamaindex` applications.
 
-*   Use a CI/CD platform such as GitHub Actions or Jenkins to automate your build, test, and deployment processes.
-*   Configure your CI/CD pipeline to run your tests automatically.
-*   Use automated deployment to deploy your application to production.
+### 7.1. Unit Tests for Individual Components
 
-By following these best practices, you can build robust, efficient, secure, and maintainable AI applications using LlamaIndex-JS.
+Test data loaders, custom tools, and transformation functions in isolation. Mock external dependencies like LLM calls.
+
+**✅ GOOD:** Mocking LLM responses for unit tests.
+
+```typescript
+// tests/unit/sumNumbersTool.test.ts
+import { tool } from "llamaindex";
+import { z } from "zod";
+import { vi, describe, it, expect } from "vitest"; // or Jest
+
+const sumNumbers = tool({
+  name: "sumNumbers",
+  description: "Use this function to sum two numbers",
+  parameters: z.object({ a: z.number(), b: z.number() }),
+  execute: ({ a, b }: { a: number; b: number }) => `${a + b}`,
+});
+
+describe("sumNumbers tool", () => {
+  it("should correctly sum two numbers", async () => {
+    const result = await sumNumbers.execute({ a: 5, b: 3 });
+    expect(result).toBe("8");
+  });
+});
+```
+
+### 7.2. Integration Tests for the Full Pipeline
+
+Test the entire RAG pipeline from data ingestion through querying. Use a small, controlled dataset.
+
+**✅ GOOD:** End-to-end integration test.
+
+```typescript
+// tests/integration/ragPipeline.test.ts
+import { Document, VectorStoreIndex, SimpleDirectoryReader } from "llamaindex";
+import { Settings } from "llamaindex/Settings";
+import { MockLLM } from "llamaindex/llm/mock"; // Use a mock LLM for predictable responses
+import { vi, describe, it, expect, beforeAll } from "vitest";
+import fs from "fs/promises";
+import path from "path";
+
+describe("RAG Pipeline Integration", () => {
+  let index: VectorStoreIndex;
+  const testDataDir = path.join(__dirname, "test_data");
+
+  beforeAll(async () => {
+    // Setup mock data
+    await fs.mkdir(testDataDir, { recursive: true });
+    await fs.writeFile(path.join(testDataDir, "test.txt"), "The capital of France is Paris.");
+
+    // Configure a mock LLM for predictable test results
+    Settings.llm = new MockLLM({
+      mockFn: async ({ messages }) => ({
+        message: {
+          content: "Mock response: " + messages[messages.length - 1].content,
+          role: "assistant",
+        },
+      }),
+    });
+
+    const reader = new SimpleDirectoryReader();
+    const documents = await reader.loadData(testDataDir);
+    index = await VectorStoreIndex.fromDocuments(documents);
+  });
+
+  it("should answer a query based on indexed data", async () => {
+    const queryEngine = index.asQueryEngine();
+    const response = await queryEngine.query({ query: "What is the capital of France?" });
+    expect(response.response).toContain("Mock response: What is the capital of France?");
+  });
+});
+```
+
+### 7.3. RAG Evaluation
+
+For production systems, use `llamaindex`'s evaluation modules to measure the quality (faithfulness, relevance, correctness) of your RAG system.
+
+**✅ GOOD:** Setting up an evaluator.
+
+```typescript
+import { ResponseSynthesizer, ServiceContext } from "llamaindex";
+import { FaithfulnessEvaluator } from "llamaindex/evaluation/FaithfulnessEvaluator";
+import { MockLLM } from "llamaindex/llm/mock";
+
+async function evaluateRAGResponse(query: string, response: string, sourceNodes: any[]): Promise<void> {
+  const serviceContext = ServiceContext.fromDefaults({
+    llm: new MockLLM({
+      mockFn: async ({ messages }) => ({
+        message: {
+          content: "Mock evaluation: " + messages[messages.length - 1].content,
+          role: "assistant",
+        },
+      }),
+    }),
+  });
+  const evaluator = new FaithfulnessEvaluator({ serviceContext });
+  const evaluationResult = await evaluator.evaluate({
+    query,
+    response,
+    sourceNodes,
+  });
+  console.log("Faithfulness Evaluation:", evaluationResult.score, evaluationResult.feedback);
+}
+```

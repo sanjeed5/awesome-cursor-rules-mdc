@@ -1,288 +1,530 @@
 ---
-description: This rule provides comprehensive best practices for Scrapy development, including code organization, performance, security, testing, and common pitfalls to avoid. It aims to guide developers in building robust, efficient, and maintainable web scraping applications with Scrapy.
-globs: *.py
+description: This guide provides opinionated, actionable best practices for building robust, high-performance, and maintainable Scrapy web crawlers, emphasizing modern Python standards and ethical scraping.
+globs: **/*.py
 ---
 # Scrapy Best Practices
 
-This document outlines the recommended best practices for developing Scrapy web scraping applications. Following these guidelines will help you create robust, efficient, secure, and maintainable scrapers.
+Scrapy is the definitive framework for high-performance web scraping in Python. This guide outlines the essential practices for building resilient, scalable, and ethical crawlers. Adhere to these guidelines to ensure your Scrapy projects are maintainable, efficient, and robust against the dynamic web landscape of 2025.
 
 ## 1. Code Organization and Structure
 
-### 1.1. Directory Structure
+Maintain a clean, logical project structure. This enhances readability, testability, and scalability.
 
--   **Project Root:** Contains `scrapy.cfg`, project directory, and any `README.md`, `LICENSE`, or other project-level files.
--   **Project Directory (e.g., `my_project`):**
-    -   `__init__.py`:  Marks the directory as a Python package.
-    -   `items.py`: Defines the data structures (Scrapy Items) for the scraped data.
-    -   `middlewares.py`:  Contains the Scrapy middleware components, used for request/response processing.
-    -   `pipelines.py`:  Defines the data processing pipelines, used for cleaning, validating, and storing the scraped data.
-    -   `settings.py`:  Configures the Scrapy project, including settings for pipelines, middleware, concurrency, etc.
-    -   `spiders/`:
-        -   `__init__.py`:  Marks the directory as a Python package.
-        -   `my_spider.py`: Contains the spider definitions (Scrapy Spiders) responsible for crawling and scraping data.
+### 1.1. Standard Project Layout
 
-Example:
+Always use `scrapy startproject` to initialize your project. This sets up the recommended directory structure.
 
+**❌ BAD: Manually creating files and directories**
+```
+# Don't do this
+mkdir my_scraper
+cd my_scraper
+touch scrapy.cfg items.py spiders/__init__.py ...
+```
 
-my_project/
-├── scrapy.cfg
-├── my_project/
-│   ├── __init__.py
-│   ├── items.py
-│   ├── middlewares.py
-│   ├── pipelines.py
-│   ├── settings.py
-│   └── spiders/
-│       ├── __init__.py
-│       └── my_spider.py
-└── README.md
+**✅ GOOD: Use the Scrapy CLI**
+```bash
+scrapy startproject my_project_name
+cd my_project_name
+```
 
+### 1.2. Item Definitions (`items.py`)
 
-### 1.2. File Naming Conventions
+Define your data models clearly using `scrapy.Item` subclasses. Always include type hints for better IDE support and code clarity.
 
--   **Spider Files:** `spider_name.py` (e.g., `product_spider.py`, `news_spider.py`)
--   **Item Files:** `items.py` (standard naming)
--   **Middleware Files:** `middlewares.py` (standard naming)
--   **Pipeline Files:** `pipelines.py` (standard naming)
--   **Settings Files:** `settings.py` (standard naming)
+**❌ BAD: Generic dictionaries or untyped `Item` fields**
+```python
+# items.py
+import scrapy
 
-### 1.3. Module Organization
+class ProductItem(scrapy.Item):
+    title = scrapy.Field()
+    price = scrapy.Field()
+    # No type hints, hard to know expected data type
+```
 
--   **Small Projects:** All spiders can reside in the `spiders/` directory.
--   **Large Projects:** Consider organizing spiders into subdirectories based on the target website or data type (e.g., `spiders/news/`, `spiders/ecommerce/`).
--   **Custom Modules:** Create custom modules (e.g., `utils/`, `lib/`) for reusable code, helper functions, and custom classes.
+**✅ GOOD: `scrapy.Item` with `Field` and `typing` hints**
+```python
+# items.py
+import scrapy
+from scrapy.item import Field
+from typing import Optional, List
 
-### 1.4. Component Architecture
+class ProductItem(scrapy.Item):
+    url: str = Field()
+    title: Optional[str] = Field()
+    price: Optional[float] = Field()
+    description: Optional[str] = Field()
+    image_urls: List[str] = Field()
+    category: Optional[str] = Field()
+```
 
--   **Spiders:** Focus on crawling and extracting raw data.
--   **Items:** Define the structure of the scraped data.
--   **Pipelines:** Handle data cleaning, validation, transformation, and storage.
--   **Middleware:** Manage request/response processing, error handling, and proxy management.
+### 1.3. Spiders
 
-### 1.5. Code Splitting
+Keep spiders focused on crawling logic and initial data extraction. They should yield `Request` objects and `Item` objects.
 
--   **Separate Concerns:**  Keep spiders lean and focused on crawling logic. Move data processing and storage to pipelines.
--   **Reusable Components:**  Extract common functionality (e.g., custom item loaders, helper functions) into separate modules or classes.
--   **Configuration:**  Use `settings.py` to manage project-wide configuration and avoid hardcoding values in spiders.
--   **Modular Middleware:** Create small, focused middleware components for specific tasks (e.g., user agent rotation, request retries).
+**❌ BAD: Complex data processing or storage logic in spiders**
+```python
+# spiders/bad_spider.py
+import scrapy
+from my_project_name.items import ProductItem
+
+class BadSpider(scrapy.Spider):
+    name = "bad_spider"
+    start_urls = ["http://example.com"]
+
+    def parse(self, response):
+        item = ProductItem()
+        item['title'] = response.css('h1::text').get()
+        # ... complex cleaning and validation here ...
+        # ... database insertion logic here ...
+        yield item
+```
+
+**✅ GOOD: Spiders for crawling and raw extraction, pipelines for processing**
+```python
+# spiders/good_spider.py
+import scrapy
+from my_project_name.items import ProductItem
+
+class GoodSpider(scrapy.Spider):
+    name = "good_spider"
+    allowed_domains = ["example.com"] # Always define allowed_domains
+    start_urls = ["http://example.com/products"]
+
+    def parse(self, response: scrapy.http.Response):
+        # Extract product links and follow them
+        for product_link in response.css('a.product-link::attr(href)').getall():
+            yield response.follow(product_link, callback=self.parse_product)
+
+        # Handle pagination
+        next_page = response.css('a.next-page::attr(href)').get()
+        if next_page:
+            yield response.follow(next_page, callback=self.parse)
+
+    def parse_product(self, response: scrapy.http.Response):
+        item = ProductItem(
+            url=response.url,
+            title=response.css('h1.product-title::text').get(),
+            price=float(response.css('.product-price::text').get().replace('$', '')) if response.css('.product-price::text').get() else None,
+            description=response.css('.product-description::text').get(),
+            image_urls=response.css('.product-image::attr(src)').getall(),
+            category=response.css('.product-category::text').get(),
+        )
+        yield item # Item is yielded for pipelines to process
+```
+
+### 1.4. Item Pipelines (`pipelines.py`)
+
+Use pipelines for all data cleaning, validation, deduplication, and storage. This isolates business logic and makes testing straightforward.
+
+**❌ BAD: No pipelines, processing in spiders or external scripts**
+```python
+# (See BAD spider example above)
+# Or processing data after the crawl finishes in a separate script
+```
+
+**✅ GOOD: Dedicated pipelines for each processing step**
+```python
+# pipelines.py
+from itemadapter import ItemAdapter
+from my_project_name.items import ProductItem
+from scrapy.exceptions import DropItem
+from typing import Any
+
+class PriceConverterPipeline:
+    def process_item(self, item: ProductItem, spider: Any) -> ProductItem:
+        adapter = ItemAdapter(item)
+        if adapter.get('price'):
+            try:
+                # Ensure price is a float
+                adapter['price'] = float(adapter['price'])
+            except (ValueError, TypeError):
+                raise DropItem(f"Invalid price in {item}")
+        return item
+
+class DuplicatesPipeline:
+    def __init__(self):
+        self.urls_seen = set()
+
+    def process_item(self, item: ProductItem, spider: Any) -> ProductItem:
+        adapter = ItemAdapter(item)
+        if adapter['url'] in self.urls_seen:
+            raise DropItem(f"Duplicate item found: {item}")
+        else:
+            self.urls_seen.add(adapter['url'])
+            return item
+
+# In settings.py, enable pipelines and set order:
+# ITEM_PIPELINES = {
+#     "my_project_name.pipelines.PriceConverterPipeline": 300,
+#     "my_project_name.pipelines.DuplicatesPipeline": 400,
+#     # ... other pipelines for storage (e.g., to database)
+# }
+```
+
+### 1.5. Middlewares (`middlewares.py`)
+
+Implement custom downloader and spider middlewares for request/response manipulation, proxy rotation, user-agent management, and advanced error handling.
+
+**❌ BAD: Hardcoding user-agents or proxies in spiders**
+```python
+# spiders/bad_spider.py
+# ...
+def start_requests(self):
+    yield scrapy.Request(
+        url="http://example.com",
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+        meta={"proxy": "http://my.proxy.com:8080"}
+    )
+```
+
+**✅ GOOD: Centralized middleware for robust request handling**
+```python
+# middlewares.py
+import random
+from scrapy import signals
+from scrapy.http import Request, Response
+from scrapy.exceptions import IgnoreRequest
+from typing import Any
+
+class RotateUserAgentMiddleware:
+    USER_AGENTS = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        # ... add more diverse user agents
+    ]
+
+    def process_request(self, request: Request, spider: Any) -> None:
+        request.headers['User-Agent'] = random.choice(self.USER_AGENTS)
+
+class ProxyMiddleware:
+    PROXIES = [
+        "http://user:pass@proxy1.com:8080",
+        "http://user:pass@proxy2.com:8080",
+        # ... add more proxies
+    ]
+
+    def process_request(self, request: Request, spider: Any) -> None:
+        if not request.meta.get('proxy'): # Only apply if not already set
+            request.meta['proxy'] = random.choice(self.PROXIES)
+
+# In settings.py, enable middlewares and set order:
+# DOWNLOADER_MIDDLEWARES = {
+#     "my_project_name.middlewares.RotateUserAgentMiddleware": 543,
+#     "my_project_name.middlewares.ProxyMiddleware": 544,
+# }
+```
 
 ## 2. Common Patterns and Anti-patterns
 
-### 2.1. Design Patterns
+### 2.1. Running Spiders from a Script
 
--   **Strategy Pattern:** Use different parsing strategies within a spider based on the page structure or data type.
--   **Factory Pattern:** Create a factory function to instantiate items with default values or based on specific criteria.
--   **Singleton Pattern:** (Use sparingly) For global resources like database connections, consider using a singleton pattern, but ensure thread safety.
--   **Observer Pattern:** Use Scrapy signals to trigger actions based on specific events (e.g., item scraped, spider closed).
+Always use `scrapy.crawler.CrawlerProcess` for launching spiders from a Python script. It handles the Twisted reactor and project settings correctly.
 
-### 2.2. Recommended Approaches
+**❌ BAD: Manually managing the Twisted reactor or `CrawlerRunner` for simple cases**
+```python
+# run_bad.py
+from scrapy.crawler import CrawlerRunner
+from twisted.internet import reactor
+# ... spider definition ...
+runner = CrawlerRunner()
+d = runner.crawl(MySpider)
+d.addBoth(lambda _: reactor.stop())
+reactor.run() # Too verbose for common use
+```
 
--   **Item Loaders:** Use Item Loaders to populate items with extracted data, providing data validation and cleaning.
--   **CSS and XPath Selectors:**  Master CSS and XPath selectors for efficient data extraction.
--   **Response Objects:**  Utilize the methods provided by the `response` object (e.g., `css()`, `xpath()`, `urljoin()`, `follow()`).
--   **Asynchronous Operations:**  Understand Scrapy's asynchronous nature and use deferreds for handling asynchronous tasks (though Scrapy abstracts a lot of this away).
--   **Robots.txt:** Respect the robots.txt file and configure `ROBOTSTXT_OBEY` accordingly.
--   **Settings:** Centralize settings in `settings.py` instead of hardcoding values.
+**✅ GOOD: `scrapy.crawler.CrawlerProcess`**
+```python
+# run_good.py
+import scrapy
+from scrapy.crawler import CrawlerProcess
+from scrapy.utils.project import get_project_settings
+from typing import Any
 
-### 2.3. Anti-patterns and Code Smells
+class MySpider(scrapy.Spider):
+    name = "my_spider"
+    start_urls = ["http://quotes.toscrape.com/"]
 
--   **Hardcoded Values:** Avoid hardcoding URLs, selectors, or other configuration values directly in the code.
--   **Overly Complex Spiders:** Keep spiders focused on crawling.  Move complex data processing to pipelines.
--   **Ignoring Errors:**  Implement proper error handling and logging to identify and address issues.
--   **Excessive Logging:**  Avoid verbose logging that can impact performance. Use appropriate log levels (DEBUG, INFO, WARNING, ERROR).
--   **Blocking Operations:** Avoid blocking operations (e.g., synchronous network requests) in spiders, as they can significantly reduce performance. Let Scrapy handle the concurrency.
--   **Unnecessary Recursion:** Overly complex recursion within `parse` methods can lead to stack overflow errors.
--   **Abusing Global State:** Avoid overly relying on global variables, since Scrapy manages concurrency it can lead to race conditions or unpredictable spider behavior.
+    def parse(self, response: scrapy.http.Response):
+        for quote in response.css('div.quote'):
+            yield {
+                'text': quote.css('span.text::text').get(),
+                'author': quote.css('small.author::text').get(),
+            }
 
-### 2.4. State Management
+if __name__ == '__main__':
+    settings = get_project_settings()
+    process = CrawlerProcess(settings)
+    process.crawl(MySpider)
+    process.start() # The script will block here until the crawling is finished
+```
 
--   **Spider Attributes:** Store spider-specific state in spider attributes (e.g., current page number, filters).
--   **Request.meta:** Use `Request.meta` to pass data between callbacks (e.g., passing data extracted from one page to the next).
--   **Settings:** Use Scrapy settings to manage project-level configuration.
--   **External Databases/Caches:** For persistent state or data sharing between spiders, consider using an external database or cache (e.g., Redis).
+### 2.2. Robust Request Handling
 
-### 2.5. Error Handling
+Enable `AUTOTHROTTLE` and set `DOWNLOAD_DELAY`. Implement exponential backoff for 403/429 responses via a custom middleware or by configuring `RETRY_HTTP_CODES`.
 
--   **`try...except` Blocks:** Use `try...except` blocks to handle potential exceptions during data extraction or processing.
--   **Scrapy Logging:** Utilize Scrapy's logging system to record errors, warnings, and informational messages.
--   **Retry Middleware:** Configure the Retry Middleware to automatically retry failed requests.
--   **Error Handling in Pipelines:** Implement error handling in pipelines to catch and log errors during data processing.
--   **Error Handling in Middlewares:** Implement error handling in middleware to deal with request or response issues
+**❌ BAD: Ignoring rate limits, getting banned**
+```python
+# settings.py
+# No AUTOTHROTTLE, no DOWNLOAD_DELAY
+# RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 408] # Default, misses 403/429
+```
+
+**✅ GOOD: Respectful crawling with `AUTOTHROTTLE` and extended `RETRY_HTTP_CODES`**
+```python
+# settings.py
+AUTOTHROTTLE_ENABLED = True
+AUTOTHROTTLE_START_DELAY = 1.0 # Initial delay
+AUTOTHROTTLE_MAX_DELAY = 60.0 # Max delay between requests
+AUTOTHROTTLE_TARGET_CONCURRENCY = 1.0 # Aim for 1 request per second
+AUTOTHROTTLE_DEBUG = False # Set to True for debugging
+
+DOWNLOAD_DELAY = 0.5 # Minimum delay between requests to the same domain
+
+# Enable retries for common anti-bot responses
+RETRY_ENABLED = True
+RETRY_TIMES = 5 # Retry up to 5 times
+RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 408, 403, 429] # Add 403, 429
+```
 
 ## 3. Performance Considerations
 
-### 3.1. Optimization Techniques
+### 3.1. Concurrency
 
--   **Concurrency:** Adjust `CONCURRENT_REQUESTS`, `CONCURRENT_REQUESTS_PER_DOMAIN`, and `DOWNLOAD_DELAY` to optimize crawling speed while avoiding server overload.
--   **Item Pipelines:** Optimize item pipelines for efficient data processing and storage.
--   **Caching:** Use HTTP caching to avoid re-downloading unchanged pages (`HTTPCACHE_ENABLED = True`).
--   **Offsite Middleware:** Enable the Offsite Spider Middleware to prevent crawling outside the allowed domains.
--   **Keep-Alive:** Ensure HTTP keep-alive is enabled for persistent connections.
--   **DNS Caching:** Optimize DNS resolution by enabling DNS caching.
--   **Efficient Selectors:** Optimize XPath and CSS selectors for faster data extraction.
--   **Asynchronous Request Handling:** Scrapy's asynchronous architecture handles concurrency, utilize it by avoid blocking operations
+Tune `CONCURRENT_REQUESTS` and `CONCURRENT_REQUESTS_PER_DOMAIN` carefully. Start low and increase gradually while monitoring server load and your IP's ban rate.
 
-### 3.2. Memory Management
+**❌ BAD: Default high concurrency or excessively low concurrency**
+```python
+# settings.py
+# CONCURRENT_REQUESTS = 16 # Default is often too high for sensitive sites
+# DOWNLOAD_DELAY = 0 # No delay, will get banned quickly
+```
 
--   **Large Datasets:** For very large datasets, consider using Scrapy's built-in support for chunked responses or processing data in batches.
--   **Avoid Storing Everything in Memory:** Process items in pipelines and avoid storing the entire scraped data in memory at once.
--   **Limit Response Body Size:** Set `DOWNLOAD_MAXSIZE` to limit the maximum size of downloaded responses to prevent memory exhaustion.
--   **Garbage Collection:** Manually trigger garbage collection if necessary to reclaim memory (use with caution).
+**✅ GOOD: Balanced concurrency with `AUTOTHROTTLE`**
+```python
+# settings.py
+CONCURRENT_REQUESTS = 32 # Maximum concurrent requests overall
+CONCURRENT_REQUESTS_PER_DOMAIN = 8 # Maximum concurrent requests per domain
+CONCURRENT_REQUESTS_PER_IP = 0 # Use CONCURRENT_REQUESTS_PER_DOMAIN instead
+# AUTOTHROTTLE should be enabled to dynamically adjust delay
+```
 
-### 3.3. Rendering Optimization
+### 3.2. Distributed Crawling
 
--   **Splash/Selenium:** If JavaScript rendering is required, use Scrapy Splash or Selenium, but be aware of the performance overhead.
--   **Render Only When Necessary:**  Only render pages that require JavaScript execution. Avoid rendering static HTML pages.
--   **Minimize Browser Interactions:**  Reduce the number of interactions with the browser (e.g., clicks, form submissions) to improve rendering performance.
--   **Caching Rendered Results:** Cache rendered HTML to avoid redundant rendering.
+For large-scale projects, leverage Scrapy Cluster or Scrapyd. Store crawl state (e.g., visited URLs, pending requests) in a persistent backend like Redis to enable resume after failures and distributed processing.
 
-### 3.4. Bundle Size Optimization
+**✅ GOOD: Use `scrapy-redis` or similar for distributed state management**
+```python
+# settings.py (for scrapy-redis)
+# DUPEFILTER_CLASS = "scrapy_redis.dupefilter.RFPDupeFilter"
+# SCHEDULER = "scrapy_redis.scheduler.Scheduler"
+# SCHEDULER_PERSIST = True
+# REDIS_URL = 'redis://localhost:6379'
+```
 
-- Scrapy does not have bundles like web development frameworks, so this section does not apply.
+## 4. Common Pitfalls and Gotchas
 
-### 3.5. Lazy Loading
+### 4.1. Ignoring `robots.txt`
 
--   **Pagination:** Implement pagination to crawl websites in smaller chunks.
--   **Lazy Item Processing:** Defer item processing in pipelines until necessary to reduce memory consumption.
+Always check and respect `robots.txt`. It's an ethical and practical necessity to avoid legal issues and IP bans.
 
-## 4. Security Best Practices
+**❌ BAD: Disabling `ROBOTSTXT_OBEY` without justification**
+```python
+# settings.py
+ROBOTSTXT_OBEY = False # Don't do this unless absolutely necessary and legally cleared
+```
 
-### 4.1. Common Vulnerabilities and Prevention
+**✅ GOOD: Always obey `robots.txt` by default**
+```python
+# settings.py
+ROBOTSTXT_OBEY = True
+```
 
--   **Cross-Site Scripting (XSS):** Sanitize scraped data before displaying it on a website to prevent XSS attacks. Don't output raw scraped content.
--   **SQL Injection:** If storing scraped data in a database, use parameterized queries or ORMs to prevent SQL injection vulnerabilities.
--   **Command Injection:** Avoid executing arbitrary commands based on scraped data to prevent command injection attacks.
--   **Denial of Service (DoS):** Implement rate limiting and politeness policies to avoid overwhelming target websites.
--   **Data Poisoning:** Validate scraped data to ensure its integrity and prevent data poisoning.
+### 4.2. Memory Leaks
 
-### 4.2. Input Validation
+Avoid storing large amounts of data in spider attributes. Yield items and requests promptly.
 
--   **Validate Scraped Data:**  Implement validation logic in item pipelines to ensure that scraped data conforms to expected formats and ranges.
--   **Data Type Validation:**  Check the data type of scraped values to prevent unexpected errors.
--   **Regular Expressions:**  Use regular expressions to validate string values and enforce specific patterns.
+**❌ BAD: Appending all items to a list in the spider**
+```python
+# spiders/bad_spider.py
+class BadSpider(scrapy.Spider):
+    # ...
+    all_items = [] # This will grow indefinitely and cause memory issues
 
-### 4.3. Authentication and Authorization
+    def parse(self, response):
+        # ... extract item ...
+        self.all_items.append(item)
+        # ...
+```
 
--   **HTTP Authentication:** Use Scrapy's built-in support for HTTP authentication to access password-protected websites.
--   **Cookies:**  Manage cookies properly to maintain sessions and avoid authentication issues.
--   **API Keys:**  Store API keys securely and avoid exposing them in the code.
--   **OAuth:**  Implement OAuth authentication if required to access protected resources.
+**✅ GOOD: Yield items and requests immediately**
+```python
+# spiders/good_spider.py
+class GoodSpider(scrapy.Spider):
+    # ...
+    def parse(self, response):
+        # ... extract item ...
+        yield item # Item is sent to pipelines immediately
+        # ... yield requests for next pages ...
+        yield scrapy.Request(url="next_page", callback=self.parse)
+```
 
-### 4.4. Data Protection
+## 5. Type Hints
 
--   **Encryption:**  Encrypt sensitive data during storage and transmission.
--   **Anonymization:**  Anonymize or pseudonymize personal data to protect user privacy.
--   **Access Control:**  Implement access control mechanisms to restrict access to sensitive data.
+Embrace type hints (`typing` module) throughout your Scrapy project. This improves code quality, enables static analysis, and makes your code easier to understand and maintain.
 
-### 4.5. Secure API Communication
+**❌ BAD: Untyped functions and variables**
+```python
+# pipelines.py
+class MyPipeline:
+    def process_item(self, item, spider):
+        # ... logic ...
+        return item
+```
 
--   **HTTPS:**  Always use HTTPS for secure communication with APIs.
--   **SSL/TLS:**  Ensure that SSL/TLS certificates are properly configured.
--   **API Authentication:**  Use API keys or tokens for authentication.
--   **Rate Limiting:**  Implement rate limiting to prevent abuse and protect APIs.
+**✅ GOOD: Fully typed functions and variables**
+```python
+# pipelines.py
+from itemadapter import ItemAdapter
+from my_project_name.items import ProductItem
+from typing import Any
 
-## 5. Testing Approaches
+class MyPipeline:
+    def process_item(self, item: ProductItem, spider: Any) -> ProductItem:
+        adapter = ItemAdapter(item)
+        # ... logic ...
+        return item
+```
 
-### 5.1. Unit Testing
+## 6. Virtual Environments
 
--   **Spider Logic:** Unit test individual components of spiders, such as selector logic, data extraction, and URL generation.
--   **Item Pipelines:** Unit test item pipelines to verify data cleaning, validation, and transformation.
--   **Middleware:** Unit test middleware components to ensure proper request/response processing.
--   **Helper Functions:** Unit test helper functions to ensure correct behavior.
+Always use a virtual environment (`venv` or `conda`) for Scrapy projects. This isolates dependencies and prevents conflicts.
 
-### 5.2. Integration Testing
+**❌ BAD: Installing packages globally**
+```bash
+pip install scrapy # Installs into global Python environment
+```
 
--   **Spider Integration:** Integrate spiders with item pipelines to test the entire data flow.
--   **Middleware Integration:** Integrate middleware components with spiders to test request/response handling.
--   **External Services:** Integrate with external services (e.g., databases, APIs) to test data storage and retrieval.
+**✅ GOOD: Create and activate a virtual environment**
+```bash
+python -m venv .venv
+source .venv/bin/activate # On Windows: .venv\Scripts\activate
+pip install scrapy
+```
 
-### 5.3. End-to-End Testing
+## 7. Packaging
 
--   **Full Crawl:** Run a full crawl of the target website and verify that all data is extracted correctly.
--   **Data Validation:** Validate the scraped data against expected values or schemas.
--   **Performance Testing:** Measure the performance of the scraper and identify potential bottlenecks.
+For larger projects, package your Scrapy application using `setuptools` and `pyproject.toml`. This makes deployment and dependency management robust.
 
-### 5.4. Test Organization
+**✅ GOOD: Use `pyproject.toml` for project metadata and dependencies**
+```toml
+# pyproject.toml
+[project]
+name = "my-scrapy-project"
+version = "0.1.0"
+description = "A Scrapy project for scraping X"
+dependencies = [
+    "scrapy>=2.13.0",
+    "itemadapter>=0.8.0",
+    # ... other dependencies
+]
 
--   **Separate Test Directory:** Create a separate `tests/` directory to store test files.
--   **Test Modules:** Organize tests into modules based on the component being tested (e.g., `tests/test_spiders.py`, `tests/test_pipelines.py`).
--   **Test Fixtures:** Use test fixtures to set up test data and dependencies.
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+```
 
-### 5.5. Mocking and Stubbing
+## 8. Testing Approaches
 
--   **Mock Responses:** Mock HTTP responses to test spider logic without making actual network requests.
--   **Stub External Services:** Stub external services (e.g., databases, APIs) to isolate components during testing.
--   **Mock Item Pipelines:** Mock item pipelines to prevent actual data storage during testing.
+Implement a comprehensive testing strategy to ensure your crawlers are reliable and resilient to website changes.
 
-## 6. Common Pitfalls and Gotchas
+### 8.1. Unit Testing Spiders
 
-### 6.1. Frequent Mistakes
+Write `pytest` suites that mock `scrapy.http.Response` objects. Test your parsing logic in isolation.
 
--   **Incorrect Selectors:**  Using incorrect or brittle CSS/XPath selectors that break when the website structure changes.
--   **Ignoring Robots.txt:**  Ignoring the `robots.txt` file and potentially violating the website's terms of service.
--   **Overloading the Target Website:**  Making too many requests too quickly and potentially causing a denial of service.
--   **Not Handling JavaScript:**  Failing to handle JavaScript-rendered content.
--   **Not Handling Pagination:**  Failing to properly handle pagination and missing data from multiple pages.
--   **Incorrectly handling Cookies:** Failing to persist or handle cookies properly can cause unpredictable behavior.
+**❌ BAD: No tests, relying on manual verification**
+```python
+# No test files
+```
 
-### 6.2. Edge Cases
+**✅ GOOD: `pytest` with mocked responses**
+```python
+# tests/test_my_spider.py
+import pytest
+from scrapy.http import Response, Request
+from scrapy.item import Item
+from my_project_name.spiders.good_spider import GoodSpider
 
--   **Website Structure Changes:**  Websites frequently change their structure, breaking existing scrapers. Implement robust selectors and monitoring to detect changes.
--   **Anti-Scraping Measures:**  Websites may implement anti-scraping measures (e.g., CAPTCHAs, IP blocking) to prevent scraping. Use appropriate techniques to bypass these measures.
--   **Dynamic Content:**  Websites may use dynamic content (e.g., AJAX, WebSockets) to load data. Use appropriate techniques to handle dynamic content.
--   **Rate Limiting:**  Websites may implement rate limiting to restrict the number of requests from a single IP address. Use proxies or distributed crawling to overcome rate limits.
+@pytest.fixture
+def mock_response_product_list():
+    # Simulate a product listing page
+    html = """
+    <html><body>
+        <a class="product-link" href="/product/1">Product 1</a>
+        <a class="product-link" href="/product/2">Product 2</a>
+        <a class="next-page" href="/products?page=2">Next</a>
+    </body></html>
+    """
+    return Response(url="http://example.com/products", body=html.encode('utf-8'))
 
-### 6.3. Version-Specific Issues
+@pytest.fixture
+def mock_response_product_detail():
+    # Simulate a product detail page
+    html = """
+    <html><body>
+        <h1 class="product-title">Awesome Widget</h1>
+        <span class="product-price">$99.99</span>
+        <p class="product-description">A great widget.</p>
+        <img class="product-image" src="/img/widget.jpg">
+        <span class="product-category">Electronics</span>
+    </body></html>
+    """
+    return Response(url="http://example.com/product/1", body=html.encode('utf-8'))
 
--   **Scrapy API Changes:**  Be aware of API changes between Scrapy versions and update your code accordingly.
--   **Dependency Conflicts:**  Manage dependencies carefully to avoid conflicts between Scrapy and other libraries.
--   **Python Version Compatibility:**  Ensure that your code is compatible with the supported Python versions.
+def test_parse_product_list(mock_response_product_list):
+    spider = GoodSpider()
+    results = list(spider.parse(mock_response_product_list))
 
-### 6.4. Compatibility Concerns
+    # Check that requests for product details are yielded
+    assert any(isinstance(r, Request) and r.url == "http://example.com/product/1" for r in results)
+    assert any(isinstance(r, Request) and r.url == "http://example.com/product/2" for r in results)
+    # Check that a request for the next page is yielded
+    assert any(isinstance(r, Request) and r.url == "http://example.com/products?page=2" for r in results)
 
--   **JavaScript Rendering Libraries:** Ensure that the JavaScript rendering library is compatible with the target website and Scrapy.
--   **Data Storage Libraries:**  Ensure that the data storage library is compatible with Scrapy and the chosen data format.
--   **Proxy Management Libraries:** Ensure that the proxy management library is compatible with Scrapy.
+def test_parse_product_detail(mock_response_product_detail):
+    spider = GoodSpider()
+    results = list(spider.parse_product(mock_response_product_detail))
 
-### 6.5. Debugging Strategies
+    # Check that an Item is yielded with correct data
+    assert len(results) == 1
+    item = results[0]
+    assert isinstance(item, Item)
+    assert item['title'] == "Awesome Widget"
+    assert item['price'] == 99.99
+    assert item['url'] == "http://example.com/product/1"
+```
 
--   **Scrapy Shell:** Use the Scrapy shell to test selectors and extract data interactively.
--   **Logging:**  Use Scrapy's logging system to record errors, warnings, and informational messages.
--   **Debugging Tools:** Use Python debugging tools (e.g., `pdb`, `ipdb`) to step through the code and inspect variables.
--   **Middleware Debugging:** Use middleware to inspect requests and responses and identify potential issues.
--   **Verbose Output:** Use `-v` or `-vv` when running spiders to get more verbose output.
+### 8.2. Linting and Type Checking
 
-## 7. Tooling and Environment
+Integrate `flake8`, `black`, and `mypy` into your CI/CD pipeline. Enforce code style and type correctness.
 
-### 7.1. Recommended Tools
+**✅ GOOD: Automated code quality checks**
+```bash
+# In your CI/CD pipeline or pre-commit hooks
+black . --check
+flake8 .
+mypy .
+```
 
--   **IDE:**  Use a capable IDE such as VS Code, PyCharm, or Sublime Text.
--   **Virtual Environment:**  Use virtual environments (e.g., `venv`, `conda`) to manage dependencies and isolate projects.
--   **Scrapy Shell:** Use the Scrapy shell for interactive testing and debugging.
--   **Browser Developer Tools:** Use browser developer tools to inspect website structure and identify selectors.
+## 9. Ethical Scraping
 
-### 7.2. Build Configuration
+Always prioritize ethical scraping practices. This protects your project from legal issues and IP bans.
 
--   **`setup.py`:** Use a `setup.py` file to define project dependencies and metadata for larger projects and for distribution.
--   **`requirements.txt`:** Use a `requirements.txt` file to list project dependencies for easy installation.
--   **`pip freeze`:** Use `pip freeze > requirements.txt` to generate a list of installed packages and their versions.
-
-### 7.3. Linting and Formatting
-
--   **PEP 8:**  Follow PEP 8 style guidelines for code readability.
--   **Linters:**  Use linters (e.g., `flake8`, `pylint`) to identify code style issues and potential errors.
--   **Formatters:**  Use code formatters (e.g., `black`, `autopep8`) to automatically format code according to PEP 8.
-
-### 7.4. Deployment
-
--   **Scrapyd:**  Use Scrapyd to deploy and manage Scrapy spiders on a server.
--   **Docker:**  Use Docker to containerize Scrapy applications for easy deployment and scalability.
--   **Cloud Platforms:**  Deploy Scrapy applications on cloud platforms such as AWS, Google Cloud, or Azure.
--   **Scheduled Tasks:**  Use scheduled tasks (e.g., cron jobs) to run Scrapy spiders on a regular basis.
-
-### 7.5. CI/CD Integration
-
--   **Testing:**  Integrate unit and integration tests into the CI/CD pipeline to ensure code quality.
--   **Linting and Formatting:**  Integrate linters and formatters into the CI/CD pipeline to enforce code style.
--   **Automated Deployment:**  Automate the deployment process to deploy new versions of the scraper automatically.
--   **Monitoring:**  Integrate monitoring tools to track the performance and health of the scraper in production.
+**✅ GOOD: Ethical scraping checklist**
+*   **Obey `robots.txt`**: Always.
+*   **Clear User-Agent**: Identify your crawler with contact info.
+*   **Rate Limiting**: Use `AUTOTHROTTLE` and `DOWNLOAD_DELAY`.
+*   **Handle Errors Gracefully**: Implement retries and backoff.
+*   **Distributed Crawling**: Use proxies and rotate IPs.
+*   **Avoid Overloading Servers**: Monitor your crawl speed and resource usage.

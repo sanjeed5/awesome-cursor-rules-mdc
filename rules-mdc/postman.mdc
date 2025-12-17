@@ -1,100 +1,364 @@
 ---
-description: This rule provides best practices for effectively using Postman for API testing, covering code organization, common patterns, performance, security, testing, and tooling to ensure robust and maintainable API tests.
-globs: *.postman_collection.json
+description: This guide defines definitive best practices for structuring, scripting, and testing APIs using Postman, ensuring maintainable, robust, and collaborative API workflows.
+globs: **/*
 ---
-# Postman API Testing Best Practices
+# Postman Best Practices
 
-This document outlines best practices for using Postman for API testing, covering aspects like project structure, common patterns, performance optimization, security considerations, testing strategies, common pitfalls, and tooling.
+Postman is our definitive tool for API development, testing, and documentation. Adhering to these guidelines ensures consistency, maintainability, and reliability across all our API interactions.
 
 ## 1. Code Organization and Structure
 
-Effective organization is crucial for maintainability and collaboration. While Postman doesn't directly enforce code organization like a traditional codebase, the way you structure your collections and environments significantly impacts your workflow.
+Organize your Postman collections like source code: structured, versioned, and modular.
 
-- **Workspaces:** Utilize workspaces to separate projects and collections logically. Different workspaces can represent different projects, teams, or stages of development.
-- **Collections:** Group related API requests into collections. Each collection should represent a specific feature or API domain.
-- **Folders:** Organize requests within collections using folders. Folders can represent different workflows or API endpoints. For example:
-  
-  MyProject
-  └── Collections
-      └── User Authentication
-          ├── Register User
-          ├── Login User
-          ├── Forgot Password
-          └── Reset Password
-  
-- **Environment Variables:** Use environments to manage different configurations (development, staging, production) without hardcoding sensitive information.
-- **File Naming Conventions:** Use consistent and descriptive names for collections, folders, and requests.
-  - `Collection`: `[ProjectName] - [APIDomain] API Tests` (e.g., `ECommerce - User Authentication API Tests`)
-  - `Folder`: `[Endpoint]` or `[Workflow]` (e.g., `/users` or `Register User Workflow`)
-  - `Request`: `[HTTPMethod] [EndpointDescription]` (e.g., `POST Register User`)
+### 1.1 Collection Hierarchy
+
+Mirror your API's resource structure with a clear folder hierarchy. Each folder should represent a logical API resource or module.
+
+❌ **BAD: Flat Collection**
+```
+- My API
+  - Create User
+  - Get User by ID
+  - Update Product
+  - Delete Order
+```
+
+✅ **GOOD: Structured Collection**
+```
+- My API v1.0
+  - Users
+    - POST Create User
+    - GET Get User by ID
+    - PUT Update User
+    - DELETE Delete User
+  - Products
+    - POST Create Product
+    - GET Get Product by ID
+    - PUT Update Product
+    - DELETE Delete Product
+  - Orders
+    - POST Create Order
+    - GET Get Order by ID
+    - PUT Update Order
+    - DELETE Delete Order
+```
+
+### 1.2 Request Naming
+
+Use descriptive names for requests, including the HTTP method and the resource path.
+
+❌ **BAD: Vague Request Names**
+```
+- Get User
+- Update Product
+```
+
+✅ **GOOD: Explicit Request Names**
+```
+- GET /users/{id}
+- PUT /products/{id}
+- POST /auth/login
+```
+
+### 1.3 Variables Management
+
+Leverage Postman variables (global, environment, collection) to avoid hardcoding and promote reusability.
+
+*   **Global Variables**: For non-sensitive, truly global data (e.g., common utility functions). Use sparingly.
+*   **Environment Variables**: For environment-specific configurations (e.g., `BASE_URL`, `AUTH_TOKEN`, `API_KEY`). **Never commit sensitive data to source control.**
+*   **Collection Variables**: For data specific to a collection (e.g., `user_id`, `product_name`) that might change during a test run but is not environment-specific.
+
+**Naming Convention**:
+*   Environment Variables: `UPPER_SNAKE_CASE` (e.g., `DEV_BASE_URL`, `PROD_AUTH_TOKEN`)
+*   Collection/Local Variables: `camelCase` (e.g., `userId`, `productName`)
+
+❌ **BAD: Hardcoded Values**
+```javascript
+// Pre-request Script
+pm.request.url = "https://dev.api.com/users";
+pm.request.headers.add({ key: "Authorization", value: "Bearer my-hardcoded-token" });
+```
+
+✅ **GOOD: Variable Usage**
+```javascript
+// Environment Variables: BASE_URL, authToken
+// Collection Variables: userId
+
+// Pre-request Script
+pm.request.url = `${pm.environment.get("BASE_URL")}/users/${pm.collection.get("userId")}`;
+pm.request.headers.add({ key: "Authorization", value: `Bearer ${pm.environment.get("authToken")}` });
+```
 
 ## 2. Common Patterns and Anti-patterns
 
-- **Environment-Specific Variables:** Use environment variables to store values that change based on the environment (e.g., API URLs, authentication tokens). Create separate environments for development, staging, and production.
+Adopt patterns that enhance test reliability and maintainability.
 
-  - **Pattern:** Create environment variables for the base URL, API keys, and other environment-specific settings.
-  - **Anti-pattern:** Hardcoding URLs or API keys directly into requests.
+### 2.1 Reusable Pre-request and Test Scripts
 
-- **Data-Driven Testing:** Use data-driven testing to run the same request multiple times with different data sets. This can be achieved by importing data from CSV or JSON files.
+Extract shared logic into collection-level or folder-level pre-request/test scripts. This reduces duplication and centralizes updates.
 
-  - **Pattern:** Use the Collection Runner to iterate through data files and automatically populate request parameters.
-  - **Anti-pattern:** Manually creating multiple requests with slightly different data.
+❌ **BAD: Duplicated Test Logic**
+```javascript
+// Request A Test Script
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+// Request B Test Script (same logic)
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+```
 
-- **Reusing Code with Pre-request Scripts and Tests:** Use pre-request scripts to dynamically generate request parameters or perform setup tasks. Use test scripts to validate API responses and set variables for subsequent requests.
+✅ **GOOD: Reusable Collection-level Test Script**
+```javascript
+// Collection-level Test Script
+pm.test("Response time is less than 200ms", function () {
+    pm.expect(pm.response.responseTime).to.be.below(200);
+});
 
-  - **Pattern:** Use pre-request scripts to generate authentication tokens or timestamps. Use test scripts to extract data from responses and store them in environment variables for use in other requests.
-  - **Anti-pattern:** Duplicating the same code in multiple requests.
+// For specific requests, add request-level tests
+// Request A Test Script
+pm.test("Status code is 201 Created", function () {
+    pm.response.to.have.status(201);
+});
+```
 
-- **Error Handling:** Implement robust error handling to gracefully handle unexpected API responses or network issues.
+### 2.2 Chaining Requests
 
-  - **Pattern:** Check for error status codes (e.g., 4xx, 5xx) in your test scripts and log detailed error messages.
-  - **Anti-pattern:** Ignoring error responses or assuming that all requests will succeed.
+Pass data between requests using environment or collection variables. This is crucial for end-to-end flows.
+
+```javascript
+// Request 1: POST /users (creates a user)
+// Test Script
+pm.test("User created successfully", function () {
+    pm.response.to.have.status(201);
+    const response = pm.response.json();
+    pm.environment.set("newUserId", response.id); // Store ID for subsequent requests
+});
+
+// Request 2: GET /users/{{newUserId}} (retrieves the created user)
+// Pre-request Script (if needed)
+// No specific pre-request needed here, as {{newUserId}} is used directly in URL.
+```
+
+### 2.3 Data-Driven Testing
+
+Utilize the Collection Runner with external CSV or JSON data files for testing multiple scenarios or large datasets.
+
+```json
+// data.json
+[
+  { "username": "testuser1", "password": "password1" },
+  { "username": "testuser2", "password": "password2" }
+]
+```
+```javascript
+// Request: POST /auth/login
+// Request Body:
+// {
+//   "username": "{{username}}",
+//   "password": "{{password}}"
+// }
+
+// Test Script
+pm.test("Login successful for {{username}}", function () {
+    pm.response.to.have.status(200);
+    pm.expect(pm.response.json().token).to.be.a('string');
+});
+```
+*Run this request via Collection Runner, selecting `data.json` as the data file.*
 
 ## 3. Performance Considerations
 
-- **Minimize Request Size:** Reduce the size of your requests by sending only the necessary data. Avoid including unnecessary headers or body parameters.
-- **Optimize Test Scripts:** Write efficient test scripts to minimize execution time. Avoid using complex or unnecessary logic in your test scripts.
-- **Use Monitors:** Utilize Postman Monitors to schedule regular performance tests and track API response times.
-- **Parallel Execution:** The collection runner in Postman executes requests sequentially. If parallel execution is required (for load testing, for example), consider Newman and external load testing tools.
+Optimize your test suite for speed and reliability.
 
-## 4. Security Best Practices
+### 3.1 Mock Servers for External Dependencies
 
-- **Input Validation:** While Postman itself doesn't directly handle server-side input validation, your tests should validate that the API responds appropriately to invalid input.
-  - **Pattern:** Send requests with invalid or malicious input and verify that the API returns appropriate error messages and status codes.
+Use Postman Mock Servers to simulate third-party APIs during end-to-end testing. This makes tests faster, deterministic, and independent of external service availability.
 
-- **Authentication and Authorization:** Implement secure authentication and authorization mechanisms to protect your APIs.
-  - **Pattern:** Use environment variables to store API keys, tokens, and other credentials. Implement authentication flows (e.g., OAuth 2.0) in your collections.
-  - **Anti-pattern:** Hardcoding credentials directly into requests or storing them in plain text.
+❌ **BAD: Relying on Live Third-Party APIs for E2E Tests**
+*   Slows down tests.
+*   Introduces flakiness due to external service instability.
+*   Difficult to test error scenarios (e.g., 500s from external API).
 
-- **Data Protection:** Ensure that sensitive data is encrypted in transit and at rest.
-  - **Pattern:** Use HTTPS to encrypt communication between Postman and your APIs. Implement data masking or redaction in your test scripts to prevent sensitive data from being exposed.
+✅ **GOOD: Mock External APIs**
+1.  Define API schema and examples for the third-party API in a Postman Collection.
+2.  Create a Mock Server linked to this collection.
+3.  Configure your application's E2E test environment to point to the Mock Server URL instead of the actual third-party API.
+4.  Use the Postman API to dynamically update mock examples for specific test scenarios (e.g., simulate 400, 500 errors).
 
-## 5. Testing Approaches
+## 4. Common Pitfalls and Gotchas
 
-- **Unit Testing:** While traditional unit testing is not directly applicable to Postman, you can create individual requests to test specific API endpoints in isolation. This verifies the individual endpoint is returning expected data.
-- **Integration Testing:** Use collections to test the integration between different API endpoints. This verifies that data is passed correctly between different parts of your application.
-- **End-to-End Testing:** Create workflows to test the entire user experience, from start to finish. This verifies that all parts of your application are working together correctly.
-- **Test Organization:**
-  - Group tests by functionality.
-  - Use descriptive names for tests.
-  - Keep tests small and focused.
+Avoid common mistakes that lead to brittle or hard-to-debug tests.
 
-- **Mocking and Stubbing:**
-  - Use Postman's mock server feature to create mock APIs for testing purposes. This allows you to test your application without relying on a live API.
+### 4.1 Asynchronous Operations in Scripts
 
-## 6. Common Pitfalls and Gotchas
+`pm.sendRequest` is asynchronous. Always handle its promise correctly.
 
-- **Hardcoding Values:** Avoid hardcoding values directly into requests. Use environment variables instead.
-- **Ignoring Error Responses:** Always check for error responses and handle them appropriately.
-- **Not Versioning Collections:** Version your collections to track changes and ensure that your tests are up to date.
-- **Not Documenting Tests:** Document your tests to make them easier to understand and maintain.
-- **Misunderstanding Scope of Variables**: Be mindful of variable scope (global, collection, environment, local) and how it affects test execution.
+❌ **BAD: Ignoring `pm.sendRequest` Asynchronicity**
+```javascript
+// Pre-request Script
+let token;
+pm.sendRequest("{{BASE_URL}}/auth/token", function (err, res) {
+    token = res.json().access_token; // token might not be set before next line
+});
+pm.environment.set("authToken", token); // This will likely be undefined
+```
 
-## 7. Tooling and Environment
+✅ **GOOD: Handling `pm.sendRequest` with Callbacks/Promises**
+```javascript
+// Pre-request Script
+pm.sendRequest("{{BASE_URL}}/auth/token", function (err, res) {
+    if (err) {
+        console.error(err);
+        return;
+    }
+    pm.environment.set("authToken", res.json().access_token);
+});
+```
+*Note: For complex async flows, consider using `pm.test.async` or restructuring to avoid deep nesting.*
 
-- **Postman CLI (Newman):** Use Newman to run Postman collections from the command line. This is essential for CI/CD integration.
-- **Version Control (Git):** Store your Postman collections in a Git repository to track changes and collaborate with team members.
-- **Linting and Formatting:** While Postman doesn't have built-in linting, ensure consistency in request structures and test scripts.
+### 4.2 Overly Complex Scripts
 
-  - **Build Configuration:** Use Newman with CI/CD tools (Jenkins, GitLab CI, GitHub Actions) to automate API testing.
-  - **Deployment:**  Deploy API specifications and Postman collections alongside your API for easier testing and documentation.
+Keep pre-request and test scripts focused on a single responsibility. For complex logic, consider externalizing to a shared library if using the VS Code extension, or break down into smaller, chained requests.
+
+## 5. Error Handling and Assertions
+
+Robust tests include explicit checks for both success and failure scenarios.
+
+### 5.1 Comprehensive Assertions
+
+Every request should have specific assertions (tests) to validate the response. Don't just check for `200 OK`.
+
+❌ **BAD: Minimal Assertions**
+```javascript
+// Test Script
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+```
+
+✅ **GOOD: Detailed Assertions**
+```javascript
+// Test Script for POST /users
+pm.test("Status code is 201 Created", function () {
+    pm.response.to.have.status(201);
+});
+pm.test("Response body has 'id' and 'name'", function () {
+    const response = pm.response.json();
+    pm.expect(response).to.have.property('id').that.is.a('string');
+    pm.expect(response).to.have.property('name').that.equals('John Doe');
+});
+pm.test("Content-Type header is application/json", function () {
+    pm.response.to.have.header("Content-Type", "application/json");
+});
+```
+
+### 5.2 Negative Testing
+
+Explicitly test how your API handles invalid inputs, missing authentication, or other error conditions.
+
+```javascript
+// Request: POST /users (with invalid data)
+// Test Script
+pm.test("Status code is 400 Bad Request", function () {
+    pm.response.to.have.status(400);
+});
+pm.test("Error message indicates invalid input", function () {
+    const response = pm.response.json();
+    pm.expect(response.message).to.include("Invalid input for field 'email'");
+});
+```
+
+## 6. Request/Response Patterns
+
+Standardize how you interact with APIs.
+
+### 6.1 API Schema Validation
+
+Link your Postman Collections to an OpenAPI (3.x) definition in Postman's API Builder. This automatically validates requests and responses against your schema, catching inconsistencies early.
+
+❌ **BAD: Manual Schema Checks**
+*   Prone to human error.
+*   Time-consuming.
+*   Schema drift goes unnoticed.
+
+✅ **GOOD: Automated API Builder Validation**
+1.  Define your API using OpenAPI 3.x in Postman's API Builder.
+2.  Link your Postman Collection to this API definition.
+3.  Enable "Request Validation" in Postman Settings.
+4.  Postman will automatically flag requests/responses that deviate from the schema.
+
+### 6.2 Dynamic Data Generation
+
+Use Postman's dynamic variables (`$randomInt`, `$guid`, etc.) or custom JS in pre-request scripts (e.g., `faker` library via VS Code extension) to generate unique test data.
+
+```javascript
+// Pre-request Script
+// Using Postman's built-in dynamic variables
+pm.environment.set("randomName", "User " + pm.variables.replaceIn("{{$randomFirstName}}"));
+pm.environment.set("randomEmail", pm.variables.replaceIn("{{$randomEmail}}"));
+
+// Request Body for POST /users
+// {
+//   "name": "{{randomName}}",
+//   "email": "{{randomEmail}}"
+// }
+```
+
+## 7. Rate Limiting
+
+Test your API's rate limiting behavior to ensure it performs as expected under stress and handles client-side retries.
+
+### 7.1 Testing Rate Limit Responses
+
+Create specific requests or collection runs designed to exceed rate limits and assert the expected `429 Too Many Requests` status code and appropriate headers (e.g., `Retry-After`).
+
+```javascript
+// Request: GET /data (repeatedly in Collection Runner)
+// Test Script
+pm.test("Status code is 429 Too Many Requests", function () {
+    pm.response.to.have.status(429);
+});
+pm.test("Retry-After header is present", function () {
+    pm.response.to.have.header("Retry-After");
+});
+```
+
+## 8. Test Organization and CI/CD Integration
+
+Integrate Postman into your development lifecycle for continuous quality.
+
+### 8.1 CI/CD Automation with Newman
+
+Export Postman Collections and Environments as JSON and run them automatically in your CI/CD pipelines (GitHub Actions, Jenkins, GitLab) using Newman, Postman's command-line collection runner.
+
+```bash
+# Example CI/CD command to run a collection
+newman run my-api-collection.json -e dev-environment.json --reporters cli,htmlextra
+```
+
+### 8.2 Semantic Versioning for Collections
+
+Apply semantic versioning to your Postman Collections (e.g., `My API v1.0.0`). Store collections in source control and tag releases. This ensures traceability and stable API definitions.
+
+### 8.3 Code Reviews for Test Scripts
+
+Treat Postman pre-request and test scripts as first-class code. Implement code review gates for these scripts to ensure consistency, best practices, and prevent hard-coded secrets.
+
+### 8.4 Postbot for Test Generation
+
+Leverage Postbot (Postman's AI assistant) to suggest and generate initial test cases and autocomplete code. This accelerates test creation, but always review and refine AI-generated content to fit our specific standards.
+
+```javascript
+// Example Postbot prompt: "Generate tests for a successful user creation response."
+// Postbot might suggest:
+pm.test("Status code is 201", () => {
+    pm.response.to.have.status(201);
+});
+pm.test("Response has user ID", () => {
+    const responseJson = pm.response.json();
+    pm.expect(responseJson.id).to.be.a('string');
+});
+```
+*Always review and enhance Postbot's suggestions to meet our detailed assertion standards.*

@@ -1,85 +1,270 @@
 ---
-description: Provides guidelines for using gcp-cli, including best practices for scripting, configuration management, security, and performance. Focuses on automation, predictable output, and secure authentication within Google Cloud environments.
-globs: *.sh,*.yaml,*.tf,*.py
+description: Definitive guidelines for writing robust, secure, and maintainable scripts and workflows using the Google Cloud CLI (gcloud).
+globs: **/*
 ---
-- **Scripting Best Practices**:
-  - **Use the `--quiet` flag**: Suppress prompts for non-interactive script execution.
-  - **Leverage output formatting**: Employ `--format=json`, `--format=yaml`, `--format=csv`, or `--format=text` for predictable, parsable output.
-  - **Handle exit statuses**: Ensure scripts check exit codes for error handling. A non-zero exit status indicates an error.
-  - **Avoid relying on standard error messages**: These are subject to change and shouldn't be parsed for critical logic.
+# gcp-cli Best Practices
 
-- **Configuration Management**:
-  - **Utilize named configurations**: Create multiple configurations using `gcloud config configurations create` for managing different environments (development, staging, production) or projects.
-  - **Set properties**: Define the active account (`gcloud config set core/account`), default project (`gcloud config set core/project`), and default region/zone (`gcloud config set compute/region` and `gcloud config set compute/zone`) either globally or per-command.
+The `gcloud` CLI is your primary interface for Google Cloud. These guidelines ensure your `gcloud` scripts and commands are reliable, secure, and easy to maintain, adhering to Google's own Shell Style Guide and modern cloud security principles.
 
-- **Authentication and Authorization**:
-  - **Service accounts for production**: Use service accounts with appropriate IAM roles for scripts running in production environments. Create and manage service accounts via the Google Cloud Console.
-  - **User accounts for interactive sessions**: Use user accounts for interactive sessions and local development.
-  - **Activate service accounts securely**: Use `gcloud auth activate-service-account --key-file [KEY_FILE]` to activate service accounts, ensuring the key file is securely managed.
-  - **Avoid storing service account keys in code**: Employ environment variables or secret management solutions to store and retrieve service account keys.
-  - **Impersonate Service Accounts (if applicable)**: If a user needs to act as a service account, use `gcloud config set auth/impersonate_service_account SERVICE_ACCT_EMAIL` after authenticating with `gcloud auth login`.
+## 1. Code Organization and Structure
 
-- **Filtering and Formatting Output**:
-  - **Filter output**: Use the `--filter` flag to narrow down results based on specific criteria.
-  - **Format output**: Use the `--format` flag to control the output format (JSON, YAML, CSV, Text, List).
-  - **Utilize projections**: Combine `--format` with projections to extract specific fields from the output.
-  - **Example: List instances in a specific zone**: `gcloud compute instances list --filter="zone:us-central1-a"`
-  - **Example: List projects in JSON format**: `gcloud projects list --format="json" --filter="labels.env=test AND labels.version=alpha"`
+Always structure your shell scripts for readability and robustness. Use `bash` and adhere to a consistent style.
 
-- **Code Organization and Structure (Shell Scripts)**:
-  - **Modularize scripts**: Break down large scripts into smaller, reusable functions.
-  - **Use descriptive function names**: Improve readability and maintainability.
-  - **Implement argument parsing**: Use `getopts` for robust argument handling.
-  - **Add comments**: Explain the purpose and functionality of code blocks.
-  - **Use consistent indentation**: Improves readability.
+*   **Use Bash with Strict Mode**: Always start scripts with the correct shebang and enable strict mode for early error detection.
+    *   `#!/usr/bin/env bash`
+    *   `set -euo pipefail` ensures scripts exit on error, undefined variables, and pipe failures.
+    *   `IFS=$'\n\t'` prevents unexpected word splitting.
 
-- **Code Organization and Structure (Terraform)**:
-  - **Follow the Terraform Standard Directory Structure**: Organize configurations into modules.
-  - **Use Modules**: Encapsulate reusable infrastructure components into modules.
-  - **Variables**: Use variables to parameterize your configurations.
-  - **Outputs**: Use outputs to expose important information about your infrastructure.
-  - **Remote State Management**: Store Terraform state remotely (e.g., in Google Cloud Storage) for collaboration and versioning. Secure the bucket with appropriate IAM permissions.
+    ❌ BAD:
+    ```bash
+    #!/bin/sh
+    # No strict mode, prone to silent failures
+    gcloud compute instances list --format="value(name)" | while read instance; do
+      echo "Processing $instance"
+      # ... potentially fails silently if gcloud command exits non-zero
+    done
+    ```
 
-- **Code Organization and Structure (Python)**:
-  - **Package your gcp-cli interaction code into reusable modules and classes.**
-  - **Follow PEP 8 Style Guide for Python Code**.
-  - **Use Virtual Environments** for dependency management.
+    ✅ GOOD:
+    ```bash
+    #!/usr/bin/env bash
+    set -euo pipefail
+    IFS=$'\n\t'
 
-- **Common Patterns and Anti-patterns**:
-  - **Pattern**: Use `xargs` or `parallel` to execute gcloud commands in parallel for faster processing.
-  - **Anti-pattern**: Hardcoding credentials or sensitive information directly in scripts or configuration files. Use environment variables or secret management solutions instead.
+    # Function for consistent error logging
+    err() {
+      echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
+    }
 
-- **Performance Considerations**:
-  - **Use pagination**: When retrieving large datasets, use the `--page-size` flag to limit the number of results per page and iterate through the pages.
-  - **Minimize API calls**: Batch operations where possible to reduce the number of API requests.
-  - **Caching**: Cache API responses to avoid redundant requests. Implement caching mechanisms within your scripts or applications.
+    main() {
+      # Explicitly set project for clarity and safety
+      local PROJECT_ID="your-gcp-project-id"
 
-- **Security Best Practices**:
-  - **Least Privilege**: Grant service accounts only the necessary IAM roles and permissions.
-  - **Regularly rotate service account keys**: Implement a key rotation policy to minimize the impact of compromised keys.
-  - **Use VPC Service Controls**: Restrict data exfiltration and unauthorized access to Google Cloud services.
-  - **Audit Logging**: Enable audit logging to track API calls and resource changes.
-  - **Input Validation**: Always validate user inputs and data received from external sources to prevent injection attacks.
+      # Example: Iterate and process instances
+      gcloud compute instances list --project="${PROJECT_ID}" --format="value(name)" | while read -r instance; do
+        echo "Processing instance: ${instance}"
+        # Perform gcloud operation, check exit code if not using set -e for specific commands
+        if ! gcloud compute instances stop "${instance}" --project="${PROJECT_ID}" --zone="us-central1-a" --quiet; then
+          err "Failed to stop instance: ${instance}"
+          exit 1 # Exit script on critical failure
+        fi
+      done
+    }
 
-- **Testing Approaches**:
-  - **Unit tests**: Mock gcloud CLI calls to isolate and test individual components.
-  - **Integration tests**: Verify the interaction between different Google Cloud services and your gcp-cli scripts.
-  - **End-to-end tests**: Simulate real-world scenarios and validate the entire workflow.
-  - **Use `gcloud config configurations activate` in testing** to isolate test environments.
+    main "$@"
+    ```
 
-- **Common Pitfalls and Gotchas**:
-  - **Default project settings**: Ensure the correct project is configured before running gcloud commands.
-  - **IAM propagation delays**: Be aware of potential delays when granting or revoking IAM permissions.
-  - **API throttling**: Handle API rate limits gracefully by implementing retry mechanisms with exponential backoff.
-  - **Version Compatibility**: Be aware of potential breaking changes when upgrading the gcloud CLI. Test your scripts after upgrades.
+*   **Functions for Reusability**: Encapsulate logic in functions. Use `local` for function-scoped variables.
+    *   Include clear function comments (description, globals, arguments, outputs, returns).
 
-- **Tooling and Environment**:
-  - **Use a dedicated development environment**: Isolate your development environment from production to avoid accidental changes.
-  - **Use a version control system**: Track changes to your gcp-cli scripts and configuration files.
-  - **Set up CI/CD pipelines**: Automate testing and deployment of your gcp-cli scripts.
-  - **Recommended tools**: Shellcheck (for shell script linting), Terraform Validate (for Terraform configuration validation), Pylint (for python code linting).
+    ❌ BAD:
+    ```bash
+    # Global variable pollution, hard to debug
+    PROJECT="my-project"
+    gcloud config set project "${PROJECT}"
+    # ... more script ...
+    ```
 
-- **Referenced Rules**:
-  - @file python_best_practices.mdc
-  - @file terraform_best_practices.mdc
-  - @file shell_script_best_practices.mdc
+    ✅ GOOD:
+    ```bash
+    # Function header comment as per Google Shell Style Guide
+    ########################################
+    # Sets the active gcloud project.
+    # Globals:
+    #   None
+    # Arguments:
+    #   $1: The project ID to set.
+    # Returns:
+    #   0 if successful, non-zero on error.
+    #######################################
+    set_gcp_project() {
+      local project_id="$1"
+      if ! gcloud config set project "${project_id}" --quiet; then
+        err "Failed to set gcloud project to ${project_id}"
+        return 1
+      fi
+      echo "Active gcloud project set to: ${project_id}"
+      return 0
+    }
+
+    # Usage
+    set_gcp_project "my-gcp-project-id"
+    ```
+
+## 2. Common Patterns and Anti-patterns
+
+*   **Explicit Project and Zone/Region**: Always specify `--project`, `--zone`, and `--region` flags. Relying on `gcloud config` for critical operations can lead to errors in different environments.
+
+    ❌ BAD:
+    ```bash
+    # Relies on configured project/zone, brittle in automation
+    gcloud compute instances create my-vm --machine-type=e2-medium
+    ```
+
+    ✅ GOOD:
+    ```bash
+    gcloud compute instances create my-vm \
+      --project="my-gcp-project-id" \
+      --zone="us-central1-a" \
+      --machine-type="e2-medium"
+    ```
+
+*   **Structured Output Parsing**: Use `--format=json` or `--format=yaml` with `jq` or `yq` for reliable output parsing. Avoid `grep`, `awk`, `sed` on human-readable output.
+
+    ❌ BAD:
+    ```bash
+    # Fragile: depends on output format, breaks with gcloud updates
+    gcloud compute instances list | grep "RUNNING" | awk '{print $1}'
+    ```
+
+    ✅ GOOD:
+    ```bash
+    # Robust: parses JSON output reliably
+    gcloud compute instances list --project="my-gcp-project-id" --format="json" | \
+      jq -r '.[] | select(.status == "RUNNING") | .name'
+    ```
+
+*   **Service Account Impersonation**: For automation, prefer `--impersonate-service-account` over activating service account keys directly. This uses short-lived tokens and improves security.
+
+    ❌ BAD:
+    ```bash
+    # Activates a service account key, long-lived credential risk
+    gcloud auth activate-service-account --key-file=/path/to/key.json
+    gcloud compute instances list # ...
+    ```
+
+    ✅ GOOD:
+    ```bash
+    # Impersonates a service account using current user's permissions
+    gcloud compute instances list \
+      --project="my-gcp-project-id" \
+      --impersonate-service-account="my-service-account@my-gcp-project-id.iam.gserviceaccount.com"
+    ```
+
+## 3. Performance Considerations
+
+*   **Minimize API Calls**: Batch operations where possible. Avoid calling `gcloud` commands inside tight loops if a single call can fetch all necessary data.
+
+    ❌ BAD:
+    ```bash
+    # N+1 problem: many API calls for each instance
+    gcloud compute instances list --project="my-gcp-project-id" --format="value(name)" | while read -r instance; do
+      gcloud compute instances describe "${instance}" --project="my-gcp-project-id" --format="value(status)"
+    done
+    ```
+
+    ✅ GOOD:
+    ```bash
+    # Single API call, process data locally
+    gcloud compute instances list --project="my-gcp-project-id" --format="json" | \
+      jq -r '.[] | "\(.name) \(.status)"' | \
+      while read -r name status; do
+        echo "Instance ${name} has status ${status}"
+      done
+    ```
+
+## 4. Common Pitfalls and Gotchas
+
+*   **Unquoted Variables**: Always quote variable expansions to prevent word splitting and globbing.
+
+    ❌ BAD:
+    ```bash
+    # If INSTANCE_NAME contains spaces or wildcards, this will fail
+    INSTANCE_NAME="my instance"
+    gcloud compute instances describe $INSTANCE_NAME
+    ```
+
+    ✅ GOOD:
+    ```bash
+    INSTANCE_NAME="my instance"
+    gcloud compute instances describe "${INSTANCE_NAME}" --project="my-gcp-project-id"
+    ```
+
+*   **Interactive Prompts in Automation**: Use `--quiet` (`-q`) for non-interactive scripts.
+
+    ❌ BAD:
+    ```bash
+    # Will prompt for confirmation, blocking automation
+    gcloud compute instances delete my-vm --project="my-gcp-project-id"
+    ```
+
+    ✅ GOOD:
+    ```bash
+    gcloud compute instances delete my-vm --project="my-gcp-project-id" --quiet
+    ```
+
+*   **Keep `gcloud` Updated**: Regularly update your Cloud SDK to access the latest features and security patches.
+
+    ```bash
+    gcloud components update --quiet
+    ```
+
+## 5. Configuration Management
+
+*   **Named Configurations**: Use `gcloud config configurations` to manage distinct environments (e.g., dev, staging, prod).
+
+    ```bash
+    # Create a new configuration
+    gcloud config configurations create staging
+    # Activate and initialize it
+    gcloud config configurations activate staging
+    gcloud init --console-only # Use --console-only for non-browser init
+    # Switch back to default
+    gcloud config configurations activate default
+    ```
+
+*   **Store Configs Outside Source Control**: Never commit `gcloud` configuration files or service account keys to source control.
+
+## 6. Environment Variables
+
+*   **Override Configuration**: Use `CLOUDSDK_ACTIVE_CONFIG_NAME` to temporarily switch configurations without modifying the default.
+
+    ```bash
+    # Run a command against the 'staging' config without activating it globally
+    CLOUDSDK_ACTIVE_CONFIG_NAME=staging gcloud compute instances list --format="value(name)"
+    ```
+
+*   **Disable Prompts**: `CLOUDSDK_CORE_DISABLE_PROMPTS=1` is equivalent to `--quiet`.
+
+    ```bash
+    # Non-interactive deletion via environment variable
+    CLOUDSDK_CORE_DISABLE_PROMPTS=1 gcloud compute instances delete old-vm --project="my-gcp-project-id"
+    ```
+
+## 7. Logging
+
+*   **Separate STDOUT and STDERR**: Direct command output to `STDOUT` and informational/error messages to `STDERR`.
+
+    ```bash
+    #!/usr/bin/env bash
+    set -euo pipefail
+    IFS=$'\n\t'
+
+    err() {
+      echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')][ERROR]: $*" >&2
+    }
+
+    log() {
+      echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')][INFO]: $*"
+    }
+
+    log "Starting instance creation..."
+    if ! gcloud compute instances create my-new-vm --project="my-gcp-project-id" --zone="us-central1-a" --machine-type="e2-small" --quiet; then
+      err "Failed to create instance my-new-vm."
+      exit 1
+    fi
+    log "Instance my-new-vm created successfully."
+    ```
+
+*   **Verbose Logging**: Use `--verbosity=debug` for detailed `gcloud` command output during debugging.
+
+## 8. Testing Approaches
+
+*   **ShellCheck**: Integrate ShellCheck into your CI/CD pipeline and local development workflow to catch common shell scripting errors.
+
+    ```bash
+    shellcheck your-script.sh
+    ```
+
+*   **Unit Testing**: For complex shell scripts, use frameworks like `shunit2` to write unit tests for individual functions.
+*   **Integration Testing**: Create a dedicated, isolated GCP project for integration tests. Use `gcloud` commands to provision resources, run tests, and then tear down resources. This ensures your scripts work against real GCP services.

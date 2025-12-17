@@ -1,85 +1,258 @@
 ---
-description: This rule outlines best practices for effective use of Git, including code organization, commit strategies, branching models, and collaborative workflows.
-globs: **/.git/*
+description: This guide defines the definitive Git best practices for our team, ensuring clean history, efficient collaboration, and high code quality through structured workflows, commit standards, and automated hooks.
+globs: **/*
 ---
-- **Commit Strategies:**
-  - **Atomic Commits:** Keep commits small and focused. Each commit should address a single, logical change. This makes it easier to understand the history and revert changes if needed.
-  - **Descriptive Commit Messages:** Write clear, concise, and informative commit messages. Explain the *why* behind the change, not just *what* was changed. Use a consistent format (e.g., imperative mood: "Fix bug", "Add feature").
-  - **Commit Frequently:** Commit early and often. This helps avoid losing work and makes it easier to track progress.
-  - **Avoid Committing Broken Code:** Ensure your code compiles and passes basic tests before committing.
-  - **Sign Your Commits (Optional but Recommended):** Use GPG signing to verify the authenticity of your commits.
+# Git Best Practices
 
-- **Branching Model:**
-  - **Use Feature Branches:** Create branches for each new feature or bug fix. This isolates changes and allows for easier code review.
-  - **Gitflow or Similar:** Consider adopting a branching model like Gitflow for managing releases, hotfixes, and feature development.
-  - **Short-Lived Branches:** Keep branches short-lived. The longer a branch exists, the harder it becomes to merge.
-  - **Regularly Rebase or Merge:** Keep your feature branches up-to-date with the main branch (e.g., `main`, `develop`) by rebasing or merging regularly.
-  - **Avoid Direct Commits to Main Branch:**  Protect your main branch from direct commits.  Use pull requests for all changes.
+Git is the backbone of our development workflow. Adhering to these practices ensures a clean, readable history, minimizes conflicts, and enables rapid, reliable delivery. These are non-negotiable standards.
 
-- **Code Organization:**
-  - **Consistent Formatting:**  Use a consistent coding style guide (e.g., PEP 8 for Python, Google Style Guide for other languages) and enforce it with linters and formatters (e.g., `flake8`, `pylint`, `prettier`).
-  - **Modular Code:** Break down your codebase into smaller, manageable modules or components. This improves readability, maintainability, and testability.
-  - **Well-Defined Interfaces:**  Define clear interfaces between modules and components to promote loose coupling.
-  - **Avoid Global State:** Minimize the use of global variables and state to reduce complexity and potential conflicts.
-  - **Documentation:** Document your code with comments and docstrings. Explain the purpose of functions, classes, and modules.
+## 1. Branching Strategy: Feature-Branch Workflow
 
-- **Collaboration and Code Review:**
-  - **Pull Requests:** Use pull requests for all code changes. This provides an opportunity for code review and discussion.
-  - **Code Review Checklist:** Create a code review checklist to ensure consistency and thoroughness.
-  - **Constructive Feedback:** Provide constructive feedback during code reviews. Focus on improving the code, not criticizing the author.
-  - **Address Feedback:** Respond to and address feedback from code reviews promptly.
-  - **Pair Programming:** Consider pair programming for complex or critical tasks.
+We use a **feature-branch workflow** with short-lived branches. All development happens on dedicated branches, never directly on `main` or `develop`.
 
-- **Ignoring Files and Directories:**
-  - **.gitignore:** Use a `.gitignore` file to exclude files and directories that should not be tracked by Git (e.g., build artifacts, temporary files, secrets).
-  - **Global .gitignore:** Configure a global `.gitignore` file to exclude files that you never want to track in any Git repository.
+*   **`main` branch**: Always production-ready. Only merges from release branches or squashed feature branches are allowed. Protected.
+*   **`develop` branch**: Integrates completed features. Protected.
+*   **Feature branches**: Created from `develop`, short-lived, for a single feature or bug fix. Merged into `develop` via Pull Requests (PRs).
 
-- **Handling Secrets and Sensitive Information:**
-  - **Never Commit Secrets:** Never commit secrets, passwords, API keys, or other sensitive information to your Git repository.
-  - **Environment Variables:** Store secrets in environment variables and access them at runtime.
-  - **Secret Management Tools:** Use secret management tools like HashiCorp Vault or AWS Secrets Manager to store and manage secrets securely.
-  - **git-secret or similar:** If secrets must exist in the repo (strongly discouraged), encrypt them.
+### Guideline: Branch Naming
 
-- **Submodules and Subtrees:**
-  - **Use Sparingly:** Use Git submodules and subtrees sparingly, as they can add complexity.
-  - **Understand the Implications:** Understand the implications of using submodules and subtrees before adopting them.
-  - **Consider Alternatives:** Consider alternatives to submodules and subtrees, such as package managers or build systems.
+Name branches clearly and consistently, linking directly to a ticket or feature.
 
-- **Large File Storage (LFS):**
-  - **Use for Large Files:** Use Git LFS for storing large files (e.g., images, videos, audio files).  This prevents your repository from becoming bloated.
-  - **Configure LFS:** Configure Git LFS properly to track the large files in your repository.
+❌ **BAD**:
+```bash
+git checkout -b my-feature
+git checkout -b fix
+```
 
-- **Reverting and Resetting:**
-  - **Understand the Differences:** Understand the differences between `git revert`, `git reset`, and `git checkout` before using them.
-  - **Use with Caution:** Use `git reset` and `git checkout` with caution, as they can potentially lose data.
-  - **Revert Public Commits:** Use `git revert` to undo changes that have already been pushed to a public repository. This creates a new commit that reverses the changes.
+✅ **GOOD**:
+```bash
+# For a new feature (e.g., JIRA ticket FEAT-123)
+git checkout -b feat/FEAT-123-add-user-profile
 
-- **Tagging Releases:**
-  - **Create Tags:** Create tags to mark significant releases or milestones.
-  - **Semantic Versioning:** Follow semantic versioning (SemVer) when tagging releases.
-  - **Annotated Tags:** Use annotated tags to provide additional information about the release.
+# For a bug fix (e.g., JIRA ticket BUG-456)
+git checkout -b fix/BUG-456-auth-redirect-loop
 
-- **Dealing with Merge Conflicts:**
-  - **Understand the Conflict:** Understand the source of the merge conflict before attempting to resolve it.
-  - **Communicate with Others:** Communicate with other developers who may be affected by the conflict.
-  - **Use a Merge Tool:** Use a merge tool to help resolve the conflict.
-  - **Test After Resolving:** Test your code thoroughly after resolving the conflict.
+# For a refactor
+git checkout -b refactor/improve-logging-middleware
+```
 
-- **Repository Maintenance:**
-  - **Regularly Clean Up:** Regularly clean up your Git repository by removing unused branches and tags.
-  - **Optimize the Repository:** Optimize the repository with `git gc` to improve performance.
+## 2. Commit Messages: Conventional Commits
 
-- **CI/CD Integration:**
-  - **Automate Testing:** Integrate Git with a CI/CD system to automate testing and deployment.
-  - **Run Tests on Every Commit:** Run tests on every commit to ensure code quality.
+Every commit message must follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. This enables automated changelog generation and semantic versioning.
 
-- **Common Pitfalls and Gotchas:**
-  - **Accidental Commits:** Accidentally committing sensitive information or large files.
-  - **Merge Conflicts:** Difficulty resolving merge conflicts.
-  - **Losing Work:** Losing work due to incorrect use of `git reset` or `git checkout`.
-  - **Ignoring .gitignore:** Forgetting to add files to `.gitignore`.
+**Format**: `<type>(<scope>): <description>`
 
-- **Tooling and Environment:**
-  - **Git Clients:** Use a Git client that suits your needs (e.g., command line, GUI).
-  - **IDE Integration:** Use Git integration in your IDE to streamline workflows.
-  - **Online Repositories:** Use a reliable online Git repository hosting service (e.g., GitHub, GitLab, Bitbucket).
+*   **`type`**: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+*   **`scope` (optional)**: The part of the codebase affected (e.g., `auth`, `api`, `ui`, `database`).
+*   **`description`**: Concise, imperative, present tense. Max 50 characters.
+*   **Body (optional)**: More detailed explanation, breaking changes, references to issues.
+
+### Guideline: Write Clear, Atomic Commits
+
+Each commit should represent a single logical change.
+
+❌ **BAD**:
+```bash
+git commit -m "Fixed bug and added new feature"
+```
+
+✅ **GOOD**:
+```bash
+# First commit for the fix
+git commit -m "fix(auth): Correctly handle expired tokens" -m "This fixes an issue where users were stuck in a redirect loop after their session expired. Now, they are redirected to the login page."
+
+# Second commit for the feature
+git commit -m "feat(profile): Implement user profile view" -m "Adds a new page for users to view and edit their profile information."
+```
+
+## 3. History Management: Rebase, Don't Merge (on feature branches)
+
+Maintain a linear, clean history on feature branches before merging into `develop`. Use `git rebase -i` to squash, reorder, or edit commits.
+
+### Guideline: Clean Up Local History Before PR
+
+Before pushing your feature branch for a Pull Request, rebase it onto the latest `develop` and squash related commits into logical units.
+
+❌ **BAD**:
+```bash
+# On feature/my-feature branch
+git pull origin develop # Creates a merge commit
+git push origin feature/my-feature # Pushes messy history
+```
+
+✅ **GOOD**:
+```bash
+# On feature/my-feature branch
+git fetch origin
+git rebase -i origin/develop # Interactively clean up commits
+# ... complete rebase, squash WIP commits ...
+git push --force-with-lease origin feature/my-feature # Force push after rebase
+```
+**Note**: Only force push your *own* feature branches that haven't been merged or shared widely. Never force push to `main` or `develop`.
+
+### Guideline: Merge Feature Branches with `--no-ff`
+
+When merging a feature branch into `develop` (via PR), always use `--no-ff` to preserve the branch history.
+
+❌ **BAD**:
+```bash
+# After PR approval, merging directly on local machine
+git checkout develop
+git merge feature/my-feature # Might fast-forward, losing branch context
+```
+
+✅ **GOOD**:
+```bash
+# After PR approval, on develop branch
+git checkout develop
+git pull origin develop # Ensure develop is up-to-date
+git merge --no-ff feature/my-feature -m "Merge feat(FEAT-123): Add user profile"
+git push origin develop
+```
+**Note**: Our PR process on GitHub/GitLab should enforce this automatically.
+
+## 4. Code Quality & Security: Git Hooks with `pre-commit`
+
+Automate code quality checks and security scans *before* code hits the repository. We use the `pre-commit` framework.
+
+### Guideline: Install and Use `pre-commit`
+
+Every developer must install and keep `pre-commit` hooks updated. This prevents common issues like linting errors, formatting inconsistencies, and accidental secret commits.
+
+1.  **Install `pre-commit`**:
+    ```bash
+    pip install pre-commit # If using Python
+    # Or via brew, npm, etc.
+    ```
+2.  **Install hooks in your repo**:
+    ```bash
+    pre-commit install
+    ```
+3.  **Update hooks regularly**:
+    ```bash
+    pre-commit autoupdate
+    ```
+
+### Example `.pre-commit-config.yaml` (project-specific)
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: [--branch, main, --branch, develop] # Prevent direct commits to protected branches
+
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: 'v0.1.9'
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline'] # Manage known false positives
+```
+This configuration will run `black` (Python formatter), `ruff` (Python linter), and `detect-secrets` on staged files, among other checks, before a commit is allowed.
+
+## 5. Repository Hygiene: `.gitignore` and Large Files
+
+Keep your repository clean and focused on source code.
+
+### Guideline: Use a Comprehensive `.gitignore`
+
+Exclude generated files, dependencies, build artifacts, and sensitive information.
+
+❌ **BAD**:
+```
+# .gitignore
+*.log
+```
+
+✅ **GOOD**:
+```
+# .gitignore
+# Operating System
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+/dist/
+/build/
+
+# Dependencies
+/node_modules/
+/venv/
+__pycache__/
+
+# IDE files
+.idea/
+.vscode/
+
+# Environment variables & secrets
+.env
+*.env
+config.local.js
+```
+
+### Guideline: Manage Large Files with Git LFS
+
+Never commit large binary files (images, videos, large datasets, compiled executables) directly to Git. Use Git Large File Storage (LFS).
+
+1.  **Install Git LFS**: `git lfs install`
+2.  **Track file types**:
+    ```bash
+    git lfs track "*.psd"
+    git lfs track "assets/*.mp4"
+    ```
+3.  **Add to `.gitattributes`**: This command updates `.gitattributes` which must be committed.
+4.  **Add and commit files normally**:
+    ```bash
+    git add .gitattributes
+    git add my_large_file.psd
+    git commit -m "chore(assets): Add large PSD file via LFS"
+    ```
+
+## 6. Resolving Conflicts: Proactive and Careful
+
+Merge conflicts are inevitable. Resolve them carefully and proactively.
+
+### Guideline: Pull Frequently
+
+Pull changes from `develop` (or your base branch) frequently to minimize the scope of potential conflicts.
+
+```bash
+git checkout feature/my-feature
+git pull origin develop --rebase # Rebase your branch onto develop to avoid merge commits
+```
+
+### Guideline: Resolve Conflicts Manually
+
+Use your IDE's merge tool or `git mergetool` to resolve conflicts. Understand each change.
+
+❌ **BAD**:
+```bash
+git merge develop --no-edit -X theirs # Blindly taking "their" changes
+```
+
+✅ **GOOD**:
+```bash
+git merge develop # Git will prompt for conflicts
+# Open conflicted files in your IDE, resolve manually
+# Or use `git mergetool`
+git add <resolved_files>
+git commit -m "Merge develop into feat/my-feature and resolve conflicts"
+```

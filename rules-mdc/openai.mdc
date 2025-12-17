@@ -1,246 +1,461 @@
 ---
-description: Comprehensive best practices and coding standards for projects using the openai library, covering code structure, performance, security, and common pitfalls.
-globs: *.py
+description: This guide provides definitive, actionable best practices for developing with the OpenAI API, covering prompt engineering, robust client usage, agent design, and testing.
+globs: **/*
 ---
-# openai Library Best Practices and Coding Standards
+# openai Best Practices
 
-This document outlines best practices and coding standards for developing applications using the `openai` library. Following these guidelines will lead to more maintainable, performant, and secure code.
-
-## Library Information:
-- Name: openai
-- Tags: ai, ml, llm, api
+This document outlines the definitive best practices for interacting with OpenAI APIs, ensuring your applications are reliable, maintainable, and performant. Adhere to these guidelines for all OpenAI-powered development.
 
 ## 1. Code Organization and Structure
 
-### 1.1 Directory Structure Best Practices
+Always use the official `openai` Python client library. It handles authentication, request formatting, and error handling, allowing you to focus on business logic.
 
-Adopt a clear and consistent directory structure to improve code organization and maintainability. Here's a recommended structure for projects using the openai library:
+### 1.1 Client Initialization
 
+Initialize the OpenAI client once, ideally at application startup or as a singleton. Never hardcode API keys.
 
-project_root/
-├── src/                        # Source code directory
-│   ├── models/              # Definitions for your models (e.g., data classes, schemas)
-│   ├── services/             # Service layer for interacting with the OpenAI API
-│   │   ├── openai_service.py   # Encapsulates OpenAI API calls
-│   ├── utils/                # Utility functions
-│   ├── main.py               # Entry point of your application
-├── tests/                      # Tests directory
-│   ├── unit/                 # Unit tests
-│   ├── integration/          # Integration tests
-│   ├── conftest.py           # Pytest configuration file
-├── data/                       # Data storage (e.g., prompts, training data)
-├── docs/                       # Documentation
-├── .env                        # Environment variables
-├── requirements.txt            # Dependencies
-├── README.md                   # Project README
+❌ **BAD**: Hardcoding API key and re-initializing client
+```python
+import os
+from openai import OpenAI
 
+def get_response_bad(prompt: str):
+    # API key hardcoded and client re-initialized on every call
+    client = OpenAI(api_key="sk-YOUR_HARDCODED_KEY") 
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content
+```
 
-### 1.2 File Naming Conventions
+✅ **GOOD**: Environment variable for API key, single client instance
+```python
+import os
+from openai import OpenAI
 
--   Use descriptive and consistent file names.
--   Python files should use snake_case (e.g., `openai_service.py`).
--   Class names should use CamelCase (e.g., `OpenAIService`).
--   Variable names should use snake_case (e.g., `api_key`).
+# Initialize client once, leveraging OPENAI_API_KEY environment variable
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-### 1.3 Module Organization
+def get_response_good(prompt: str) -> str:
+    if not client.api_key:
+        raise ValueError("OPENAI_API_KEY environment variable not set.")
+    
+    response = client.chat.completions.create(
+        model="gpt-4o", # Always use the latest, most capable model
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content
+```
 
--   Group related functionalities into modules.
--   Avoid circular dependencies between modules.
--   Use clear and concise module names.
--   Use `__init__.py` files to define packages and control namespace.
+### 1.2 Prompt Management
 
-### 1.4 Component Architecture
+Treat prompts as first-class code artifacts. Store them in separate files, constants, or configuration, and version-control them. This improves readability, reusability, and testability.
 
-Consider using a layered architecture to separate concerns:
+❌ **BAD**: Inline, unstructured prompts
+```python
+def process_user_query(query: str):
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": f"Summarize this text: {query}"}
+        ]
+    )
+    # ...
+```
 
--   **Presentation Layer:** Handles user interface or external API interactions.
--   **Service Layer:** Encapsulates business logic and interacts with the OpenAI API.
--   **Data Access Layer:** Handles data persistence and retrieval.
+✅ **GOOD**: Externalized, structured prompts
+```python
+# prompts.py
+SYSTEM_PROMPT_SUMMARIZER = "You are a concise summarization bot. Extract key information only."
+USER_PROMPT_SUMMARIZE_TEXT = "Summarize the following text, focusing on main arguments:\n\n---\n{text}\n---"
 
-This separation makes testing and maintenance easier.
+# main.py
+from prompts import SYSTEM_PROMPT_SUMMARIZER, USER_PROMPT_SUMMARIZE_TEXT
 
-### 1.5 Code Splitting Strategies
-
--   Split large files into smaller, more manageable modules based on functionality.
--   Use abstract base classes and interfaces to define contracts between components.
--   Apply the Single Responsibility Principle (SRP) to classes and functions.
+def process_user_query(query: str):
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT_SUMMARIZER},
+            {"role": "user", "content": USER_PROMPT_SUMMARIZE_TEXT.format(text=query)}
+        ]
+    )
+    # ...
+```
 
 ## 2. Common Patterns and Anti-patterns
 
-### 2.1 Design Patterns
+### 2.1 Prompt Engineering
 
--   **Factory Pattern:** Use a factory to create OpenAI API client instances with different configurations.
--   **Strategy Pattern:** Implement different prompt strategies based on the task.
--   **Decorator Pattern:** Add logging, caching, or rate limiting to OpenAI API calls.
+Effective prompting is paramount. Follow the "Five-Element Prompt Template" for consistency and optimal results: **Role/Persona, Context, Task, Format, Constraints.**
 
-### 2.2 Recommended Approaches
+#### 2.1.1 Model Selection
 
--   **Prompt Engineering:** Follow best practices for prompt design. Place clear instructions at the beginning of prompts, be specific, and use examples.
--   **Configuration:** Store API keys and other sensitive information in environment variables using a library like `python-dotenv`.
--   **Asynchronous Calls:** Use `asyncio` and `aiohttp` for non-blocking API calls to improve performance.
--   **Retries and Exponential Backoff:** Implement retry mechanisms with exponential backoff to handle transient API errors.
+Always target the **latest, most capable model** (e.g., `gpt-4o`). Newer models are generally more intelligent, easier to prompt, and offer better performance.
 
-### 2.3 Anti-patterns
+#### 2.1.2 Clear Instructions and Delimiters
 
--   **Hardcoding API Keys:** Never hardcode API keys directly into your code. Always use environment variables.
--   **Ignoring Rate Limits:** Implement rate limiting to avoid exceeding OpenAI API limits.
--   **Lack of Error Handling:** Always handle API errors gracefully and provide informative error messages.
--   **Overly Complex Prompts:** Keep prompts simple and focused. Break down complex tasks into smaller steps.
--   **Mixing Concerns:** Avoid mixing presentation, business logic, and data access in the same component.
+Place instructions at the beginning of the prompt. Use clear delimiters (e.g., `###`, `"""`) to separate instructions from context.
 
-### 2.4 State Management
+❌ **BAD**: Ambiguous instruction placement
+```python
+prompt = f"Summarize the text below as a bullet point list of the most important points. {text_input}"
+```
 
--   Use appropriate data structures to manage the state of your OpenAI interactions.
--   Consider using a state management library if your application has complex state requirements.
--   Avoid storing sensitive information in application state.
+✅ **GOOD**: Instructions first, context delimited
+```python
+prompt = f"""Summarize the text below as a bullet point list of the most important points.
+Text: \"\"\"
+{text_input}
+\"\"\""""
+```
 
-### 2.5 Error Handling
+#### 2.1.3 Be Specific and Detailed
 
--   Use `try-except` blocks to catch potential exceptions.
--   Log errors with sufficient context for debugging.
--   Implement custom exception classes for specific error conditions.
--   Handle rate limit errors and implement retry logic.
+Provide explicit details about the desired context, outcome, length, format, and style.
+
+❌ **BAD**: Vague request
+```python
+prompt = "Write a poem about AI."
+```
+
+✅ **GOOD**: Highly specific request
+```python
+prompt = """Write a short, inspiring poem about the future of AI,
+focusing on ethical development and human-AI collaboration.
+Adopt the style of a modern, optimistic futurist.
+"""
+```
+
+#### 2.1.4 Articulate Output Format with Examples
+
+Show, don't just tell. Provide examples of the desired output format, especially for structured data. Use JSON mode for reliable parsing.
+
+❌ **BAD**: Text-based format description
+```python
+prompt = """Extract company names, people names, and topics from the text.
+Company names: <list>
+People names: <list>
+Topics: <list>
+Text: {text}
+"""
+```
+
+✅ **GOOD**: JSON Mode for structured output
+```python
+response = client.chat.completions.create(
+    model="gpt-4o",
+    response_format={"type": "json_object"}, # Crucial for structured output
+    messages=[
+        {"role": "system", "content": "You are an entity extraction bot. Output JSON."},
+        {"role": "user", "content": f"""Extract the following entities from the text:
+        - company_names (list of strings)
+        - people_names (list of strings)
+        - topics (list of strings)
+        
+        Text: \"\"\"{text}\"\"\"
+        
+        Example Output:
+        ```json
+        {{
+            "company_names": ["OpenAI", "Microsoft"],
+            "people_names": ["Sam Altman"],
+            "topics": ["AI research", "LLMs"]
+        }}
+        ```
+        """}
+    ]
+)
+# response.choices[0].message.content will be a valid JSON string
+```
+
+#### 2.1.5 Few-Shot Learning
+
+For complex tasks, provide a few high-quality input-output examples to guide the model.
+
+```python
+few_shot_prompt = f"""Extract keywords from the corresponding texts below.
+
+Text 1: Stripe provides APIs that web developers can use to integrate payment processing into their websites and mobile applications.
+Keywords 1: Stripe, payment processing, APIs, web developers, websites, mobile applications
+---
+Text 2: OpenAI has trained cutting-edge language models that are very good at understanding and generating text. Our API provides access to these models and can be used to solve virtually any task that involves processing language.
+Keywords 2: OpenAI, language models, text processing, API.
+---
+Text 3: {user_text}
+Keywords 3:"""
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": few_shot_prompt}]
+)
+```
+
+#### 2.1.6 Role/Persona and Constraints
+
+Define the AI's role and explicitly state what it should *not* do.
+
+❌ **BAD**: Only negative constraints
+```python
+system_message = "DO NOT MENTION PRICES. DO NOT BE OVERLY FORMAL."
+```
+
+✅ **GOOD**: Clear role, positive instructions, and specific constraints
+```python
+system_message = """You are a friendly, helpful customer support agent for a SaaS product.
+Your goal is to diagnose user issues and suggest solutions.
+NEVER ask for Personally Identifiable Information (PII) like passwords or credit card numbers.
+Instead, refer users to our secure help portal at `https://support.example.com/security`.
+"""
+```
+
+### 2.2 Agent Design
+
+For building autonomous agents, follow OpenAI's "Practical Guide to Building Agents" framework.
+
+#### 2.2.1 Core Components
+
+Agents require:
+1.  **Model**: The LLM for reasoning and decision-making.
+2.  **Tools**: External functions/APIs the agent can use.
+3.  **Instructions**: Explicit guidelines and guardrails.
+
+#### 2.2.2 Function Calling
+
+Use function calling for agents to reliably interact with external tools and APIs. Define tools with clear schemas.
+
+```python
+from openai import OpenAI
+import json
+
+client = OpenAI()
+
+def get_current_weather(location: str, unit: str = "fahrenheit") -> str:
+    """Get the current weather in a given location"""
+    # In a real app, this would call an external weather API
+    if "san francisco" in location.lower():
+        return json.dumps({"location": location, "temperature": "72", "unit": unit})
+    return json.dumps({"location": location, "temperature": "unknown"})
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_weather",
+            "description": "Get the current weather in a given location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The city and state, e.g. San Francisco, CA",
+                    },
+                    "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+                },
+                "required": ["location"],
+            },
+        },
+    }
+]
+
+def run_agent_with_tool(user_message: str):
+    messages = [{"role": "user", "content": user_message}]
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        tools=tools,
+        tool_choice="auto", # Let the model decide if it needs to call a tool
+    )
+    response_message = response.choices[0].message
+
+    if response_message.tool_calls:
+        tool_call = response_message.tool_calls[0]
+        function_name = tool_call.function.name
+        function_args = json.loads(tool_call.function.arguments)
+        
+        if function_name == "get_current_weather":
+            function_response = get_current_weather(**function_args)
+            messages.append(response_message) # Extend conversation with assistant's reply
+            messages.append(
+                {
+                    "tool_call_id": tool_call.id,
+                    "role": "tool",
+                    "name": function_name,
+                    "content": function_response,
+                }
+            )
+            second_response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=messages,
+            )
+            return second_response.choices[0].message.content
+    return response_message.content
+
+# Example usage:
+# print(run_agent_with_tool("What's the weather like in San Francisco?"))
+```
+
+#### 2.2.3 Guardrails and Workflow Orchestration
+
+Implement explicit guardrails (e.g., input validation, content moderation, safety checks) and design clear workflows. For complex tasks, split into smaller, orchestratable agents (Manager Pattern).
+
+### 2.3 Code Generation (Codex)
+
+When using models for code generation, provide ample context and verification steps.
+
+#### 2.3.1 Clear Code Pointers
+
+Include specific file paths, greppable identifiers, or full stack traces to narrow the model's focus.
+
+#### 2.3.2 Verification Steps
+
+Ask the model to include steps to reproduce an issue, validate a feature, or run tests/linters. This improves output quality.
+
+```python
+code_gen_prompt = """
+Refactor the `calculate_total` function in `src/utils.py` to use `Decimal` for currency calculations to avoid floating-point inaccuracies.
+Ensure all existing unit tests in `tests/test_utils.py` still pass after your changes.
+Provide the updated `src/utils.py` file and the command to run the tests.
+"""
+```
 
 ## 3. Performance Considerations
 
-### 3.1 Optimization Techniques
+### 3.1 Model Choice
 
--   **Caching:** Cache API responses to reduce the number of API calls.
--   **Batching:** Batch multiple API requests into a single request when possible.
--   **Asynchronous Operations:** Use asynchronous programming to avoid blocking the main thread.
--   **Token Optimization:** Reduce the number of tokens in your prompts to lower costs and improve response times.
+Balance model capability with cost and latency. Start with `gpt-4o` for prototyping, then consider `gpt-3.5-turbo` for simpler tasks where cost/speed is critical.
 
-### 3.2 Memory Management
+### 3.2 Token Usage
 
--   Be mindful of the size of your prompts and responses, especially when working with large language models.
--   Use generators to process large datasets in chunks.
--   Clean up resources (e.g., file handles, network connections) promptly.
+Be concise. Avoid sending unnecessary context or overly verbose prompts. Every token costs money and adds latency.
 
-### 3.3 Rendering Optimization (If Applicable)
+### 3.3 Streaming Responses
 
--   If your application involves rendering OpenAI-generated content, optimize the rendering process to minimize latency.
+For user-facing applications, use streaming responses to improve perceived latency.
 
-### 3.4 Bundle Size Optimization (If Applicable)
+```python
+def stream_response(prompt: str):
+    stream = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        stream=True,
+    )
+    for chunk in stream:
+        if chunk.choices[0].delta.content is not None:
+            print(chunk.choices[0].delta.content, end="")
+    print() # Newline at the end
+```
 
--   For web applications, minimize bundle size by using tree shaking and code splitting.
+## 4. Common Pitfalls and Gotchas
 
-### 3.5 Lazy Loading
+*   **Hardcoding API Keys**: Security vulnerability. Use environment variables.
+*   **Vague Prompts**: Leads to inconsistent, irrelevant, or hallucinated outputs. Be specific.
+*   **Ignoring System Message**: The system message is your primary control for persona and behavior. Use it.
+*   **Parsing Freeform Text**: Unreliable. Always use `response_format={"type": "json_object"}` for structured data.
+*   **Over-reliance on Single-Turn Prompts**: For complex, multi-step tasks, design agents with tool use and iterative reasoning.
 
--   Use lazy loading to load modules or data only when they are needed.
+## 5. Error Handling
 
-## 4. Security Best Practices
+Implement robust error handling, especially for API calls.
 
-### 4.1 Common Vulnerabilities
+### 5.1 API Exceptions
 
--   **API Key Exposure:** Protect your OpenAI API key. Never commit it to version control or share it publicly.
--   **Prompt Injection:** Validate and sanitize user inputs to prevent prompt injection attacks.
--   **Data Leakage:** Avoid exposing sensitive data in prompts or API responses.
+Catch specific OpenAI API exceptions and implement retry logic.
 
-### 4.2 Input Validation
+```python
+from openai import OpenAI, APIError, RateLimitError, AuthenticationError
+import time
 
--   Validate all user inputs to prevent malicious or unexpected data from being sent to the OpenAI API.
--   Sanitize inputs to remove potentially harmful characters or code.
+def safe_api_call(prompt: str, retries: int = 3) -> str | None:
+    for i in range(retries):
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.choices[0].message.content
+        except RateLimitError:
+            delay = 2 ** i  # Exponential backoff
+            print(f"Rate limit hit. Retrying in {delay} seconds...")
+            time.sleep(delay)
+        except AuthenticationError:
+            print("Authentication failed. Check your API key.")
+            return None
+        except APIError as e:
+            print(f"OpenAI API error: {e}")
+            return None
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
+    print("Max retries exceeded.")
+    return None
+```
 
-### 4.3 Authentication and Authorization
+## 6. Request/Response Patterns
 
--   Implement authentication and authorization mechanisms to protect your application and data.
--   Use secure storage for API keys and other sensitive information.
+### 6.1 Chat Completions API
 
-### 4.4 Data Protection
+This is the primary endpoint for most LLM interactions. Always use the `messages` array for conversational context.
 
--   Encrypt sensitive data at rest and in transit.
--   Follow data privacy regulations (e.g., GDPR, CCPA).
+### 6.2 Structured Output (JSON Mode)
 
-### 4.5 Secure API Communication
+For any task requiring data extraction or structured responses, enforce JSON output.
 
--   Use HTTPS to encrypt communication with the OpenAI API.
--   Verify the authenticity of the OpenAI API server using SSL certificates.
+```python
+response = client.chat.completions.create(
+    model="gpt-4o",
+    response_format={"type": "json_object"},
+    messages=[
+        {"role": "system", "content": "You are a JSON-generating assistant."},
+        {"role": "user", "content": "Generate a JSON object with 'name' and 'age' for a person named 'Alice' who is 30."}
+    ]
+)
+data = json.loads(response.choices[0].message.content)
+# data will be {'name': 'Alice', 'age': 30}
+```
 
-## 5. Testing Approaches
+## 7. Rate Limiting
 
-### 5.1 Unit Testing
+The `openai` Python client includes built-in retry logic for rate limits. However, for high-throughput applications, implement custom exponential backoff and jitter, or use a dedicated rate-limiting library.
 
--   Write unit tests for individual components to ensure they function correctly in isolation.
--   Use mocking and stubbing to isolate components from external dependencies (e.g., the OpenAI API).
+## 8. Testing Approaches
 
-### 5.2 Integration Testing
+Treat prompts and LLM interactions as critical code.
 
--   Write integration tests to verify that different components work together correctly.
--   Test the interaction between your application and the OpenAI API.
+### 8.1 Prompts as Code
 
-### 5.3 End-to-End Testing
+Version control your prompts alongside your application code.
 
--   Write end-to-end tests to simulate user interactions and verify that the entire application works as expected.
+### 8.2 Unit-Style Tests (Evals)
 
-### 5.4 Test Organization
+Write tests for your prompt outputs. Define expected outcomes and evaluate model responses against them.
 
--   Organize your tests into a clear and consistent directory structure.
--   Use descriptive test names.
--   Follow a consistent testing style.
+```python
+# test_summarizer.py
+import pytest
+from your_app import get_response_good # Assuming get_response_good uses your structured prompt
 
-### 5.5 Mocking and Stubbing
+@pytest.mark.parametrize("input_text, expected_keywords", [
+    ("The quick brown fox jumps over the lazy dog.", ["fox", "dog", "jumps"]),
+    ("OpenAI released GPT-4o, a new multimodal model.", ["OpenAI", "GPT-4o", "multimodal model"]),
+])
+def test_keyword_extraction(input_text, expected_keywords):
+    # This assumes get_response_good is adapted for keyword extraction with JSON output
+    prompt = f"""Extract 3-5 keywords from the following text as a JSON array.
+    Text: \"\"\"{input_text}\"\"\"
+    Example: ["keyword1", "keyword2"]
+    """
+    response_json_str = get_response_good(prompt)
+    actual_keywords = json.loads(response_json_str)
+    
+    assert isinstance(actual_keywords, list)
+    assert len(actual_keywords) >= 3 # Check length
+    for keyword in expected_keywords:
+        assert any(keyword.lower() in actual.lower() for actual in actual_keywords) # Check for presence
+```
 
--   Use mocking libraries like `unittest.mock` or `pytest-mock` to mock the OpenAI API.
--   Create stubs for API responses to control the behavior of the API during testing.
+### 8.3 Iterative Refinement
 
-## 6. Common Pitfalls and Gotchas
-
-### 6.1 Frequent Mistakes
-
--   **Not handling API errors:** Implement proper error handling for OpenAI API calls.
--   **Exceeding rate limits:** Implement rate limiting and exponential backoff to avoid exceeding API limits.
--   **Incorrect prompt formatting:** Follow OpenAI's prompt engineering guidelines to optimize model performance.
--   **Not validating inputs:** Validate user inputs to prevent prompt injection attacks and unexpected behavior.
-
-### 6.2 Edge Cases
-
--   **Handling very long prompts:** Be aware of token limits and consider splitting long prompts into smaller chunks.
--   **Dealing with ambiguous or unclear instructions:** Craft prompts carefully to provide clear and specific instructions.
--   **Handling unexpected API responses:** Implement robust error handling to deal with unexpected API responses.
-
-### 6.3 Version-Specific Issues
-
--   Be aware of changes between different versions of the `openai` library.
--   Consult the release notes and migration guides when upgrading to a new version.
-
-### 6.4 Compatibility Concerns
-
--   Ensure compatibility between the `openai` library and other libraries used in your project.
--   Test your application thoroughly after upgrading any dependencies.
-
-### 6.5 Debugging Strategies
-
--   Use logging to track the flow of your application and identify potential issues.
--   Use a debugger to step through your code and inspect variables.
--   Use unit tests to isolate and debug individual components.
-
-## 7. Tooling and Environment
-
-### 7.1 Recommended Development Tools
-
--   **IDE:** VS Code, PyCharm
--   **Virtual Environment Manager:** venv, conda, pipenv
--   **Package Manager:** pip, poetry
--   **Testing Framework:** pytest, unittest
--   **Linting and Formatting:** pylint, flake8, black
-
-### 7.2 Build Configuration
-
--   Use a `requirements.txt` or `pyproject.toml` file to manage dependencies.
--   Use a build system like `setuptools` or `poetry` to package your application.
-
-### 7.3 Linting and Formatting
-
--   Use a linter like `pylint` or `flake8` to enforce coding style guidelines.
--   Use a formatter like `black` to automatically format your code.
-
-### 7.4 Deployment Best Practices
-
--   Use a containerization technology like Docker to package your application and its dependencies.
--   Deploy your application to a cloud platform like AWS, Azure, or Google Cloud.
--   Use a process manager like `systemd` or `supervisor` to manage your application.
-
-### 7.5 CI/CD Integration
-
--   Use a CI/CD pipeline to automate the build, test, and deployment process.
--   Integrate your tests into the CI/CD pipeline to ensure that all changes are thoroughly tested before being deployed.
+Continuously test, analyze outputs, and refine your prompts and model parameters. Use OpenAI's Evals framework or similar tools for systematic evaluation.

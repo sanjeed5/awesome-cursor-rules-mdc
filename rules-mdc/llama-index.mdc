@@ -1,158 +1,355 @@
 ---
-description: This rule outlines best practices and coding standards for developing with LlamaIndex, covering code organization, performance, security, testing, and common pitfalls. It aims to ensure maintainable, efficient, and secure LlamaIndex applications.
-globs: *.py
+description: Definitive guidelines for building production-ready LlamaIndex applications, emphasizing modularity, type safety, cloud services, and robust testing.
+globs: **/*.py
 ---
-# LlamaIndex Best Practices and Coding Standards
+# LlamaIndex Best Practices
 
-This document provides comprehensive guidance on developing high-quality applications using LlamaIndex. It covers various aspects of development, including code organization, performance optimization, security considerations, and testing strategies.
+LlamaIndex is the definitive framework for building context-augmented LLM applications. Follow these rules to ensure your RAG pipelines and agents are modular, type-safe, performant, and production-ready in 2025.
 
 ## 1. Code Organization and Structure
 
-*   **Directory Structure Best Practices:**
-    *   `data/`: Store data sources (e.g., documents, PDFs) used by LlamaIndex.
-    *   `indices/`: Contains index definitions and configurations.
-    *   `queries/`: Defines query engines and query logic.
-    *   `models/`: Place custom LLM or embedding model configurations.
-    *   `utils/`: Utility functions and helper classes.
-    *   `tests/`: Unit, integration, and end-to-end tests.
-    *   `scripts/`: Scripts for data ingestion, index building, or other automation tasks.
-*   **File Naming Conventions:**
-    *   Data loaders: `*_loader.py` (e.g., `pdf_loader.py`)
-    *   Index definitions: `*_index.py` (e.g., `vector_index.py`)
-    *   Query engines: `*_query_engine.py` (e.g., `knowledge_graph_query_engine.py`)
-    *   Models: `*_model.py` (e.g., `custom_llm_model.py`)
-    *   Utilities: `*_utils.py` (e.g., `text_processing_utils.py`)
-    *   Tests: `test_*.py` (e.g., `test_vector_index.py`)
-*   **Module Organization:**
-    *   Group related functionalities into modules (e.g., `data_ingestion`, `indexing`, `querying`).
-    *   Use clear and descriptive module names.
-    *   Minimize dependencies between modules to improve maintainability.
-*   **Component Architecture:**
-    *   **Data Connectors:** Abstract data loading logic into reusable connectors.
-    *   **Index Structures:** Use appropriate index structures (e.g., `VectorStoreIndex`, `KnowledgeGraphIndex`) based on data characteristics and query requirements.
-    *   **Query Engines:** Decouple query logic from index structures.
-    *   **LLM Abstraction:** Abstract LLM calls using interfaces for flexibility and testability.
-*   **Code Splitting:**
-    *   Break down large functions into smaller, well-defined functions.
-    *   Use classes to encapsulate related data and behavior.
-    *   Extract reusable code into separate modules or packages.
+Organize your LlamaIndex components into distinct, testable functions or classes. Leverage the `Workflow` API for explicit data flow.
+
+### ✅ GOOD: Modular Functions & Workflow API
+
+```python
+# core_components.py
+from llama_index.core import Document, VectorStoreIndex, Settings
+from llama_index.core.readers import SimpleDirectoryReader
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.core.workflow import Workflow, LlamaAgentWorker, AgentInput, AgentOutput
+from typing import List
+
+def configure_global_settings() -> None:
+    """Configures global LLM and embedding models for consistent behavior."""
+    Settings.llm = OpenAI(model="gpt-4o-mini", temperature=0.1)
+    Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
+
+def load_documents(data_path: str) -> List[Document]:
+    """Loads documents from a directory using SimpleDirectoryReader."""
+    return SimpleDirectoryReader(data_path).load_data()
+
+def build_vector_index(documents: List[Document]) -> VectorStoreIndex:
+    """Builds a VectorStoreIndex from documents."""
+    return VectorStoreIndex.from_documents(documents)
+
+def create_query_engine(index: VectorStoreIndex):
+    """Creates a query engine with optimal response mode for citations."""
+    return index.as_query_engine(response_mode="compact", verbose=True)
+
+# main_app.py
+from core_components import (
+    configure_global_settings, load_documents, build_vector_index, create_query_engine
+)
+
+def main_rag_workflow():
+    configure_global_settings() # Always configure settings first
+
+    docs = load_documents("./data")
+    index = build_vector_index(docs)
+    query_engine = create_query_engine(index)
+
+    # Wrap the query engine in an AgentWorker for Workflow compatibility
+    agent_worker = LlamaAgentWorker.from_query_engine(query_engine)
+    rag_workflow = Workflow(
+        name="SimpleRAGWorkflow",
+        description="A basic RAG pipeline for document querying.",
+        input_type=AgentInput,
+        output_type=AgentOutput,
+        worker=agent_worker
+    )
+
+    result = rag_workflow.run(AgentInput(query="What are the main themes across these documents?"))
+    print(result.response)
+
+if __name__ == "__main__":
+    main_rag_workflow()
+```
+
+### ❌ BAD: Monolithic Script
+
+```python
+# app.py (avoid this structure for anything beyond quickstarts)
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
+
+Settings.llm = OpenAI(model="gpt-4o-mini")
+Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
+
+docs = SimpleDirectoryReader("data").load_data()
+index = VectorStoreIndex.from_documents(docs)
+qe = index.as_query_engine()
+ans = qe.query("What are the main themes?")
+print(ans)
+```
 
 ## 2. Common Patterns and Anti-patterns
 
-*   **Design Patterns:**
-    *   **Factory Pattern:** For creating different types of indexes or query engines.
-    *   **Strategy Pattern:** For choosing different retrieval or ranking algorithms.
-    *   **Decorator Pattern:** For adding pre-processing or post-processing steps to queries.
-*   **Recommended Approaches:**
-    *   **Data Ingestion:** Use `SimpleDirectoryReader` or custom data connectors to load data.
-    *   **Indexing:** Choose the appropriate index type based on your data and query needs. Consider `VectorStoreIndex` for semantic search, `KnowledgeGraphIndex` for knowledge graph-based queries, and `ComposableGraph` for combining multiple indexes.
-    *   **Querying:** Use `as_query_engine()` to create a query engine from an index. Customize the query engine with different retrieval and response synthesis modules.
-    *   **Evaluation:** Use LlamaIndex's evaluation modules to measure the performance of your LLM application (e.g., retrieval and LLM response quality).
-*   **Anti-patterns and Code Smells:**
-    *   **Tight Coupling:** Avoid tight coupling between components. Use interfaces and dependency injection to promote loose coupling.
-    *   **God Classes:** Avoid creating large classes that do too much. Break them down into smaller, more focused classes.
-    *   **Code Duplication:** Avoid duplicating code. Extract common code into reusable functions or classes.
-    *   **Ignoring Errors:** Don't ignore errors. Handle them gracefully or raise exceptions.
-*   **State Management:**
-    *   Use LlamaIndex's `StorageContext` to persist indexes to disk.
-    *   Consider using a database to store application state.
-*   **Error Handling:**
-    *   Use `try-except` blocks to handle exceptions.
-    *   Log errors for debugging purposes.
-    *   Provide informative error messages to the user.
+### ✅ GOOD: Leverage LlamaCloud Services & LlamaHub Connectors
+
+For production-grade RAG, prefer managed services like LlamaParse and LlamaCloud, and utilize LlamaHub for data connectors.
+
+```python
+import os
+from llama_index.core.readers import LlamaParseReader
+from llama_index.cloud import LlamaCloudIndex
+from llama_index.core import Document
+
+# Ensure LLAMAPARSE_API_KEY and LLAMACLOUD_API_KEY are set in environment
+os.environ["LLAMAPARSE_API_KEY"] = os.getenv("LLAMAPARSE_API_KEY")
+os.environ["LLAMACLOUD_API_KEY"] = os.getenv("LLAMACLOUD_API_KEY")
+
+# Use LlamaParse for robust PDF/Office document parsing (preserves structure)
+parser = LlamaParseReader(result_type="markdown", parsing_instruction="Extract all tables and figures.")
+documents: List[Document] = parser.load_data("path/to/complex_report.pdf")
+
+# Store indexes in LlamaCloud for automatic scaling, versioning, and management
+cloud_index = LlamaCloudIndex.from_documents(
+    documents,
+    name="my-production-rag-index",
+    project_name="my-enterprise-rag",
+    # auto_delete=False # Keep index after script finishes
+)
+query_engine = cloud_index.as_query_engine()
+response = query_engine.query("Summarize the key findings in the report.")
+print(response)
+```
+
+### ❌ BAD: Custom Scraping & Basic Readers for Complex Data
+
+```python
+# Avoid custom web scraping when LlamaHub offers a robust connector.
+# Avoid SimpleDirectoryReader for complex PDFs with tables/figures; it will lose structure.
+from llama_index.core.readers import SimpleDirectoryReader
+# docs = SimpleDirectoryReader("./complex_pdfs").load_data() # Leads to poor retrieval
+```
 
 ## 3. Performance Considerations
 
-*   **Optimization Techniques:**
-    *   **Indexing:** Optimize index construction by using appropriate chunk sizes and overlap.
-    *   **Querying:** Optimize query performance by using appropriate retrieval and ranking algorithms.
-    *   **Caching:** Cache query results to improve performance.
-    *   **Parallelization:** Parallelize data loading and indexing tasks.
-*   **Memory Management:**
-    *   Use generators to process large datasets in chunks.
-    *   Release memory when it is no longer needed.
-*   **Bundle Size Optimization:** (Not directly applicable to LlamaIndex as it is a backend library, but relevant if building a web UI on top)
-    *   Remove unused code.
-    *   Use code splitting to load only the code that is needed.
-*   **Lazy Loading:**
-    *   Load data and models only when they are needed.
-    *   Use lazy initialization to defer the creation of objects until they are first used.
+Optimize ingestion, indexing, and retrieval for speed and cost.
 
-## 4. Security Best Practices
+### ✅ GOOD: Asynchronous Operations & Efficient Chunking
 
-*   **Common Vulnerabilities:**
-    *   **Prompt Injection:** Prevent prompt injection attacks by carefully sanitizing user input and using appropriate prompt engineering techniques.
-    *   **Data Leaks:** Protect sensitive data by using appropriate access control and encryption.
-    *   **API Key Exposure:** Avoid exposing API keys in your code. Use environment variables or a secure configuration management system to store API keys.
-*   **Input Validation:**
-    *   Validate all user input to prevent injection attacks.
-    *   Sanitize input to remove potentially harmful characters.
-*   **Authentication and Authorization:**
-    *   Implement authentication and authorization to control access to your application.
-    *   Use strong passwords and multi-factor authentication.
-*   **Data Protection:**
-    *   Encrypt sensitive data at rest and in transit.
-    *   Use appropriate access control to protect data.
-*   **Secure API Communication:**
-    *   Use HTTPS to encrypt communication between your application and the LlamaIndex API.
-    *   Validate the server certificate to prevent man-in-the-middle attacks.
+```python
+import asyncio
+from llama_index.core import VectorStoreIndex, Document, Settings
+from llama_index.core.node_parser import SentenceSplitter
+from typing import List
 
-## 5. Testing Approaches
+async def build_index_async(documents: List[Document]) -> VectorStoreIndex:
+    """Asynchronously builds a VectorStoreIndex."""
+    # For very large datasets, consider streaming or batching document processing
+    index = await asyncio.to_thread(VectorStoreIndex.from_documents, documents)
+    return index
 
-*   **Unit Testing:**
-    *   Write unit tests for all core components, including data connectors, index structures, and query engines.
-    *   Use mocking and stubbing to isolate components during testing.
-*   **Integration Testing:**
-    *   Write integration tests to verify that different components work together correctly.
-    *   Test the integration between LlamaIndex and other libraries or frameworks.
-*   **End-to-end Testing:**
-    *   Write end-to-end tests to verify that the entire application works as expected.
-    *   Test the application with real data and user scenarios.
-*   **Test Organization:**
-    *   Organize tests into separate directories for unit, integration, and end-to-end tests.
-    *   Use clear and descriptive test names.
-*   **Mocking and Stubbing:**
-    *   Use mocking and stubbing to isolate components during testing.
-    *   Use a mocking framework such as `unittest.mock` or `pytest-mock`.
+async def main_performance_example():
+    Settings.text_splitter = SentenceSplitter(chunk_size=512, chunk_overlap=50)
+    # Load documents (can be async if using async readers)
+    docs = [Document(text=f"Sample document {i} content. " * 100) for i in range(100)]
+    
+    index = await build_index_async(docs)
+    query_engine = index.as_query_engine()
+    response = await asyncio.to_thread(query_engine.query, "What is in the documents?")
+    print("Query completed:", response)
 
-## 6. Common Pitfalls and Gotchas
+if __name__ == "__main__":
+    asyncio.run(main_performance_example())
+```
 
-*   **Frequent Mistakes:**
-    *   Using the wrong index type for the data.
-    *   Not optimizing query performance.
-    *   Not handling errors gracefully.
-    *   Exposing API keys.
-    *   Not validating user input.
-*   **Edge Cases:**
-    *   Handling large documents.
-    *   Handling noisy or incomplete data.
-    *   Handling complex queries.
-*   **Version-Specific Issues:**
-    *   Be aware of breaking changes in LlamaIndex releases.
-    *   Refer to the LlamaIndex documentation for version-specific information.
-*   **Compatibility Concerns:**
-    *   Ensure that LlamaIndex is compatible with the other libraries and frameworks that you are using.
-    *   Test your application thoroughly to identify any compatibility issues.
-*   **Debugging Strategies:**
-    *   Use logging to track the execution of your application.
-    *   Use a debugger to step through your code and inspect variables.
-    *   Use LlamaIndex's debugging tools to diagnose issues.
+### ❌ BAD: Synchronous, Unoptimized Processing
 
-## 7. Tooling and Environment
+```python
+# Synchronous processing of many documents is slow and blocks the event loop.
+# Default chunking without consideration for content structure also hurts performance and quality.
+from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
+# docs = SimpleDirectoryReader("./large_data_folder").load_data() # Can block
+# index = VectorStoreIndex.from_documents(docs) # Can be memory intensive and slow
+```
 
-*   **Recommended Development Tools:**
-    *   **IDE:** VS Code, PyCharm
-    *   **Package Manager:** Poetry, pip
-    *   **Testing Framework:** pytest
-    *   **Linting and Formatting:** flake8, black
-*   **Build Configuration:**
-    *   Use a build system such as `poetry` to manage dependencies.
-    *   Create a `requirements.txt` file to list dependencies.
-*   **Linting and Formatting:**
-    *   Use a linter such as `flake8` to enforce code style.
-    *   Use a formatter such as `black` to automatically format code.
-*   **Deployment Best Practices:**
-    *   Use a containerization technology such as Docker to package your application.
-    *   Use a cloud platform such as AWS, Azure, or GCP to deploy your application.
-*   **CI/CD Integration:**
-    *   Use a CI/CD system such as GitHub Actions or Jenkins to automate the build, test, and deployment process.
+## 4. Common Pitfalls and Gotchas
+
+### 4.1. Environment Variables for Secrets
+
+Always use environment variables for API keys and sensitive credentials.
+
+### ✅ GOOD: Load from Environment
+
+```python
+import os
+# Set these in your shell or .env file, e.g., OPENAI_API_KEY="sk-..."
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+os.environ["LLAMAPARSE_API_KEY"] = os.getenv("LLAMAPARSE_API_KEY")
+```
+
+### ❌ BAD: Hardcoding Secrets
+
+```python
+# NEVER hardcode API keys directly in code
+OPENAI_API_KEY = "sk-YOUR_HARDCODED_KEY_HERE"
+```
+
+### 4.2. Chunking Strategy
+
+Effective chunking is critical for retrieval quality.
+
+### ✅ GOOD: Semantic Chunking with Metadata & Overlap
+
+```python
+from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core import Settings
+
+# Configure chunking globally for consistency
+Settings.text_splitter = SentenceSplitter(
+    chunk_size=512,
+    chunk_overlap=50,
+    separator=" " # Prefer space separator for better word boundaries
+)
+# For complex documents, LlamaParse handles intelligent, structure-aware chunking.
+```
+
+### ❌ BAD: Default or Naive Chunking
+
+```python
+# Relying solely on default chunking can lead to poor context and retrieval.
+# Default is often fine for simple text, but not for structured documents or long texts.
+# Settings.text_splitter = None # Don't explicitly disable if you need control
+```
+
+## 5. Type Hints
+
+Enforce type safety for maintainable and robust LlamaIndex applications.
+
+### ✅ GOOD: Comprehensive Type Annotations
+
+```python
+from llama_index.core import Document, VectorStoreIndex
+from llama_index.core.query_engine import BaseQueryEngine
+from typing import List
+
+def process_and_query_documents(documents: List[Document], query_str: str) -> str:
+    """Processes documents and queries the index, returning the response as a string."""
+    index: VectorStoreIndex = VectorStoreIndex.from_documents(documents)
+    query_engine: BaseQueryEngine = index.as_query_engine()
+    response = query_engine.query(query_str)
+    return str(response)
+```
+
+### ❌ BAD: Untyped Functions
+
+```python
+def process_and_query_untyped(documents, query_str): # Lacks clarity on expected types
+    index = VectorStoreIndex.from_documents(documents)
+    query_engine = index.as_query_engine()
+    response = query_engine.query(query_str)
+    return str(response)
+```
+
+## 6. Virtual Environments
+
+Isolate project dependencies to prevent conflicts and ensure reproducible builds.
+
+### ✅ GOOD: Use `venv` or `poetry`
+
+```bash
+# Using venv (standard Python approach)
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Using Poetry (recommended for robust dependency management)
+poetry init --name my-llamaindex-app --python ">=3.9,<3.12"
+poetry add llama-index llama-index-llms-openai llama-index-embeddings-openai
+poetry shell
+```
+
+### ❌ BAD: Global `pip install`
+
+```bash
+# Avoid installing directly into your system's Python environment.
+# This leads to dependency conflicts and "works on my machine" problems.
+pip install llama-index # Can break other projects
+```
+
+## 7. Packaging
+
+Define project dependencies clearly for reproducibility and deployment.
+
+### ✅ GOOD: `pyproject.toml` (Poetry/Rye) or `requirements.txt`
+
+```toml
+# pyproject.toml (Poetry example - preferred for modern Python projects)
+[tool.poetry]
+name = "my-llamaindex-app"
+version = "0.1.0"
+description = "A production-ready LlamaIndex RAG application."
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.12"
+llama-index = "^0.10.0" # Use appropriate, pinned version ranges
+llama-index-llms-openai = "^0.1.0"
+llama-index-embeddings-openai = "^0.1.0"
+# Add other necessary packages like llama-index-cloud, llama-index-readers-llamaparse
+```
+
+### ❌ BAD: Undocumented Dependencies
+
+```python
+# No explicit dependency list makes it hard for others to set up the project.
+# (Implicitly relying on a global environment or manual installs is a recipe for errors.)
+```
+
+## 8. Testing Approaches
+
+Implement unit and integration tests for reliability. Mock LLM calls for faster, cheaper unit tests.
+
+### ✅ GOOD: Unit Tests with Mocking
+
+```python
+# tests/test_rag_components.py
+import pytest
+from unittest.mock import MagicMock
+from llama_index.core import Document, Settings
+from core_components import load_documents, build_vector_index, create_query_engine
+
+@pytest.fixture
+def mock_documents():
+    return [
+        Document(text="LlamaIndex is a data framework for LLM applications."),
+        Document(text="It connects LLMs to your private data sources.")
+    ]
+
+def test_load_documents_from_dir(tmp_path):
+    # Create dummy files for testing SimpleDirectoryReader
+    (tmp_path / "doc1.txt").write_text("Content of document one.")
+    (tmp_path / "doc2.txt").write_text("Content of document two.")
+    docs = load_documents(str(tmp_path))
+    assert len(docs) == 2
+    assert "Content of document one." in docs[0].text
+
+def test_build_vector_index(mock_documents):
+    # Mock LLM and embedding models for fast, isolated unit tests
+    Settings.llm = MagicMock()
+    Settings.embed_model = MagicMock()
+    index = build_vector_index(mock_documents)
+    assert index is not None
+    # Further assertions can check index properties if needed
+
+def test_query_engine_response_mocked():
+    mock_query_engine = MagicMock()
+    mock_query_engine.query.return_value = "Mocked response: LlamaIndex connects LLMs to your data."
+    response = mock_query_engine.query("What is LlamaIndex?")
+    assert "Mocked response" in str(response)
+    mock_query_engine.query.assert_called_once_with("What is LlamaIndex?")
+```
+
+### ❌ BAD: No Tests or Relying on End-to-End Only
+
+```python
+# No test files, or only manual testing.
+# Relying solely on slow, expensive end-to-end tests makes development cycles long and debugging difficult.
+# Unit tests are crucial for isolating issues in specific components.
+```

@@ -1,344 +1,324 @@
 ---
-description: Comprehensive rules and best practices for AWS development using Terraform, covering code organization, security, performance, and testing.  Adherence to these guidelines ensures maintainable, secure, and efficient infrastructure code.
-globs: *.tf
+description: This guide provides opinionated, actionable best practices for developing and deploying applications on AWS, emphasizing CDK v2, serverless patterns, and Well-Architected principles.
+globs: **/*
 ---
-# AWS Development Best Practices using Terraform
+# AWS Best Practices
 
-This document outlines best practices for developing and maintaining AWS infrastructure using Terraform. Following these guidelines will help ensure your code is maintainable, secure, and efficient.
+This document outlines our definitive AWS development standards, rooted in the AWS Well-Architected Framework and modern DevOps guidance. We mandate CDK v2 for infrastructure-as-code and prioritize serverless patterns. Adhere to these guidelines to build secure, reliable, performant, and cost-optimized AWS applications.
 
-## 1. Code Organization and Structure
+## 1. Code Organization and Structure (AWS CDK v2)
 
-### 1.1 Directory Structure
+Always structure your AWS CDK applications for clarity, reusability, and maintainability.
 
--   **Root Module**: The primary entry point for your infrastructure definition. Contains `main.tf`, `variables.tf`, `outputs.tf`, `providers.tf`, `versions.tf` and `locals.tf`.
--   **Modules Directory**:  Reusable components of your infrastructure. Each module should have its own directory under `modules/`.
--   **Examples Directory**: Demonstrates how to use the modules. Each example should be a self-contained Terraform configuration.
--   **Scripts Directory**: Custom scripts used by Terraform.
--   **Templates Directory**:  Templates for files that are read using the `templatefile` function, using the extension `.tftpl`.
--   **Files Directory**: Contains static files referenced by Terraform (e.g., startup scripts).
--   **Helpers Directory**:  Contains utility scripts that are *not* directly called by Terraform.
--   **.tfvars files**: Files containing variable definitions.  Use `terraform.tfvars` for common values and create environment specific files in the `envs/` directory (e.g., `envs/dev/terraform.tfvars`, `envs/prod/terraform.tfvars`).
--   **.gitignore**:  Specifies intentionally untracked files that Git should ignore.
--   **docs/**: Place any supplemental documentation in a `docs/` subdirectory.
--   **CODEOWNERS**:  File to document who is responsible for the module. Before any merge request is merged, an owner should approve it.
+### 1.1 Use AWS CDK v2 Exclusively
 
-Example:
+CDK v1 is deprecated. All new development and migrations **must** use CDK v2.
 
+❌ **BAD: Using CDK v1**
+```typescript
+// cdk.json
+{
+  "app": "npx ts-node bin/my-app.ts",
+  "context": {
+    "@aws-cdk/core:enableStackNameDuplicates": "true",
+    // ... other v1 context
+  }
+}
+```
 
-├── .terraform/              # Terraform working directory
-├── modules/
-│   ├── ec2/
-│   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   ├── outputs.tf
-│   │   └── README.md
-│   ├── s3/
-│   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   ├── outputs.tf
-│   │   └── README.md
-├── examples/
-│   ├── ec2/
-│   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   ├── outputs.tf
-│   │   └── README.md
-│   ├── s3/
-│   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   ├── outputs.tf
-│   │   └── README.md
-├── scripts/
-│   ├── configure_instance.sh
-├── templates/
-│   ├── user_data.tftpl
-├── files/
-│   ├── application.conf
-├── helpers/
-│   ├── backup_database.sh
-├── terraform.tfvars
-├── envs/
-│   ├── dev/
-│   │   ├── terraform.tfvars
-│   ├── prod/
-│   │   ├── terraform.tfvars
-├── main.tf
-├── variables.tf
-├── outputs.tf
-├── providers.tf
-├── versions.tf
-├── locals.tf
-└── .gitignore
+✅ **GOOD: Using CDK v2**
+```typescript
+// cdk.json
+{
+  "app": "npx ts-node --prefer-ts-exts bin/my-app.ts",
+  "context": {
+    "@aws-cdk/aws-ecr:disableCrossAccountPush": true,
+    "@aws-cdk/aws-iam:minimizePolicies": true,
+    "@aws-cdk/core:stackRelativeExports": true,
+    "@aws-cdk/aws-lambda:recognizeVersionProps": true,
+    // ... other v2 context
+  }
+}
+```
 
+### 1.2 Modularize with Constructs
 
-### 1.2 File Naming Conventions
+Encapsulate related resources, runtime code, and configuration into reusable CDK Constructs. This promotes componentization and reduces boilerplate.
 
--   `main.tf`: Primary entry point for resource definitions.
--   `variables.tf`:  Variable declarations.
--   `outputs.tf`: Output declarations.
--   `providers.tf`:  Provider configuration.
--   `versions.tf`:  Terraform and provider version constraints.
--   `locals.tf`: Local variable definitions.
--   `*.tfvars`: Variable value files. Use `terraform.tfvars` for default values and `env/<environment>.tfvars` for environment-specific values.
+```typescript
+// lib/api-construct.ts
+import { Construct } from 'aws-cdk-lib';
+import { RestApi, LambdaIntegration } from 'aws-cdk-lib/aws-apigateway';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Table } from 'aws-cdk-lib/aws-dynamodb';
 
-### 1.3 Module Organization
+interface ApiConstructProps {
+  tableName: string;
+  table: Table;
+}
 
--   **Reusable Modules**: Create modules for common infrastructure components (e.g., EC2 instances, S3 buckets, VPCs).
--   **Module Composition**:  Compose complex infrastructure by combining smaller, reusable modules.
--   **Module Versioning**: Use version control (e.g., Git tags) to manage module versions.
--   **Module Naming**: Module repositories must use the format `terraform-<PROVIDER>-<NAME>`.  For example: `terraform-aws-ec2`
--   **Module sources**: When referencing another module on a public registry, pin the Git commit hash by pointing directly to the underlying Git repo URL. Example:
+export class ApiConstruct extends Construct {
+  constructor(scope: Construct, id: string, props: ApiConstructProps) {
+    super(scope, id);
 
-    terraform
-    module "lambda" {
-        source = "github.com/terraform-aws-modules/terraform-aws-lambda.git?ref=e78cdf1f82944897ca6e30d6489f43cf24539374" # --> v4.18.0
-    }
-    
+    const handler = new NodejsFunction(this, 'MyApiHandler', {
+      runtime: Runtime.NODEJS_20_X,
+      entry: 'src/lambda/api-handler.ts',
+      environment: {
+        TABLE_NAME: props.tableName,
+      },
+    });
 
-### 1.4 Component Architecture
+    props.table.grantReadWriteData(handler);
 
--   **Layered Architecture**: Separate infrastructure into logical layers (e.g., network, compute, data).
--   **Loose Coupling**: Design components to be loosely coupled, minimizing dependencies between them.
--   **Clear Abstractions**: Use modules to create clear abstractions for complex infrastructure components.
+    const api = new RestApi(this, 'MyApi', {
+      restApiName: 'MyServiceApi',
+    });
 
-### 1.5 Code Splitting Strategies
+    api.root.addMethod('GET', new LambdaIntegration(handler));
+  }
+}
+```
 
--   **Functional Decomposition**: Split code into smaller, manageable functions.
--   **Resource Grouping**: Group related resources into separate files or modules.
--   **Environment Separation**: Use separate files or modules for environment-specific configurations.
--   **Service-Based Separation**: Separate resources by service (e.g., `iam.tf`, `ec2.tf`, `s3.tf`) only if they exceed 150 lines in `main.tf`.
+### 1.3 Design Logical Stacks
+
+Organize your application into logical stacks (e.g., `DataStack`, `ApiStack`, `MonitoringStack`). Each stack should represent a deployable unit.
+
+```typescript
+// bin/my-app.ts
+import 'source-map-support/register';
+import { App } from 'aws-cdk-lib';
+import { DataStack } from '../lib/data-stack';
+import { ApiStack } from '../lib/api-stack';
+
+const app = new App();
+
+const dataStack = new DataStack(app, 'MyServiceDataStack', {
+  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+});
+
+new ApiStack(app, 'MyServiceApiStack', {
+  table: dataStack.table, // Pass dependencies explicitly
+  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+});
+
+app.synth();
+```
 
 ## 2. Common Patterns and Anti-patterns
 
-### 2.1 Design Patterns Specific to AWS
+Adopt proven patterns and rigorously avoid anti-patterns.
 
--   **Immutable Infrastructure**:  Deploy new infrastructure components instead of modifying existing ones.
--   **Infrastructure as Code (IaC)**: Manage infrastructure through code, using tools like Terraform.
--   **Blue/Green Deployments**:  Deploy new versions of applications alongside existing ones, then switch traffic.
--   **Canary Deployments**:  Deploy new versions of applications to a small subset of users before rolling them out to everyone.
+### 2.1 Lambda Execution Environment Reuse
 
-### 2.2 Recommended Approaches for Common Tasks
+Initialize SDK clients and reusable resources (e.g., database connections) outside the Lambda handler. This significantly improves performance and reduces cost.
 
--   **Creating VPCs**: Use the `terraform-aws-modules/vpc/aws` module for creating VPCs.
--   **Creating EC2 Instances**: Use the `terraform-aws-modules/ec2-instance/aws` module for creating EC2 instances.
--   **Creating S3 Buckets**: Use the `terraform-aws-modules/s3-bucket/aws` module for creating S3 buckets.
--   **Managing IAM Roles**: Use the `aws_iam_role` and `aws_iam_policy` resources to manage IAM roles and policies.
--   **Using Data Sources**: Utilize data sources (e.g., `aws_ami`, `aws_vpc`) to fetch information about existing AWS resources.
--   **Resource Tagging**:  Tag all AWS resources for cost allocation, automation, and identification.
--   **State File Storage**: Use a remote backend (e.g., S3 with DynamoDB locking) for storing Terraform state.
+❌ **BAD: Initializing resources inside the handler**
+```typescript
+// src/lambda/api-handler.ts
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 
-### 2.3 Anti-patterns and Code Smells to Avoid
+export const handler = async (event: any) => {
+  const client = new DynamoDBClient({}); // New client on every invocation
+  // ... use client
+  return { statusCode: 200, body: 'OK' };
+};
+```
 
--   **Hardcoding Values**:  Avoid hardcoding values in your code. Use variables instead.
--   **Storing Secrets in Code**:  Never store secrets (e.g., passwords, API keys) in your code. Use AWS Secrets Manager or other secret management solutions.
--   **Overly Complex Modules**:  Avoid creating modules that are too complex and difficult to understand.
--   **Ignoring Errors**: Always handle errors gracefully.
--   **Manual Infrastructure Changes**: Avoid making manual changes to infrastructure outside of Terraform.
--   **Using embedded resource attributes**: avoid using these embedded resource attributes and instead you should use the unique resource to attach that pseudo-resource. These resource relationships can cause chicken/egg issues that are unique per resource.
+✅ **GOOD: Initializing resources outside the handler**
+```typescript
+// src/lambda/api-handler.ts
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 
-### 2.4 State Management Best Practices
+const client = new DynamoDBClient({}); // Initialized once per execution environment
 
--   **Remote Backend**:  Use a remote backend (e.g., S3 with DynamoDB locking) for storing Terraform state. This allows for collaboration and prevents data loss.
--   **State Locking**:  Enable state locking to prevent concurrent modifications to the state file.
--   **State Encryption**:  Encrypt the state file at rest and in transit.
--   **Workspace Management**:  Use Terraform workspaces to manage multiple environments (e.g., development, staging, production).
--   **Secure State Access**: Restrict access to the state file to authorized users and systems only. Consider implementing least privilege principles.
--   **Versioning**: Implement a mechanism for versioning your state files, which could include frequent backups and using version control systems.
--   **Avoid local state**: Never store Terraform state locally.
+export const handler = async (event: any) => {
+  // ... use client
+  return { statusCode: 200, body: 'OK' };
+};
+```
 
-### 2.5 Error Handling Patterns
+### 2.2 Use Environment Variables for Configuration
 
--   **Validation Rules**: Use validation rules within variable definitions to check input values.
--   **Error Propagation**:  Propagate errors up the call stack to be handled at a higher level.
--   **Retry Logic**: Implement retry logic for transient errors (e.g., network errors, API throttling).
--   **Logging**:  Log errors and warnings to aid in debugging.
--   **Custom Error Messages**: Provide clear and informative error messages to users.
--   **Panic Handling**: Avoid using `panic()` function that stops the execution, implement error handling.
+Never hardcode secrets or environment-specific configurations. Use Lambda environment variables or AWS Systems Manager Parameter Store.
+
+❌ **BAD: Hardcoding bucket name**
+```typescript
+const S3_BUCKET = 'my-hardcoded-bucket-name-prod'; // Don't do this!
+```
+
+✅ **GOOD: Using environment variables**
+```typescript
+// Lambda code
+const S3_BUCKET = process.env.S3_BUCKET_NAME;
+
+// CDK definition
+new NodejsFunction(this, 'MyFunction', {
+  // ...
+  environment: {
+    S3_BUCKET_NAME: 'my-dynamic-bucket-name', // Set via CDK
+  },
+});
+```
+
+### 2.3 Write Idempotent Lambda Functions
+
+Design your Lambda functions to produce the same result even if invoked multiple times with the same input. This is critical for reliable distributed systems. Use AWS Powertools for Idempotency.
+
+```typescript
+// Example using Powertools for Lambda (TypeScript)
+import { DynamoDBPersistenceLayer } from '@aws-lambda-powertools/idempotency/lib/persistence';
+import { idempotent } from '@aws-lambda-powertools/idempotency';
+
+const persistenceLayer = new DynamoDBPersistenceLayer({
+  tableName: process.env.IDEMPOTENCY_TABLE_NAME!,
+});
+
+export const handler = idempotent(
+  async (event: any) => {
+    // Your business logic here
+    console.log('Processing event:', event.detail.id);
+    // Simulate some work
+    await new Promise(resolve => setTimeout(resolve, 100));
+    return { status: 'processed', id: event.detail.id };
+  },
+  { persistenceStore: persistenceLayer }
+);
+```
 
 ## 3. Performance Considerations
 
-### 3.1 Optimization Techniques
+Optimize your AWS resources for efficiency and cost.
 
--   **Efficient Resource Usage**:  Use the appropriate instance types and storage classes for your workloads.
--   **Caching**: Implement caching to reduce latency and improve performance.
--   **Load Balancing**: Use load balancing to distribute traffic across multiple instances.
--   **Content Delivery Networks (CDNs)**: Use CDNs to deliver static content closer to users.
--   **Database Optimization**: Optimize database queries and indexing for faster performance.
--   **Parallelization**: Use `for_each` and `count` to parallelize resource creation and modification.
+### 3.1 Tune Lambda Memory and CPU
 
-### 3.2 Memory Management
+Memory allocation directly impacts CPU and network performance. Use CloudWatch metrics (`Max Memory Used`) and tools like AWS Lambda Power Tuning to find the optimal memory configuration.
 
--   **Resource Limits**:  Set resource limits on EC2 instances and other AWS resources.
--   **Memory Profiling**:  Use memory profiling tools to identify memory leaks and optimize memory usage.
--   **Garbage Collection**:  Configure garbage collection settings for your applications.
+❌ **BAD: Defaulting to 128MB for CPU-intensive tasks**
+```typescript
+new NodejsFunction(this, 'CpuIntensiveFunction', {
+  runtime: Runtime.NODEJS_20_X,
+  memorySize: 128, // Likely under-provisioned
+  // ...
+});
+```
 
-### 3.3 Rendering Optimization
+✅ **GOOD: Performance testing and tuning memory**
+```typescript
+new NodejsFunction(this, 'CpuIntensiveFunction', {
+  runtime: Runtime.NODEJS_20_X,
+  memorySize: 1024, // Tuned based on performance testing
+  // ...
+});
+```
 
--   **Minimize Rendering**: Minimize the amount of data that needs to be rendered.
--   **Efficient Templates**: Use efficient templates to generate configuration files.
+## 4. Common Pitfalls and Gotchas
 
-### 3.4 Bundle Size Optimization
+Avoid these common mistakes that lead to security vulnerabilities, operational issues, or unexpected costs.
 
--   **Code Splitting**: Split code into smaller bundles that can be loaded on demand.
--   **Tree Shaking**: Remove unused code from your bundles.
--   **Minification**: Minify your code to reduce bundle sizes.
--   **Compression**: Compress your bundles to reduce download times.
+### 4.1 Enforce Least Privilege IAM
 
-### 3.5 Lazy Loading Strategies
+Grant only the necessary permissions to your AWS resources. Use `cdk-nag` to enforce this policy.
 
--   **Lazy Loading of Resources**: Load resources only when they are needed.
--   **Virtualization**: Use virtualization to reduce the number of resources that need to be loaded.
+❌ **BAD: Over-permissive IAM policy**
+```typescript
+// Granting full S3 access when only read is needed
+bucket.grantReadWrite(lambdaFunction); // Too broad!
+```
 
-## 4. Security Best Practices
+✅ **GOOD: Least privilege IAM**
+```typescript
+// Granting specific S3 read access
+bucket.grantRead(lambdaFunction); // Only read access
+```
 
-### 4.1 Common Vulnerabilities and How to Prevent Them
+### 4.2 Avoid Recursive Lambda Invocations
 
--   **IAM Misconfiguration**: Prevent IAM misconfiguration by following the principle of least privilege.
--   **Unsecured S3 Buckets**: Secure S3 buckets by enabling encryption, access logging, and versioning.
--   **Security Group Misconfiguration**:  Configure security groups to allow only necessary traffic.
--   **SQL Injection**:  Prevent SQL injection by using parameterized queries and input validation.
--   **Cross-Site Scripting (XSS)**:  Prevent XSS by sanitizing user input and output.
--   **Cross-Site Request Forgery (CSRF)**: Prevent CSRF by using anti-CSRF tokens.
--   **Exposed Secrets**: Avoid exposing secrets by using AWS Secrets Manager and IAM roles.
+A Lambda function should never directly or indirectly invoke itself or trigger a process that leads to its own re-invocation. This creates infinite loops and massive bills.
 
-### 4.2 Input Validation
+❌ **BAD: Recursive invocation pattern**
+```typescript
+// Inside a Lambda handler processing SQS messages
+// If processing fails, put message back to the SAME queue
+// This can lead to an infinite loop if the error persists
+sqs.sendMessage({ MessageBody: JSON.stringify(event) });
+```
 
--   **Validate User Input**: Validate user input to prevent malicious code from being injected into your application.
--   **Use Data Types**: Use appropriate data types for your variables to prevent type-related errors.
--   **Regular Expressions**: Use regular expressions to validate complex input patterns.
+✅ **GOOD: Use Dead-Letter Queues (DLQs) for failures**
+```typescript
+// CDK definition for Lambda with DLQ
+import { SqsDlq } from 'aws-cdk-lib/aws-lambda-event-sources';
+import { Queue } from 'aws-cdk-lib/aws-sqs';
 
-### 4.3 Authentication and Authorization Patterns
-
--   **IAM Roles**:  Use IAM roles to grant permissions to AWS resources.
--   **Multi-Factor Authentication (MFA)**:  Enable MFA for all user accounts.
--   **Principle of Least Privilege**:  Grant users only the permissions they need to perform their tasks.
--   **AWS Cognito**:  Use AWS Cognito to manage user authentication and authorization.
--   **API Gateway Authorization**: Implement authorization at the API Gateway level to control access to your APIs.
-
-### 4.4 Data Protection Strategies
-
--   **Encryption at Rest**:  Encrypt data at rest using AWS KMS, S3 encryption, or other encryption solutions.
--   **Encryption in Transit**:  Encrypt data in transit using HTTPS, TLS, or other encryption protocols.
--   **Data Masking**: Mask sensitive data to prevent unauthorized access.
--   **Data Redaction**: Redact sensitive data from logs and other output.
-
-### 4.5 Secure API Communication
-
--   **HTTPS**: Use HTTPS for all API communication.
--   **API Keys**:  Use API keys to authenticate API requests.
--   **OAuth 2.0**: Use OAuth 2.0 for authorization.
--   **Rate Limiting**:  Implement rate limiting to prevent abuse.
--   **Web Application Firewall (WAF)**:  Use a WAF to protect your APIs from common web attacks.
+const dlq = new Queue(this, 'MyFunctionDLQ');
+const myFunction = new NodejsFunction(this, 'MyFunction', {
+  // ...
+  deadLetterQueue: dlq, // Failed invocations go here
+  deadLetterQueueEnabled: true,
+});
+```
 
 ## 5. Testing Approaches
 
-### 5.1 Unit Testing Strategies
+Implement robust testing for your AWS infrastructure and application code.
 
--   **Test Individual Modules**: Unit test individual Terraform modules to ensure they are working correctly.
--   **Mock AWS Resources**: Mock AWS resources to isolate your modules from external dependencies.
--   **Test Variable Validation**: Verify variable validation rules work as expected.
--   **Test Output Values**: Check that module outputs are correct.
+### 5.1 Mandate `cdk-nag` for Policy Enforcement
 
-### 5.2 Integration Testing
+Use `cdk-nag` to automatically validate your CDK constructs against security and operational best practices (e.g., AWS Solutions Security Hub, NIST 800-53). Integrate it into your CI/CD pipeline.
 
--   **Test Module Integration**:  Test how modules interact with each other.
--   **Deploy to Test Environment**: Deploy your infrastructure to a test environment and verify that it is working correctly.
--   **Automated Tests**: Write automated tests to verify that your infrastructure is working correctly.
+```typescript
+// bin/my-app.ts
+import { App, Aspects } from 'aws-cdk-lib';
+import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
+import { MyServiceStack } from '../lib/my-service-stack';
 
-### 5.3 End-to-End Testing
+const app = new App();
+const stack = new MyServiceStack(app, 'MyServiceStack');
 
--   **Test Full Infrastructure**:  Test the entire infrastructure from end to end.
--   **Simulate User Behavior**:  Simulate user behavior to verify that your infrastructure is working correctly.
--   **Monitor Performance**: Monitor performance to identify any performance bottlenecks.
+// Apply the AWS Solutions checks to the entire app
+Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
-### 5.4 Test Organization
+// Suppress specific rules with justification if absolutely necessary
+NagSuppressions.addStackSuppressions(stack, [
+  { id: 'AwsSolutions-IAM4', reason: 'Managed policy for specific use case.' },
+  { id: 'AwsSolutions-L1', reason: 'Lambda runtime is managed by AWS.' },
+]);
 
--   **Separate Test Directory**: Create a separate directory for your tests.
--   **Test Naming Conventions**: Use clear naming conventions for your tests.
--   **Test Documentation**: Document your tests to explain what they are testing.
+app.synth();
+```
 
-### 5.5 Mocking and Stubbing
+### 5.2 Implement Unit and Integration Tests
 
--   **Use Mock Objects**: Use mock objects to isolate your code from external dependencies.
--   **Use Stub Objects**: Use stub objects to provide canned responses to external dependencies.
--   **Terratest**:  Utilize Terratest for creating test environments and performing infrastructure tests.
+Write unit tests for your Lambda functions and CDK constructs. Use integration tests for end-to-end validation of your deployed services.
 
-## 6. Common Pitfalls and Gotchas
+```typescript
+// test/my-api.test.ts (CDK Unit Test)
+import { App, Stack } from 'aws-cdk-lib';
+import { Template } from 'aws-cdk-lib/assertions';
+import { ApiConstruct } from '../lib/api-construct';
+import { Table } from 'aws-cdk-lib/aws-dynamodb';
 
-### 6.1 Frequent Mistakes Developers Make
+test('ApiConstruct creates expected resources', () => {
+  const app = new App();
+  const stack = new Stack(app, 'TestStack');
+  const table = new Table(stack, 'TestTable', { tableName: 'TestTable' });
 
--   **Forgetting to Enable State Locking**:  Enabling state locking is crucial for preventing corruption and ensuring integrity when multiple users work on the same Terraform project.
--   **Overlooking IAM Permissions**:  Ensuring the Terraform service account has the necessary IAM permissions to create, modify, and delete resources is vital.
--   **Incorrect Resource Dependencies**:  Managing resource dependencies correctly to prevent errors during creation or deletion.
--   **Handling Sensitive Data Insecurely**:  Implementing robust measures for managing sensitive data, such as API keys and passwords, by using AWS Secrets Manager or other appropriate services.
--   **Neglecting to Monitor Infrastructure**:  Setting up comprehensive monitoring and alerting to detect and respond to infrastructure issues promptly.
--   **Using hardcoded values**: Always use variables
+  new ApiConstruct(stack, 'TestApi', { tableName: 'TestTable', table });
 
-### 6.2 Edge Cases to be Aware Of
+  const template = Template.fromStack(stack);
 
--   **Resource Limits**:  Be aware of AWS resource limits and plan accordingly.
--   **Availability Zones**: Understand the implications of availability zones and design your infrastructure to be resilient to AZ failures.
--   **Data Consistency**: Understand the consistency models of different AWS services and design your applications accordingly.
--   **API Throttling**: Be aware of API throttling limits and implement retry logic.
+  template.hasResourceProperties('AWS::Lambda::Function', {
+    Runtime: 'nodejs20.x',
+    Environment: {
+      Variables: {
+        TABLE_NAME: 'TestTable',
+      },
+    },
+  });
 
-### 6.3 Version-Specific Issues
-
--   **Terraform Version Compatibility**:  Ensure that your Terraform code is compatible with the version of Terraform you are using.
--   **Provider Version Compatibility**: Ensure that your Terraform providers are compatible with the version of Terraform you are using.
--   **AWS API Version Compatibility**: Be aware of changes to the AWS API and update your code accordingly.
-
-### 6.4 Compatibility Concerns
-
--   **Backwards Compatibility**: Ensure that your changes are backwards compatible.
--   **Cross-Region Compatibility**:  Ensure that your infrastructure is compatible across different AWS regions.
--   **Cross-Account Compatibility**: Ensure that your infrastructure is compatible across different AWS accounts.
-
-### 6.5 Debugging Strategies
-
--   **Terraform Plan**: Use `terraform plan` to preview changes before applying them.
--   **Terraform Show**: Use `terraform show` to inspect the current state of your infrastructure.
--   **Terraform Graph**: Use `terraform graph` to visualize the dependencies between resources.
--   **Terraform Console**: Use `terraform console` to evaluate Terraform expressions.
--   **AWS CloudTrail**:  Use AWS CloudTrail to audit API calls and identify errors.
--   **CloudWatch Logs**:  Use CloudWatch Logs to collect and analyze application logs.
--   **Enable Debug Logging**: Enable debug logging to get more detailed information about what Terraform is doing.
-
-## 7. Tooling and Environment
-
-### 7.1 Recommended Development Tools
-
--   **Terraform CLI**: The Terraform command-line interface.
--   **IDE with Terraform Support**: Use an IDE with Terraform support (e.g., VS Code with the Terraform extension).
--   **tfenv**:  Use tfenv to manage multiple versions of Terraform.
--   **AWS CLI**:  The AWS command-line interface.
--   **jq**:  A command-line JSON processor.
-
-### 7.2 Build Configuration
-
--   **Makefile**:  Use a Makefile to automate common build tasks (e.g., `terraform init`, `terraform plan`, `terraform apply`).
--   **.terraformignore**: Create a `.terraformignore` to prevent files from being included in the Terraform package.
-
-### 7.3 Linting and Formatting
-
--   **terraform fmt**:  Use `terraform fmt` to automatically format your Terraform code.
--   **terraform validate**:  Use `terraform validate` to validate your Terraform code.
--   **tflint**: Use `tflint` to lint your Terraform code.
--   **pre-commit hooks**: Enforce code quality standards using pre-commit hooks.
-
-### 7.4 Deployment Best Practices
-
--   **Automated Deployments**: Use automated deployments to reduce errors and improve consistency.
--   **Infrastructure as Code (IaC)**: Manage infrastructure as code using tools like Terraform.
--   **Immutable Infrastructure**: Deploy new infrastructure components instead of modifying existing ones.
--   **Blue/Green Deployments**: Deploy new versions of applications alongside existing ones, then switch traffic.
--   **Canary Deployments**:  Deploy new versions of applications to a small subset of users before rolling them out to everyone.
-
-### 7.5 CI/CD Integration
-
--   **Integrate with CI/CD Pipeline**: Integrate Terraform with your CI/CD pipeline.
--   **Automated Testing**: Run automated tests as part of your CI/CD pipeline.
--   **Automated Deployments**: Automatically deploy your infrastructure as part of your CI/CD pipeline.
--   **Version Control**: Store your Terraform code in version control.
--   **Terraform Cloud/Enterprise**: Use Terraform Cloud/Enterprise for remote state management and collaboration.
-
-This document provides a comprehensive set of best practices for AWS development using Terraform. By following these guidelines, you can ensure your code is maintainable, secure, and efficient.
+  template.hasResourceProperties('AWS::ApiGateway::RestApi', {
+    Name: 'MyServiceApi',
+  });
+});
+```

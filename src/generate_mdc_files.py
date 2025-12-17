@@ -789,14 +789,20 @@ def process_rules_json(json_path: str, output_dir: str, test_mode: bool = False,
         libraries_to_process = []
         for library in filtered_libraries:
             library_key = library["name"]
-            if not progress_tracker.is_library_processed(library_key) or retry_failed_only and progress_tracker.is_library_failed(library_key):
+            # If retry_failed_only is False (i.e., --regenerate-all was passed), process all libraries
+            if not retry_failed_only:
+                libraries_to_process.append(library)
+            elif not progress_tracker.is_library_processed(library_key) or progress_tracker.is_library_failed(library_key):
                 libraries_to_process.append(library)
     else:
         # Normal processing - apply progress tracking rules
         libraries_to_process = []
         for library in libraries:
             library_key = library["name"]
-            if not progress_tracker.is_library_processed(library_key) or retry_failed_only and progress_tracker.is_library_failed(library_key):
+            # If retry_failed_only is False (i.e., --regenerate-all was passed), process all libraries
+            if not retry_failed_only:
+                libraries_to_process.append(library)
+            elif not progress_tracker.is_library_processed(library_key) or progress_tracker.is_library_failed(library_key):
                 libraries_to_process.append(library)
     
     # If test mode is enabled, just process one library

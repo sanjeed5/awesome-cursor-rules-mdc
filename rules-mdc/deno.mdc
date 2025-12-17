@@ -1,268 +1,274 @@
 ---
-description: This rule file provides comprehensive guidelines for Deno development, covering best practices for code organization, security, performance, testing, and documentation. Adhering to these standards ensures maintainable, efficient, and secure Deno applications.
-globs: *.ts,*.tsx,*.js,*.jsx,*.md
+description: This guide defines definitive Deno best practices for our team, focusing on secure, maintainable, and idiomatic code using Deno's built-in tooling and modern web standards.
+globs: **/*.{js,jsx,ts,tsx}
 ---
-- **Use TypeScript**: Always prefer TypeScript for its strong typing, which enhances code quality and maintainability. Provide clear type annotations and use interfaces for better structure.
-- **Documentation with JSDoc**: Utilize JSDoc for documenting all exported symbols. Include concise summaries, type information, and examples. Keep documentation up-to-date with code changes.
-- **Consistent Naming Conventions**: Follow established naming conventions such as camelCase for variables and functions, PascalCase for classes, and UPPER_SNAKE_CASE for constants. This consistency aids readability and maintainability.
-- **Limit Function Parameters**: Functions should ideally take no more than two parameters, using options objects for additional parameters. This makes functions easier to use and test.
+# Deno Best Practices
 
-## 1. Code Organization and Structure
+Deno is our runtime of choice for its security, built-in tooling, and first-class TypeScript support. This guide outlines the definitive best practices for writing Deno applications, ensuring consistency, performance, and maintainability across our projects.
 
-- **Directory Structure Best Practices**:
-    - `src/`: Contains the main source code of the application.
-    - `src/components/`: Reusable UI components (if applicable).
-    - `src/services/`: Business logic and API interactions.
-    - `src/utils/`: Utility functions and helpers.
-    - `tests/`: Unit and integration tests.
-    - `mod.ts`: The main entry point for the module or application.
-    - `deps.ts`: Centralized dependency management file (more details below).
-    - `dev_deps.ts`: Centralized development dependency management file (more details below).
-    - `deno.json`: Deno configuration file.
-- **File Naming Conventions**:
-    - Use descriptive names with `.ts`, `.tsx`, `.js`, or `.jsx` extensions.
-    - Component files: `ComponentName.tsx` or `component-name.tsx`
-    - Service files: `service-name.ts`
-    - Utility files: `utils.ts` or `string_utils.ts`
-    - Test files: `file_name_test.ts`
-- **Module Organization Best Practices**:
-    - Favor small, focused modules with clear responsibilities.
-    - Avoid circular dependencies.
-    - Use `deps.ts` to manage dependencies centrally. This file exports all external dependencies used in the project, allowing for easy version management and updates. Example:
+## 1. Project Configuration: `deno.json` is King
 
-    typescript
-    // deps.ts
-    export * as log from "https://deno.land/std@0.224.0/log/mod.ts";
-    export { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-    export { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-    
-    - Use `dev_deps.ts` to manage development dependencies centrally. Example:
+Always use `deno.json` (or `deno.jsonc`) as the single source of truth for project configuration. This file unifies TypeScript compiler options, Deno-specific flags, tasks, linting, and formatting. Avoid `tsconfig.json` for Deno-first projects.
 
-    typescript
-    // dev_deps.ts
-    export {
-      assert,
-      assertEquals,
-      assertExists,
-      assertNotEquals,
-      assertRejects,
-      assertStringIncludes,
-    } from "https://deno.land/std@0.224.0/assert/mod.ts";
-    export {
-      FakeTime,
-    } from "https://deno.land/std@0.224.0/testing/time.ts";
-    
+### ✅ GOOD: Centralized `deno.json`
 
-    - Import dependencies using the `deps.ts` file in other modules:
-
-    typescript
-    // my_module.ts
-    import { log, assertEquals } from "./deps.ts";
-
-    log.info("Hello, Deno!");
-    
-- **Component Architecture Recommendations**:
-    - Follow a component-based architecture for UI development (if applicable).
-    - Each component should be self-contained and reusable.
-    - Consider using a state management library like `nano-states` or `unstate` for complex applications.
-- **Code Splitting Strategies**:
-    - Use dynamic imports (`import()`) to load modules on demand.
-    - Split code based on routes or features.
-    - Leverage Deno's built-in module caching for efficient loading.
-    - Use `deno bundle` to create optimized bundles for deployment, but be mindful of over-bundling.
-
-## 2. Common Patterns and Anti-patterns
-
-- **Design Patterns**: 
-    - **Module Pattern**: Encapsulating code within a module to control access and prevent global scope pollution.
-    - **Factory Pattern**: Creating objects without specifying the exact class to instantiate.
-    - **Observer Pattern**: Defining a one-to-many dependency between objects so that when one object changes state, all its dependents are notified and updated automatically.
-    - **Dependency Injection**:  Making components loosely coupled.  Useful with Deno's module system because you can easily swap out dependencies in tests without relying on complex mocking frameworks.
-- **Recommended Approaches for Common Tasks**:
-    - **HTTP Server**: Use Deno's built-in `Deno.serve` for creating HTTP servers.
-    - **File System Access**: Use `Deno.readTextFile`, `Deno.writeTextFile`, etc., for file system operations.
-    - **Environment Variables**: Access environment variables using `Deno.env.get()`.
-    - **Process Management**: Use `Deno.run` for executing external commands.
-- **Anti-patterns and Code Smells**:
-    - **Global Scope Pollution**: Avoid declaring variables in the global scope.
-    - **Deeply Nested Callbacks**: Refactor code to use async/await for better readability.
-    - **Ignoring Errors**: Always handle potential errors using try/catch blocks or `Result` types.
-    - **Over-Engineering**: Keep code simple and avoid unnecessary complexity.
-    - **Not Using `deps.ts`**:  Failing to centralize and version control your dependencies will make maintenance difficult.
-- **State Management Best Practices**:
-    - For simple applications, use local component state.
-    - For complex applications, consider using a lightweight state management library or a more robust solution like Redux (via a compatible Deno port).
-    - Centralize application state and manage it predictably.
-    - Avoid mutating state directly; use immutable updates.
-- **Error Handling Patterns**:
-    - Use try/catch blocks for synchronous error handling.
-    - Use `.catch()` for handling errors in Promises.
-    - Create custom error types for specific scenarios.
-    - Log errors with sufficient context for debugging.
-    - Consider using a `Result` type to explicitly handle success or failure cases.
-
-## 3. Performance Considerations
-
-- **Optimization Techniques**:
-    - **Minimize I/O Operations**: Batch file reads/writes when possible.
-    - **Efficient Data Structures**: Use appropriate data structures for your use case (e.g., `Map` vs. `Object`).
-    - **Asynchronous Operations**: Leverage async/await for non-blocking operations.
-    - **WebAssembly**: Utilize WebAssembly modules for performance-critical tasks.
-    - **`Deno.bench`**: Use Deno's built-in benchmarking tool to identify performance bottlenecks.  Run with `deno bench`.  Write benchmarks adjacent to the files you are testing.
-- **Memory Management Considerations**:
-    - Be mindful of memory leaks, especially when working with streams and resources.
-    - Use `finally` blocks to ensure resources are properly closed.
-    - Avoid creating unnecessary objects and variables.
-    - Profile your application to identify memory usage patterns.
-- **Rendering Optimization (if applicable)**:
-    - Use virtual DOM techniques for efficient UI updates.
-    - Optimize images and other assets.
-    - Implement lazy loading for offscreen content.
-- **Bundle Size Optimization**:
-    - Use `deno bundle` to create optimized bundles for deployment.
-    - Remove unused code with tree shaking.
-    - Minify JavaScript and CSS files.
-    - Compress assets with gzip or Brotli.
-- **Lazy Loading Strategies**:
-    - Use dynamic imports (`import()`) to load modules on demand.
-    - Implement lazy loading for images and other assets.
-    - Split code based on routes or features.
-
-## 4. Security Best Practices
-
-- **Common Vulnerabilities and Prevention**:
-    - **Remote Code Execution**:  Be extremely cautious with `Deno.run`, validate inputs, and never execute untrusted code.
-    - **Cross-Site Scripting (XSS)**: Sanitize user inputs to prevent XSS attacks (if applicable).
-    - **SQL Injection**: Use parameterized queries or an ORM to prevent SQL injection (if applicable).
-    - **Denial of Service (DoS)**: Implement rate limiting and other measures to prevent DoS attacks.
-    - **Supply Chain Attacks**: Carefully review and pin dependencies in `deps.ts` and `deno.lock`.
-- **Input Validation**:
-    - Validate all user inputs to prevent injection attacks and data corruption.
-    - Use regular expressions or dedicated validation libraries to enforce input formats.
-    - Sanitize inputs to remove potentially malicious characters.
-- **Authentication and Authorization**:
-    - Use secure authentication mechanisms like OAuth 2.0 or JWT.
-    - Implement role-based access control (RBAC) or attribute-based access control (ABAC) for authorization.
-    - Store passwords securely using bcrypt or Argon2.
-- **Data Protection**:
-    - Encrypt sensitive data at rest and in transit.
-    - Use HTTPS for all communication.
-    - Implement proper access controls to protect data from unauthorized access.
-    - Regularly back up data and test recovery procedures.
-- **Secure API Communication**:
-    - Use HTTPS for all API communication.
-    - Validate API requests and responses.
-    - Implement rate limiting to prevent abuse.
-    - Use API keys or JWT for authentication.
-
-## 5. Testing Approaches
-
-- **Unit Testing**:
-    - Write unit tests for individual components and functions.
-    - Use Deno's built-in testing framework (`Deno.test`).
-    - Mock dependencies to isolate units under test.
-    - Aim for high test coverage.
-- **Integration Testing**:
-    - Write integration tests to verify interactions between different modules.
-    - Test API endpoints and data flows.
-    - Use a test database or mock API for integration tests.
-- **End-to-End Testing**:
-    - Write end-to-end tests to verify the entire application flow.
-    - Use a testing framework like Playwright or Puppeteer.
-    - Test user interactions and UI elements (if applicable).
-- **Test Organization**:
-    - Create a `tests/` directory to store all tests.
-    - Organize tests into subdirectories based on module or feature.
-    - Use descriptive test names.
-    - Run tests using `deno test`.
-- **Mocking and Stubbing**:
-    - Use Deno's built-in mocking capabilities or a mocking library like `sinon`.
-    - Mock external dependencies and API calls.
-    - Use stubs to replace complex functions with simplified versions.
-
-## 6. Common Pitfalls and Gotchas
-
-- **Frequent Mistakes**:
-    - **Incorrect Permissions**: Not requesting necessary permissions (e.g., `--allow-read`, `--allow-net`).
-    - **Uncaught Exceptions**: Not handling errors properly.
-    - **Global Variable Pollution**: Accidentally declaring variables in the global scope.
-    - **Missing `await`**: Forgetting to `await` asynchronous operations.
-    - **Inconsistent Dependency Versions**: Not managing dependency versions using `deps.ts`.
-- **Edge Cases**:
-    - **Handling large files**: Efficiently stream large files to avoid memory issues.
-    - **Cross-platform compatibility**: Test your application on different operating systems.
-    - **Time zone differences**: Handle time zone conversions carefully.
-- **Version-Specific Issues**:
-    - Be aware of breaking changes in Deno releases.
-    - Consult the Deno release notes for migration guidance.
-- **Compatibility Concerns**:
-    - Ensure compatibility with different browsers and Deno versions (if applicable).
-    - Be mindful of differences between Deno and Node.js APIs.
-- **Debugging Strategies**:
-    - Use Deno's built-in debugger (`deno inspect`).
-    - Use `console.log` statements for basic debugging.
-    - Use a code editor with Deno support for advanced debugging features.
-    - Inspect network requests and responses using browser developer tools.
-
-## 7. Tooling and Environment
-
-- **Recommended Development Tools**:
-    - **VS Code** with the Deno extension.
-    - **IntelliJ IDEA** with the Deno plugin.
-    - **Deno CLI**.
-- **Build Configuration**:
-    - Use `deno.json` to configure Deno settings, like import maps, linting rules, and formatting options. Example:
-
-    json
-    {
-      "imports": {
-        "*": "./src/",
-        "std/": "https://deno.land/std@0.224.0/"
-      },
-      "lint": {
-        "rules": {
-          "no-explicit-any": true
-        }
-      },
-      "fmt": {
-        "lineWidth": 120,
-        "indentWidth": 2
-      },
-      "compilerOptions": {
-          "jsx": "react-jsx",
-          "jsxImportSource": "react"
-      }
+```json title="deno.json"
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["deno.window", "deno.unstable"],
+    "strict": true,
+    "checkJs": true,
+    "jsx": "react-jsx"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
     }
-    
-- **Linting and Formatting**:
-    - Use `deno lint` to check for code style and potential errors. Configure linting rules in `deno.json`.
-    - Use `deno fmt` to format code according to the configured style. Configure formatting options in `deno.json`.
-    - Integrate linting and formatting into your workflow using pre-commit hooks or CI/CD pipelines.
-- **Deployment**:
-    - **Deno Deploy**: For easy serverless hosting of Deno applications.  Requires no configuration files to start.
-    - **Docker**:  Containerize your Deno app for consistent deployments.
-    - **Cloud Providers**: Deploy to AWS, Google Cloud, or Azure using standard deployment methods.
-- **CI/CD Integration**:
-    - Use GitHub Actions, GitLab CI, or other CI/CD platforms to automate testing, linting, formatting, and deployment.
-    - Configure CI/CD pipelines to run tests on every commit or pull request.
-    - Automate deployments to production environments.
+  },
+  "fmt": {
+    "options": {
+      "useTabs": false,
+      "lineWidth": 100,
+      "indentWidth": 2,
+      "singleQuote": true
+    }
+  },
+  "imports": {
+    "std/": "https://deno.land/std@0.224.0/",
+    "oak": "jsr:@oak/oak@16"
+  },
+  "tasks": {
+    "dev": "deno run --allow-net --watch main.ts",
+    "test": "deno test --allow-read",
+    "start": "deno run --allow-net main.ts"
+  }
+}
+```
 
-## Additional Best Practices
+### ❌ BAD: Fragmented Configuration
 
-- **Use Underscores in Filenames**: Use `file_server.ts` instead of `file-server.ts`.
-- **Write Tests for New Features**: Each module should contain or be accompanied by tests for its public functionality.
-- **TODO Comments**: TODO comments should include an issue or the author's GitHub username in parentheses. Example: `// TODO(ry): Add tests.`
-- **Be Explicit**: Be explicit, even when it means more code.
-- **Inclusive Code**: Follow the guidelines for inclusive code.
-- **Minimize Dependencies**: Do not make circular imports.
-- **JSDoc**: Provide excellent JSDoc coverage for all exported symbols.
-- **Resolve Linting Problems**: Use `// deno-lint-ignore <rule>` to suppress warnings when necessary, but use sparingly.
-- **Test Module**: Every module with public functionality `foo.ts` should have a test module `foo_test.ts`.
-- **Explicit Unit Tests**: Name unit tests clearly.
-- **Top-Level Functions**: Use the `function` keyword for top-level functions, not arrow syntax.
-- **std Library**: Do not depend on external code in the standard library.
-- **Browser Compatibility**: Document and maintain browser compatibility where appropriate.
-- **Prefer `#` over `private`**:  Prefer `#` (private class fields) over the `private` keyword.
-- **Naming Conventions**: Use camelCase, PascalCase, and UPPER_SNAKE_CASE consistently for variables, functions, classes, types, and constants.
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "strict": true
+  }
+}
+```
 
-By adhering to these best practices, you can create maintainable, efficient, and secure Deno applications.
+```json title="package.json"
+{
+  "scripts": {
+    "dev": "deno run --allow-net --watch main.ts"
+  }
+}
+```
+
+## 2. Module Organization: ES Modules & Explicit Imports
+
+Deno embraces ES modules and URL-based dependencies. Always use explicit file extensions and prefer JSR or `deno.land/x` for external modules.
+
+### 2.1. Explicit URL Imports
+
+Import directly from URLs or use `deno.json`'s `imports` map for cleaner paths.
+
+### ✅ GOOD: URL Imports with Import Map
+
+```typescript title="main.ts"
+import { serve } from "std/http/server.ts"; // Uses import map
+import { Application } from "oak"; // Uses import map
+
+const app = new Application();
+app.listen({ port: 8000 });
+console.log("Server running on http://localhost:8000");
+```
+
+### ❌ BAD: Missing Extensions or Node.js-style Imports
+
+```typescript title="main.ts"
+import { serve } from "https://deno.land/std/http/server"; // Missing .ts extension
+import { Application } from "@oak/oak"; // Bare specifier without import map or npm:
+```
+
+### 2.2. Entry Point: `mod.ts`
+
+For libraries or main application entry points, name the primary module `mod.ts`.
+
+### ✅ GOOD: `mod.ts` as Entry
+
+```typescript title="mod.ts"
+export * from "./src/utils.ts";
+export * from "./src/server.ts";
+```
+
+### ❌ BAD: `index.ts` for Deno-first projects
+
+```typescript title="index.ts"
+export * from "./src/utils.ts";
+```
+
+## 3. Security: Explicit Permissions
+
+Deno is secure by default. Always declare necessary permissions explicitly using `--allow-*` flags. Grant the *minimal* required permissions.
+
+### ✅ GOOD: Minimal Permissions
+
+```bash
+deno run --allow-net=:8080 --allow-read=. main.ts
+```
+
+### ❌ BAD: Overly Permissive or Missing Permissions
+
+```bash
+deno run --allow-all main.ts # Too broad
+deno run main.ts # Will fail if network/file access is needed
+```
+
+## 4. Standard Library Preference
+
+Leverage Deno's built-in standard library (`deno_std`) for common tasks like HTTP, file system, and testing. This reduces external dependencies and maintains consistency.
+
+### ✅ GOOD: Using `deno_std`
+
+```typescript title="file_reader.ts"
+import { readAll } from "std/io/read_all.ts";
+
+async function readFileContents(filePath: string): Promise<string> {
+  const file = await Deno.open(filePath);
+  const contents = await readAll(file);
+  Deno.close(file.rid);
+  return new TextDecoder().decode(contents);
+}
+```
+
+### ❌ BAD: Relying on Third-Party for Basic Functionality
+
+```typescript title="file_reader.ts"
+// Assuming a third-party 'fs-extra' equivalent exists
+import { readFile } from "https://deno.land/x/fs_extra/mod.ts";
+
+async function readFileContents(filePath: string): Promise<string> {
+  return await readFile(filePath, { encoding: "utf8" });
+}
+```
+
+## 5. Type Safety: TypeScript First
+
+Write code in TypeScript (`.ts` or `.tsx`). For JavaScript files, enable type checking with `@ts-check` and use JSDoc for type annotations. Ensure `strict: true` is set in `deno.json`.
+
+### ✅ GOOD: TypeScript with Strict Checks
+
+```typescript title="user.ts"
+interface User {
+  id: string;
+  name: string;
+  email?: string; // Optional property
+}
+
+function getUserName(user: User): string {
+  return user.name;
+}
+```
+
+### ✅ GOOD: JSDoc for JavaScript
+
+```javascript title="utils.js"
+// @ts-check
+
+/**
+ * @typedef {object} Product
+ * @property {string} id
+ * @property {string} name
+ * @property {number} price
+ */
+
+/**
+ * Calculates the total price of products.
+ * @param {Product[]} products - List of products.
+ * @returns {number} The total price.
+ */
+function calculateTotalPrice(products) {
+  return products.reduce((total, p) => total + p.price, 0);
+}
+```
+
+### ❌ BAD: Untyped JavaScript or Relaxed TypeScript
+
+```javascript title="user.js"
+// No @ts-check, no JSDoc
+function getUserName(user) {
+  return user.name;
+}
+```
+
+## 6. Asynchronous Operations: Top-Level `await`
+
+Embrace top-level `await` for cleaner asynchronous code, especially in entry files. Always `await` promises explicitly.
+
+### ✅ GOOD: Top-Level `await`
+
+```typescript title="main.ts"
+import { serve } from "std/http/server.ts";
+
+const handler = (req: Request): Response => {
+  return new Response("Hello from Deno!");
+};
+
+console.log("Server starting...");
+await serve(handler, { port: 8000 });
+console.log("Server stopped.");
+```
+
+### ❌ BAD: IIFEs or Unhandled Promises
+
+```typescript title="main.ts"
+import { serve } from "std/http/server.ts";
+
+const handler = (req: Request): Response => {
+  return new Response("Hello from Deno!");
+};
+
+(async () => { // Unnecessary IIFE
+  console.log("Server starting...");
+  serve(handler, { port: 8000 }); // Unawaited promise
+  console.log("Server stopped."); // Will log immediately
+})();
+```
+
+## 7. Testing: Built-in `deno test`
+
+Use Deno's built-in test runner (`deno test`) and `deno_std/assert` for writing unit and integration tests. Organize tests in `_test.ts` or `_test.js` files.
+
+### ✅ GOOD: Idiomatic Deno Testing
+
+```typescript title="math_test.ts"
+import { assertEquals } from "std/assert/assert_equals.ts";
+import { add } from "./math.ts";
+
+Deno.test("add function sums two numbers correctly", () => {
+  assertEquals(add(1, 2), 3);
+  assertEquals(add(-1, 1), 0);
+  assertEquals(add(0, 0), 0);
+});
+```
+
+```typescript title="math.ts"
+export function add(a: number, b: number): number {
+  return a + b;
+}
+```
+
+### ❌ BAD: Third-Party Test Runners or Inconsistent Naming
+
+```typescript title="test.ts"
+// Using a third-party test runner not integrated with Deno's ecosystem
+import { describe, it, expect } from "https://deno.land/x/some_test_lib/mod.ts";
+import { add } from "./math.ts";
+
+describe("add", () => {
+  it("should sum numbers", () => {
+    expect(add(1, 2)).toBe(3);
+  });
+});
+```
