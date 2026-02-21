@@ -688,6 +688,18 @@
       ]
     },
     {
+      "name": "flutter-cursor-plugin",
+      "tags": [
+        "cursor",
+        "plugin",
+        "flutter",
+        "dart",
+        "mobile",
+        "mcp",
+        "rules"
+      ]
+    },
+    {
       "name": "fontawesome",
       "tags": [
         "icons",
