@@ -133,6 +133,10 @@ The script uses a `config.yaml` file for configuration. You can modify this file
 └── LICENSE               # MIT License
 ```
 
+## Related Tools
+
+- [LynxPrompt](https://github.com/GeiserX/LynxPrompt) - Self-hostable platform for managing AI IDE configuration files including Cursor MDC rules. Generates, syncs, and shares `.cursorrules` and `.mdc` files across 30+ AI coding assistants via web UI, REST API, CLI, and federated blueprint marketplace. ([Website](https://lynxprompt.com)) `GPL-3.0`
+
 ## License
 
 [MIT License](LICENSE)
