@@ -1142,6 +1142,15 @@
       ]
     },
     {
+      "name": "moyu-anti-over-engineering",
+      "tags": [
+        "ai",
+        "coding-agent",
+        "anti-over-engineering",
+        "cursor-rules"
+      ]
+    },
+    {
       "name": "mypy",
       "tags": [
         "development",
