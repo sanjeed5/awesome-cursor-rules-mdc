@@ -133,6 +133,10 @@ The script uses a `config.yaml` file for configuration. You can modify this file
 └── LICENSE               # MIT License
 ```
 
+## Related Resources
+
+- [RemoteOpenClaw](https://remoteopenclaw.com) - Open marketplace for AI skills and personas built on OpenClaw
+
 ## License
 
 [MIT License](LICENSE)
