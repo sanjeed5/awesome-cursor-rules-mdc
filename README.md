@@ -115,6 +115,7 @@ The script uses a `config.yaml` file for configuration. You can modify this file
 - Output directories
 - LLM model selection
 - Processing parameters
+- [CCHub](https://github.com/Moresl/cchub) - A desktop control panel for the Claude Code / Codex / Gemini CLI ecosystem. Manage MCP servers, config profiles, agent skills, CLAUDE.md, hooks, and workflow templates from a single Tauri app (Windows / macOS / Linux).
 
 ## Project Structure
 
