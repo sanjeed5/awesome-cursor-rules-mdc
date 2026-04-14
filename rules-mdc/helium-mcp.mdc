@@ -1,0 +1,73 @@
+---
+description: Practical guidance for using the Helium MCP server in Cursor for news discovery, balanced coverage, media bias signals, market data, options pricing, historical options, and meme search while respecting free-tier limits.
+globs: **/*
+---
+# Helium MCP Best Practices
+
+[Helium MCP](https://github.com/connerlambden/helium-mcp) is a **remote** Model Context Protocol server focused on **news**, **bias analysis**, **markets**, and **options**. Use it when research should be grounded in current headlines, outlet lean, ticker context, or derivatives pricing rather than only model priors.
+
+**Endpoints:** server URL `https://heliumtrades.com/mcp` — configure as a remote MCP server in Cursor (see your Cursor MCP docs for the exact `mcp.json` / settings shape for HTTP/SSE servers).
+
+**Free tier:** about **50 queries** with **no API key** required. Treat every tool call as spending quota: batch reasoning, avoid redundant follow-ups, and prefer the narrowest tool for the job.
+
+## 1. When to Use Which Tool
+
+Pick **one** tool per user-visible sub-question when possible; compose in code or notes, not in a chain of duplicate searches.
+
+| Tool | Use it for |
+|------|----------------|
+| `search_news` | General headlines and articles on a topic or keyword. |
+| `search_balanced_news` | Same topic with **multiple perspectives** (pair with bias tools when interpreting). |
+| `get_source_bias` | Bias / lean metadata for a **named** news source or domain you already know. |
+| `get_bias_from_url` | Bias signal for a **specific article URL** the user supplied. |
+| `get_all_source_biases` | **Directory-style** scan of many sources (heavier); use sparingly on free tier. |
+| `get_ticker` | Equity / instrument context (symbol-level market snapshot style data from the server). |
+| `get_option_price` | Live or server-side **options pricing** for a contract or strategy input the tool accepts. |
+| `get_top_trading_strategies` | Curated or ranked **strategy ideas** from Helium’s dataset (not personal investment advice). |
+| `get_historical_options_data` | **Historical** chains or prints where backtests or past regime context matter. |
+| `search_memes` | **Meme** or social-style content search when the task explicitly needs that corpus. |
+
+**Guidance:** start with `search_news` or `search_balanced_news`, then use `get_bias_from_url` on 1–3 high-value links. Use `get_ticker` before options tools if the underlying symbol is ambiguous.
+
+## 2. Connection and Configuration
+
+- Prefer the **official** server URL `https://heliumtrades.com/mcp` and the **official repo** `https://github.com/connerlambden/helium-mcp` for issue reports and upstream changes.
+- Do **not** hardcode secrets for the free tier; there are none. If you add a paid tier later, read tokens from environment or Cursor secret storage only.
+
+**Anti-pattern:** pointing a fork or random mirror “because it was in a blog post” — you lose updates and may leak data.
+
+## 3. Quota and Cost Discipline
+
+- **Budget calls:** before invoking, decide whether the user needs **raw articles**, **bias labels**, **market snapshot**, or **options math** — each may be a separate tool.
+- **Deduplicate:** if `search_balanced_news` already returns outlets, skip `search_news` on the same query unless you need volume.
+- **Heavy tools:** `get_all_source_biases` and broad historical pulls can burn the **50-query** budget quickly; default to targeted `get_source_bias` / `get_bias_from_url`.
+
+## 4. Interpreting Bias and News
+
+- Bias scores are **signals**, not verdicts on truth. Pair with `search_balanced_news` and primary sources.
+- When summarizing, **attribute** outlets and link to originals when URLs are available.
+- Do not present model speculation as if it were Helium data; cite tool outputs explicitly.
+
+## 5. Markets and Options
+
+- Use `get_ticker` for **context** (symbol validation, regime) before `get_option_price` or `get_historical_options_data`.
+- Options and strategy outputs are **informational**; they are not individualized investment, tax, or legal advice.
+- Prefer explicit expiries/strikes when the tool schema allows — vague natural language wastes round-trips.
+
+## 6. Meme Search
+
+- Use `search_memes` only when memes or short-form social artifacts are **in scope**; do not default to it for serious news-only tasks.
+
+## 7. Error Handling and Fallbacks
+
+- On rate limit or empty results, **narrow** the query (time window, geography, single outlet) before switching tools.
+- If the MCP is unreachable, state that clearly and fall back to user-provided URLs or other approved data sources — do not fabricate Helium-like metrics.
+
+## 8. Agent and Rule Files in This Repo
+
+When adding or editing project rules that mention Helium:
+
+- Keep **tool names** exactly as listed above so Cursor and automations can grep them reliably.
+- Document the **free tier** limit wherever agents might loop (e.g. “max N Helium calls per task”).
+
+Following these practices keeps Helium MCP useful, **quota-safe**, and aligned with how the upstream server is intended to be used.
