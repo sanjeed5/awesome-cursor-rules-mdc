@@ -815,6 +815,17 @@
       ]
     },
     {
+      "name": "helium-mcp",
+      "tags": [
+        "mcp",
+        "ai",
+        "news",
+        "finance",
+        "options",
+        "api"
+      ]
+    },
+    {
       "name": "heroku",
       "tags": [
         "cloud",
