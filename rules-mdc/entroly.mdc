@@ -1,0 +1,116 @@
+---
+description: Best practices and definitive guidelines for using the Entroly Context Engineering Engine & Proxy to reduce LLM costs and manage sliding-window context hygiene.
+globs: **/entroly/**/*.py, **/entroly/**/*.rs, **/entroly-wasm/**/*.js, **/entroly/**/*.ts, **/entroly-dashboard/**/*.tsx
+---
+# Entroly Context Optimization & Proxy Best Practices
+
+Entroly is an information-theoretic context engineering and optimization engine that achieves 70–95% context compression with zero accuracy loss using greedy submodular knapsack maximization. Follow these definitive guidelines for integrating, coding, and configuring Entroly across Python, Rust, and WASM/JS environments.
+
+## 1. Code Integration & Core API
+
+When integrating the Entroly SDK into applications, use the highly optimized high-level entry points: `compress` and `compress_messages`. Always define a token budget and target format (e.g., `code`, `json`, `logs`, or `prose`).
+
+### ✅ GOOD: Declarative Budget & Structured Compression
+
+```python
+from entroly import compress, compress_messages
+
+# Compress complex unstructured logs or raw source code to fit a budget
+raw_content = read_large_log_file("server.log")
+compressed_content = compress(
+    content=raw_content,
+    budget=2000,           # Strict token budget
+    format_hint="logs"     # Helps select optimal scoring strategy
+)
+
+# Compress full multi-turn conversation lists (preserves system and recent prompts)
+messages = [
+    {"role": "system", "content": "You are a senior system architect."},
+    {"role": "user", "content": "Analyze the codebase... [100k tokens of code]"},
+    {"role": "assistant", "content": "Understood. The main architecture is..."},
+    {"role": "user", "content": "Now show me the database schema and queries."}
+]
+
+compressed_messages = compress_messages(
+    messages=messages,
+    budget=8000,
+    keep_system=True,      # Protect the system instructions from compression
+    keep_recent_n=2        # Keep last 2 turns fully uncompressed
+)
+```
+
+### ❌ BAD: Manual Truncation or Slicing
+
+```python
+# Avoid slicing or character-based truncation — it loses critical semantic structure
+# and results in parsing errors for JSON, prose, or code ASTs.
+truncated = raw_content[:4000] # BAD: Cuts middle of functions or JSON structures
+```
+
+## 2. Proxy Configurations & Daemon Control
+
+For zero-code integrations, spin up the Entroly optimization proxy and wrap client tools using the CLI daemon.
+
+### Standard Commands
+
+```bash
+# Start the local context optimization proxy
+entroly proxy --port 9377 --host 127.0.0.1
+
+# Wrap existing agent cli sessions to automatically intercept & optimize request payloads
+entroly wrap "claude-code"
+
+# Start the dashboard observer to monitor and visualize live context savings
+entroly dashboard --port 3000
+```
+
+## 3. Submodular Knapsack Optimization
+
+Under the hood, Entroly solves:
+$$\max \{ F(S) : \sum_{i \in S} c_i \le B \}$$
+where $F(S)$ is the submodular marginal information gain and $c_i$ is the cost (token count) of item $i$ under budget $B$.
+
+When writing custom custom scoring functions or heuristic adapters, ensure you maintain submodularity:
+1. **Marginal Diminishing Returns:** Adding an element to a smaller subset must yield a greater or equal gain than adding it to a larger subset:
+   $$F(A \cup \{x\}) - F(A) \ge F(B \cup \{x\}) - F(B) \quad \text{for } A \subseteq B$$
+2. **Normalized Costs:** Ensure cost metrics use exact tokenizer counts (e.g., Tiktoken or Llama tokenizer) rather than simple whitespace/string length calculations.
+
+## 4. MCP Server & Tooling Integration
+
+Configure the Entroly MCP Server to act as an intelligent gateway for coding agents. Ensure the read/write channels pass through clean adapters.
+
+### JSON-RPC Channel Pattern
+
+```typescript
+// Always sanitize and collapse repetitive AST / search results
+import { compress } from "entroly-wasm";
+
+async function handleMcpToolCall(toolName: string, args: any) {
+  const rawResult = await executeTool(toolName, args);
+  
+  // Compact state if output exceeds safe boundaries
+  if (rawResult.length > 4000) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: compress(rawResult, { budget: 1000, format: "code" })
+        }
+      ]
+    };
+  }
+  return { content: [{ type: "text", text: rawResult }] };
+}
+```
+
+## 5. Performance Diagnostics & Wilson Confidence Intervals
+
+When benchmarking Entroly’s performance or validating accuracy retention, use Wilson score intervals rather than simple Wald intervals for high-precision validation metrics.
+
+### Verification Formula
+
+$$\hat{p} \pm z \sqrt{\frac{\hat{p}(1-\hat{p})}{n}}$$
+For small datasets or extreme probabilities (near 0 or 1), use:
+$$\frac{\hat{p} + \frac{z^2}{2n}}{1 + \frac{z^2}{n}} \pm \frac{z}{1 + \frac{z^2}{n}} \sqrt{\frac{\hat{p}(1-\hat{p})}{n} + \frac{z^2}{4n^2}}$$
+
+Ensure all dashboard telemetry charts present the upper and lower confidence bounds to give users verifiable proof of Entroly's non-destructive compression logic.
