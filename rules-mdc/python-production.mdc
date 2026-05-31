@@ -1,0 +1,15 @@
+---
+description: Python production rules for backend services
+globs: **/*.py, !**/migrations/**, !**/__pycache__/**
+alwaysApply: true
+---
+
+# Python Production Rules
+
+- Every function signature must include type hints for all parameters and return type.
+- Never use bare except: or except Exception: without re-raising or logging.
+- Use Pydantic BaseModel for data crossing API boundaries. Use @dataclass for internal structures.
+- Pass dependencies as function parameters. Never read from global variables in business logic.
+- Always use pathlib.Path. Use / operator for path joining.
+- Never time.sleep() in async context. Use asyncio.sleep().
+- Validate all env vars at startup. Never os.environ.get("FOO") with silent default in business logic.
