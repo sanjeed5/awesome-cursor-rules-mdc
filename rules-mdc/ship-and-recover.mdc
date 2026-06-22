@@ -1,0 +1,26 @@
+---
+description: Deploy discipline and production incident recovery. Enforces test > build > deploy > verify-live and follows the incident response playbook when prod breaks. Part of operating-kit (https://github.com/Sharrmavishal/operating-kit).
+globs: .github/workflows/**,**/Dockerfile*,**/docker-compose*.yml,**/Makefile,**/deploy*.sh,**/release*.sh
+alwaysApply: false
+---
+
+# Ship & recover (apply when deploying or when prod breaks)
+
+**Deploying:** test > build > deploy > **verify-live**. Confirm the live system actually
+reflects what you shipped (version/health endpoint, real behavior). "The deploy command
+exited 0" is not "it's live and serving the new code". Run a review pass before shipping.
+
+**Production incident — follow this order:**
+stabilize (stop the bleeding) > confirm the recovery point and state it > recover one change at
+a time > verify live > root-cause calmly > ship the **mechanical** fix (a gate, not a promise)
+> one-paragraph postmortem. A panicked fix-forward is what causes incident #2.
+
+**Silent deploy failures to check before shipping:**
+- A deploy that exits 0 while the platform keeps serving the previous revision (health check failed, build held back).
+- A staged rollout confirming the canary, not the full fleet.
+- A green deploy of an image that crash-loops on first real request.
+
+Anything touching crash paths, data, schema, auth, billing, or prod state is a
+pause-and-propose gate.
+
+Full incident response playbook: [incident-response.md](https://github.com/Sharrmavishal/operating-kit/blob/main/docs/claude/incident-response.md)

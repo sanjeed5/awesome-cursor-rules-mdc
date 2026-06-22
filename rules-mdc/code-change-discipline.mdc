@@ -1,0 +1,19 @@
+---
+description: Code-change discipline: re-read the whole function before editing, treat bugs as hypotheses, stop and consolidate after 3 edits to one file, scan field-notes before deploying. Auto-attached when editing code. Part of operating-kit (https://github.com/Sharrmavishal/operating-kit).
+globs: **/*.{ts,tsx,js,jsx,py,go,rb,rs,java,kt,php,c,h,cpp,cs,swift,scala,sql}
+alwaysApply: false
+---
+
+# Code-change discipline (auto-attached when editing code)
+
+Before any non-trivial edit:
+- Re-read the **whole function** before each edit (state from a prior edit invalidates assumptions).
+- Treat any reported bug as a **hypothesis**: read the code and write a verdict before fixing.
+- **3 edits to one file = STOP**: consolidate into one fix and state the invariant it preserves.
+- Trace every write to every reader before changing a field's semantics.
+
+Before deploying, migrating, gating a feature, or trusting a build artifact, scan the
+[field-notes](https://github.com/Sharrmavishal/operating-kit/blob/main/docs/claude/field-notes.md)
+for the failure modes that pass every local test and surface in production.
+
+> Tune the `globs` above to this project's actual source directories and file extensions.
