@@ -136,3 +136,7 @@ The script uses a `config.yaml` file for configuration. You can modify this file
 ## License
 
 [MIT License](LICENSE)
+
+## Directories
+
+- [OpenRuna Cursor rules & skills](https://www.openruna.com/best/cursor-rules-examples) — Searchable catalog of Cursor rules, SKILL.md packs, and workflow integrations.
