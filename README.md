@@ -136,3 +136,5 @@ The script uses a `config.yaml` file for configuration. You can modify this file
 ## License
 
 [MIT License](LICENSE)
+
+- [Skill Hub](https://skill.442595.xyz/) - AI Agent Skills 分类导航站，2600+ skills，多平台兼容
