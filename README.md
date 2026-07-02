@@ -133,6 +133,8 @@ The script uses a `config.yaml` file for configuration. You can modify this file
 └── LICENSE               # MIT License
 ```
 
+- [Skill Hub](https://skill.442595.xyz/) — 5800+ curated AI Agent Skills for Claude Code, Codex, Cursor, Hermes & more across 22 categories.
+
 ## License
 
 [MIT License](LICENSE)
