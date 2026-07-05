@@ -136,3 +136,5 @@ The script uses a `config.yaml` file for configuration. You can modify this file
 ## License
 
 [MIT License](LICENSE)
+
+- [Context Kit](https://github.com/JDDavenport/context-kit) — 4 PCA templates (wiki, mental-models, voice, protocols) + 5 Claude Code skills. MIT.
