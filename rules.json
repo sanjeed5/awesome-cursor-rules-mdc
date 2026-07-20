@@ -815,6 +815,16 @@
       ]
     },
     {
+      "name": "hermes-tweet",
+      "tags": [
+        "ai",
+        "automation",
+        "python",
+        "social-media",
+        "twitter"
+      ]
+    },
+    {
       "name": "heroku",
       "tags": [
         "cloud",

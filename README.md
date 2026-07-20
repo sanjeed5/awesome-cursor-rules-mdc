@@ -54,7 +54,8 @@ Run the generator script with:
 uv run src/generate_mdc_files.py
 ```
 
-By default, the script will only process libraries that failed in previous runs.
+By default, the script processes new libraries and retries libraries that failed
+in previous runs.
 
 ### Command-line Options
 
@@ -109,7 +110,8 @@ Adding support for new libraries is simple:
 
 ## Configuration
 
-The script uses a `config.yaml` file for configuration. You can modify this file to adjust:
+The script uses `src/config.yaml` for configuration. You can modify this file to
+adjust:
 
 - API rate limits
 - Output directories
