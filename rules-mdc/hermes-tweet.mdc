@@ -1,0 +1,132 @@
+---
+description: Definitive guidelines for using Hermes Tweet as the Hermes Agent X/Twitter plugin, with read-first workflows, environment-based credentials, and explicit action gating.
+globs: **/*
+---
+# Hermes Tweet Best Practices
+
+Hermes Tweet is the native Hermes Agent plugin for X/Twitter automation through
+Xquik. Use these rules when adding Hermes Tweet to agent workflows, writing
+integration docs, or debugging Hermes tool availability.
+
+## 1. Install and Enable the Hermes Plugin
+
+Install Hermes Tweet through the Hermes plugin installer so Hermes can discover
+the package entry point, bundled skill, command registry, and toolset.
+
+❌ BAD: Treating Hermes Tweet like a generic Python helper
+```bash
+pip install hermes-tweet
+# Then assuming Hermes will expose tools automatically
+```
+
+✅ GOOD: Install and enable through Hermes
+```bash
+hermes plugins install Xquik-dev/hermes-tweet --enable
+hermes plugins list
+```
+
+If installing the published package into an existing Hermes environment, install
+into the Hermes Python environment and then enable the plugin:
+
+```bash
+uv pip install --python ~/.hermes/hermes-agent/venv/bin/python hermes-tweet
+hermes plugins enable hermes-tweet
+```
+
+## 2. Keep Credentials in the Runtime Environment
+
+Hermes Tweet reads authentication from the Hermes runtime environment. Never put
+API keys in prompts, generated code snippets, Cursor rules, test fixtures, issue
+bodies, or tool arguments.
+
+❌ BAD: Passing credentials through chat or code
+```python
+tool_args = {
+    "path": "/api/v1/trends",
+    "api_key": "xq_example_key"
+}
+```
+
+✅ GOOD: Use environment variables
+```bash
+export XQUIK_API_KEY="xq_..."
+export XQUIK_BASE_URL="https://xquik.com"
+```
+
+For Hermes sessions that read `~/.hermes/.env`, reload or restart active Hermes
+CLI, gateway, or cron sessions after changing environment values.
+
+## 3. Use the Read-First Tool Flow
+
+Always start with `tweet_explore`. It searches the bundled endpoint catalog
+without making a network call and helps select a catalog-listed route.
+
+✅ GOOD: Explore, then read
+```text
+1. Use tweet_explore to find search, user, trend, monitor, radar, draw, or media routes.
+2. Use tweet_read for catalog-listed read-only endpoints.
+3. Summarize findings before proposing any account-changing action.
+```
+
+❌ BAD: Guessing endpoint paths or skipping catalog discovery
+```text
+Call tweet_action with whatever /api/v1 path looks right.
+```
+
+## 4. Gate Account-Changing Actions Explicitly
+
+`tweet_action` is for private or write-like routes. It should be unavailable
+unless the operator intentionally sets:
+
+```bash
+export HERMES_TWEET_ENABLE_ACTIONS="true"
+```
+
+Use `tweet_action` only for explicitly approved posting, replies, likes,
+retweets, follows, DMs, monitors, webhooks, media, draws, or other
+account-changing workflows.
+
+❌ BAD: Enabling actions for passive research
+```bash
+export HERMES_TWEET_ENABLE_ACTIONS="true"
+# Running trend research or public account checks
+```
+
+✅ GOOD: Dedicated operator session for actions
+```text
+Keep actions disabled for monitoring and research.
+Enable actions only in a reviewed session that needs a specific account change.
+```
+
+## 5. Troubleshoot Missing Tools by Capability Layer
+
+If Hermes shows only `tweet_explore`, the plugin is loaded but authenticated
+reads are gated by missing `XQUIK_API_KEY`.
+
+If Hermes shows no Hermes Tweet tools:
+
+1. Run `hermes plugins list`.
+2. Confirm `hermes-tweet` is installed and enabled.
+3. Confirm the package was installed into the Hermes runtime environment.
+4. Reload or restart Hermes after environment changes.
+
+If `tweet_action` is missing but reads work:
+
+1. Confirm the workflow really needs an account-changing operation.
+2. Set `HERMES_TWEET_ENABLE_ACTIONS=true` only for the approved session.
+3. Restart or reload the Hermes runtime.
+
+## 6. Preserve the Hermes-Native Boundary
+
+Use Hermes Tweet for Hermes Agent workflows. Do not replace it with unrelated
+X/Twitter libraries when the task needs Hermes tool discovery, Hermes plugin
+enablement, bundled skills, slash commands, or read/action gating.
+
+Reference the source project for current compatibility and install details:
+
+- `https://github.com/Xquik-dev/hermes-tweet#readme`
+- `https://github.com/Xquik-dev/hermes-tweet/blob/master/.claude-plugin/plugin.json`
+
+Hermes Tweet is MIT-licensed plugin code. The Xquik service is closed source.
+Xquik is an independent third-party service. Not affiliated with X Corp.
+"Twitter" and "X" are trademarks of X Corp.
