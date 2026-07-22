@@ -1,6 +1,6 @@
 ---
 description: Ground product UI in reference evidence, write a design contract, implement required states, and reject generic interface patterns before shipping.
-globs: **/*.{tsx,jsx,vue,svelte,astro,html,css,scss,swift}
+globs: **/*.{js,jsx,ts,tsx,vue,svelte,astro,html,css,scss,swift}
 ---
 # UI Finish Gate
 
@@ -38,7 +38,7 @@ Before implementation, write a compact contract containing:
 2. **Hierarchy:** what must be understood first, second, and third.
 3. **Primary action:** the one action that advances the screen job.
 4. **Product evidence:** existing tokens, components, copy style, and reference decisions to reuse.
-5. **Required states:** loading, empty, partial data, error, success, disabled, and permission-limited states that apply.
+5. **Required states:** loading, empty, partial data, error, success, disabled, and restricted states that apply.
 6. **Responsive behavior:** what reflows, collapses, scrolls, stays fixed, or changes priority.
 7. **Forbidden defaults:** generic patterns that would make this screen interchangeable with an unrelated product.
 8. **Proof:** rendered views and interaction checks required before completion.
@@ -82,6 +82,7 @@ Create a state matrix before declaring the UI complete:
 | Error | Failed operation | Specific, non-destructive message | Retry, correction, or support path |
 | Partial | Some data unavailable | Preserves usable content and marks uncertainty | Refresh or inspect details |
 | Success | Completed action | Confirms the concrete result | Logical next step, undo, or return |
+| Disabled | Control is unavailable in the current state | Explains why the action cannot be used | Complete the prerequisite or choose an allowed path |
 | Restricted | Permission or plan boundary | Explains the unavailable action honestly | Request access or choose an allowed path |
 
 Remove rows that cannot occur. Add domain-specific states that can.
@@ -93,7 +94,7 @@ Inspect the real interface, not only source code:
 - narrow mobile, intermediate, and wide desktop widths;
 - keyboard navigation, visible focus, labels, contrast, and reduced motion;
 - long labels, localized text, large numbers, missing images, and dense data;
-- loading, empty, error, success, and restricted states;
+- loading, empty, partial, error, success, disabled, and restricted states;
 - every visible control, including cancel, retry, close, back, and destructive actions;
 - overflow, sticky regions, dialogs, menus, and scroll restoration.
 
