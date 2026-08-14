@@ -8,6 +8,8 @@ This project generates Cursor MDC (Markdown Cursor) rule files from a structured
 
 ## Features
 
+- [Clickyy](https://github.com/jayamitkatariya/clickyyy) - Shake your cursor to summon an AI agent that sees your screen and clicks, types, drags, and acts for you on macOS. Open-source, MIT.
+
 - Generates comprehensive MDC rule files for libraries
 - Uses Exa for semantic web search to gather best practices
 - Leverages LLM to create detailed, structured content
