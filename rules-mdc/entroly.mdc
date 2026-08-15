@@ -1,0 +1,33 @@
+---
+description: Evidence-bounded guidance for using Entroly context selection, recovery, receipts, and verification.
+globs: **/entroly/**/*.py, **/entroly/**/*.rs, **/entroly/**/*.ts, **/entroly/**/*.tsx
+---
+# Entroly context workflow
+
+Use Entroly when a task has more candidate context than the model budget can safely hold.
+
+## Measure before routing
+
+- Run `uvx --from entroly entroly verify-claims --max-files 30` to check the installed package and local recovery path.
+- Run `entroly simulate` on representative work before connecting a paid provider.
+- Report the workload, budget, Entroly version, and measured result. Never present one reduction percentage as universal.
+
+## Preserve evidence
+
+- Set an explicit token budget for every selection operation.
+- Keep the Context Receipt with the model request so selected and omitted evidence remains auditable.
+- Treat exact recovery as a source-reconstruction guarantee, not a guarantee that every model answer is correct.
+- Recover omitted spans by their content-addressed handles instead of guessing missing text.
+
+## Integrate conservatively
+
+- Start with Entroly's MCP tools or CLI in a disposable project.
+- Keep provider credentials outside prompts, receipts, logs, and committed configuration.
+- Compare raw and selected-context answers on task-specific quality checks before enabling proxy routing.
+- Keep telemetry disabled unless the user explicitly opts in; inspect local evidence with `entroly value` and `entroly dashboard`.
+
+## Failure behavior
+
+- If verification or recovery fails, retain the original context and surface the error.
+- Do not claim provider-billed savings from MCP attachment alone; only provider-bound measurements support that claim.
+- Prefer a larger budget or the original input when answer-critical evidence is uncertain.
