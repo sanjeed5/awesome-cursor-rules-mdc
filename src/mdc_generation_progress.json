@@ -1,6 +1,7 @@
 {
   "aiohttp": "completed",
   "actix-web": "completed",
+  "agent-qa": "completed",
   "amazon-ec2": "completed",
   "amazon-s3": "completed",
   "android-sdk": "completed",

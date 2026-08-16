@@ -9,6 +9,16 @@
       ]
     },
     {
+      "name": "agent-qa",
+      "tags": [
+        "ai",
+        "testing",
+        "quality-assurance",
+        "automation",
+        "mcp"
+      ]
+    },
+    {
       "name": "aiohttp",
       "tags": [
         "web",
