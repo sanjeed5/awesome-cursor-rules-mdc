@@ -1,0 +1,69 @@
+---
+description: Definitive Cursor rules for persistent cross-session AI agent memory, context compaction, and remote MCP retrieval using MemorySync.
+globs: **/*
+---
+# MemorySync Cursor Best Practices
+
+Definitive rules and conventions for integrating persistent agent memory and remote Model Context Protocol (MCP) endpoints in Cursor IDE.
+
+## 1. Remote MCP Configuration
+
+Configure MemorySync endpoints in `.cursor/mcp.json` without local package dependencies:
+
+```json
+{
+  "mcpServers": {
+    "memorysync": {
+      "url": "https://mcp.memorysync.io/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MEMORYSYNC_API_KEY}"
+      }
+    },
+    "memorysync-docs": {
+      "url": "https://docs.memorysync.io/mcp"
+    }
+  }
+}
+```
+
+## 2. Memory Persistence Heuristics
+
+### When to Store Memory (`memory_store` / `save_memory`)
+- Save major architectural decisions (e.g., database schema changes, auth patterns, routing structure).
+- Save developer constraints and non-standard project conventions.
+- Save resolved bug root causes and environment quirks.
+- Γ¥î DO NOT save transient debug logs, terminal dumps, or raw conversation history.
+
+### When to Recall Memory (`memory_recall` / `search_memory`)
+- Query scoped memories before implementing new multi-file features.
+- Query project constraints before modifying existing database models or API contracts.
+- Filter by tags or project IDs to minimize prompt token overhead (97%+ savings vs context dumping).
+
+## 3. Minimal Python Client Pattern
+
+```python
+import os
+import requests
+
+API_URL = "https://api.memorysync.io/v1"
+API_KEY = os.getenv("MEMORYSYNC_API_KEY")
+HEADERS = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
+
+# Store scoped architectural decision
+requests.post(f"{API_URL}/memories", headers=HEADERS, json={
+    "content": "PostgreSQL connection pool max_connections=20 in production",
+    "tags": ["database", "architecture"]
+})
+```
+
+## 4. Anti-Patterns & Compaction
+
+Γ¥î BAD: Dumping raw chat history into prompt context:
+```text
+Here is the entire 120,000-token chat history from yesterday...
+```
+
+Γ£à GOOD: Semantic retrieval with tight scoping:
+```text
+Querying memory for "database connection pooling config" -> 1 relevant fact injected (<150 tokens).
+```
