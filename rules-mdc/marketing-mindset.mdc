@@ -1,0 +1,219 @@
+---
+description: Definitive guidelines for marketing, growth, and client-acquisition decisions, covering evidence freshness, live-competitor benchmarking, pre-declared test volume floors, channel kill rules, positioning, and first-client outreach.
+globs: **/*.{md,mdx,html,tsx,jsx}
+---
+# Marketing Mindset
+
+This guide outlines the definitive best practices for marketing, growth, and client-acquisition work, ensuring that every recommendation is evidence-based, fast to test, and attributable. Adhere to these rules strictly.
+
+## 1. Evidence and Time Horizon
+
+### 1.1 Judge Every Idea on a 3-Month Horizon
+
+**Rule:** Evaluate each marketing idea against a 3-month window. If the idea can only pay off after a year or more, it is not the current move.
+
+**Explanation:** Marketing resources are limited, and the goal is to be useful within months. Anyone proposing a 2-year marketing cycle is not describing a plan that gets tested.
+
+**❌ BAD:** "Publish evergreen content for two years, then the pipeline will compound."
+
+**✅ GOOD:** "Run one channel test this month with a declared budget and a yes/no threshold."
+
+### 1.2 Prefer Evidence From the Last 6 Months
+
+**Rule:** Work from recent, current data. Treat reports, case studies, and remembered best practices older than 6 months as history, not as current market truth.
+
+**Explanation:** Marketing conditions move faster than published doctrine. Stale evidence produces advice that was globally correct and is locally wrong.
+
+**❌ BAD:** Recommending a channel mix from a two-year-old benchmark report.
+
+**✅ GOOD:** Recommending a channel mix after checking what competitors are running right now.
+
+### 1.3 Answer Honestly, Not Agreeably
+
+**Rule:** State the honest answer, including when the request is a bad idea, and give the alternative on the spot.
+
+**Explanation:** Agreeable feedback costs the user a quarter. Marketing is an exchange, so a recommendation with no expected return is a cost, not a favour.
+
+**❌ BAD:** "Great positioning, let's run with it."
+
+**✅ GOOD:** "The positioning does not name an audience that buys. Here is the version that does."
+
+## 2. Competitor Benchmarking
+
+### 2.1 Benchmark Against Competitors Working the Same Audience Now
+
+**Rule:** Compare the product against companies actively reaching the user's exact audience and making money from it today. Do not use old or absent incumbents as the baseline.
+
+**Explanation:** The companies that already walked the path show where the audience actually is. Brand recognition in the press is not evidence of current acquisition.
+
+**❌ BAD:** Benchmarking a new SaaS against a decade-old enterprise vendor with no current demand-generation activity.
+
+**✅ GOOD:** Benchmarking against three recently funded competitors that are visibly acquiring the same buyers.
+
+### 2.2 Weight Company Stage Correctly
+
+**Rule:** Treat young, growing competitors as the most valuable source of hypotheses. For mid-size or old competitors, check whether the company has plateaued before copying anything.
+
+**Explanation:** Small teams run short, recent, copyable moves. A plateaued company can look successful and still teach nothing about growth.
+
+**❌ BAD:** Copying the campaign of a company whose traffic has been flat for two years.
+
+**✅ GOOD:** Copying the campaign of a competitor whose audience is visibly growing now.
+
+### 2.3 Exclude the Advertising-Only Channels
+
+**Rule:** Never treat launch and top-10 lists, reports older than 6 months, or paid influencer posts as market truth. Read them as advertising.
+
+**Explanation:** These channels are where marketers address other marketers. They are useful as inventory, not as evidence.
+
+**❌ BAD:** Concluding a market is saturated because a Product Hunt launch ranked well.
+
+**✅ GOOD:** Verifying demand from the channels where actual buyers are active.
+
+## 3. Test Design and Volume Floors
+
+### 3.1 Pre-Declare the Volume Floor
+
+**Rule:** Before any channel test starts, write down expected volume, cost per result, and the threshold that counts as success.
+
+**Explanation:** Without a declared floor, a small sample is read as a verdict and a real signal is read as noise.
+
+**❌ BAD:** "The ad got 40 impressions and 0 clicks, so the channel is dead."
+
+**✅ GOOD:** "The floor was 1,000 impressions before judging, so this run produced no data yet."
+
+### 3.2 Isolate One Variable
+
+**Rule:** One test changes one variable, runs on the declared budget, and produces a clear yes or no.
+
+**Explanation:** A test that moves several variables at once cannot be attributed, so its budget buys nothing.
+
+**❌ BAD:** Changing audience, creative, and channel in the same run.
+
+**✅ GOOD:** Keeping audience and channel fixed while testing two creatives.
+
+### 3.3 Declare Kill Rules Before Launch
+
+**Rule:** Write the kill rules in advance: cost per client above what a client is worth, floor volume reached with no return, or a channel that cannot be attributed. When a kill rule fires, stop and keep the decision on record.
+
+**Explanation:** Kill rules decided in advance are mechanical, so the channel is cut on evidence instead of on mood.
+
+**❌ BAD:** Keeping a channel alive because it "feels like it is working".
+
+**✅ GOOD:** Stopping a channel the day it crosses the declared cost-per-client ceiling.
+
+### 3.4 Attribute Every Channel
+
+**Rule:** Attribute every channel so the whole program can be read in one report.
+
+**Explanation:** A campaign that cannot be attributed cannot be killed on evidence, only on opinion. An untagged campaign is not connected to its revenue.
+
+**❌ BAD:** Running an untagged link and debating whether the newsletter worked.
+
+**✅ GOOD:** Tagging the channel, the placement, and the campaign before the text ships.
+
+## 4. The First Clients
+
+### 4.1 Win the First Clients by Hand
+
+**Rule:** With zero clients, win the first clients manually: direct messages, cold email, real conversations. Do not propose paid channels or media spend to someone who has not closed by hand yet.
+
+**Explanation:** Manual work is the cheapest way to test whether the market wants the product. Paid channels buy access to an audience that manual outreach proves exists.
+
+**❌ BAD:** Opening a paid acquisition budget before the first paying client.
+
+**✅ GOOD:** Twenty personalised outreach messages this week, tracked in a simple list.
+
+### 4.2 Client #0 Is the Founder
+
+**Rule:** Have the founder use their own product first, then come back and describe what changed.
+
+**Explanation:** Using the product is the cheapest way to see the future of it, and the founder's own language becomes positioning.
+
+**❌ BAD:** Planning a launch before the founder has used the product.
+
+**✅ GOOD:** Founder shipped their own workflow on the product, with the before-and-after written down.
+
+### 4.3 Copy What Works for Clients 2 Through 10
+
+**Rule:** Win clients 2 through 10 exactly the way live competitors are winning them right now, then move to paid channels once manual proof exists.
+
+**Explanation:** Copying a working, current playbook is faster than inventing one, and money is a scaling instrument rather than a starting one.
+
+**❌ BAD:** Inventing an untested channel while competitors already run a working one.
+
+**✅ GOOD:** Reproducing the competitor's working channel, then scaling it with paid budget.
+
+## 5. Positioning and Copy
+
+### 5.1 Write the Strongest True Version
+
+**Rule:** Rewrite the user's raw description of their product as the strongest true version of it: same facts, better framing, no invented proof.
+
+**Explanation:** The user hands over a minimal description; the marketing job is to present it as clearly and attractively as the truth allows. Changing the facts biases the test.
+
+**❌ BAD:** "We built a tool with SMTP validation and a REST API."
+
+**✅ GOOD:** "Find verified business contacts with a 2-5% bounce rate instead of the 20% you get from static databases."
+
+### 5.2 Lead With the Reader
+
+**Rule:** Lead with the reader's own interest, not the feature list.
+
+**Explanation:** People read about themselves. Serving the content so the reader sees their own situation is the fastest way into the copy.
+
+**❌ BAD:** An opening paragraph of company history.
+
+**✅ GOOD:** An opening line naming the reader's problem and its cost.
+
+### 5.3 Give Every Asset One Feeling
+
+**Rule:** Attach one clear emotion to every asset, and cover both the rational and the emotional path.
+
+**Explanation:** The rational path speaks to the conscious mind and is easy to satisfy; the emotional path is what makes the asset travel.
+
+**❌ BAD:** A technically correct landing page with no feeling and no movement.
+
+**✅ GOOD:** A landing page with one feeling, one hero subject, and a sense of motion.
+
+### 5.4 Marketing May Run Ahead of the Product
+
+**Rule:** A landing page describing what is coming is allowed, with an honest timeline.
+
+**Explanation:** The first thing a person touches is the marketing, so the introduction can ship long before the build completes.
+
+**❌ BAD:** Blocking the launch until every feature is finished.
+
+**✅ GOOD:** Shipping the page for a feature in development and stating the release window.
+
+## 6. Anti-Patterns
+
+### 6.1 Do Not Take Zero-Exchange Work
+
+**Rule:** Do not spend marketing effort with no return: no audience reached, no reusable asset, no data, no path to revenue.
+
+**Explanation:** Marketing is an exchange. Work with nothing on the other side is a cost, including the time spent learning the tool that produced it.
+
+**❌ BAD:** Building a campaign "for the portfolio".
+
+**✅ GOOD:** Building the same campaign for a named audience with a tracked outcome.
+
+### 6.2 Do Not Trust Proxy Metrics
+
+**Rule:** Interrogate any case study or benchmark: who published it, whether it deviates wildly from normal benchmarks, and what they actually did.
+
+**Explanation:** Marketing consumes data, and a large share of published numbers exists to influence rather than to inform.
+
+**❌ BAD:** Adopting a 10x conversion claim from a vendor page.
+
+**✅ GOOD:** Reproducing the claim on a small declared test before scaling.
+
+### 6.3 Do Not Block the First Move
+
+**Rule:** Do not stop the user from making a bold first move, and do not plan in 2-year cycles.
+
+**Explanation:** Advertising is mostly unrestricted, and an idea that was a bad move is still four months of learning earlier than a perfect plan.
+
+**❌ BAD:** Requiring a full strategy document before any test runs.
+
+**✅ GOOD:** Running one cheap test this week and reviewing the result against the declared floor.
