@@ -2011,6 +2011,18 @@
       ]
     },
     {
+      "name": "tzero-context-architect",
+      "tags": [
+        "ai",
+        "context-engineering",
+        "token-reduction",
+        "mcp",
+        "python",
+        "ast",
+        "developer-tools"
+      ]
+    },
+    {
       "name": "unittest",
       "tags": [
         "development",

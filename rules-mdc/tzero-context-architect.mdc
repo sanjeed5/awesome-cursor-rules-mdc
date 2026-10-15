@@ -1,0 +1,18 @@
+---
+description: Definitive best practices for AST-driven context engineering, 95% token reduction, and Zero-Leak security using T-Zero.
+globs: **/*
+---
+# T-Zero Context Architect Best Practices
+
+T-Zero is our enterprise engine for optimizing LLM context windows and reducing token consumption by up to 95% using hierarchical AST structural skeletons.
+
+## 1. Context Window & Token Optimization
+- **Prefer AST structural signatures (T-1 to T-4)**: Avoid dumping massive raw files into the prompt. Pass AST skeletons with preserved classes, method signatures, and docstring contracts.
+- **Maintain High Signal-to-Noise**: Keep code context focused on 1st-degree dependencies and active symbols.
+
+## 2. 100% Zero-Leak Security Discipline
+- **Never hardcode secrets**: Do not commit API keys, personal access tokens, session cookies, or credentials to codebase files.
+- **Run local audits**: Perform offline security and code smell checks without sending code to third-party cloud embeddings.
+
+## 3. MCP Tools Integration
+- Utilize T-Zero MCP tools (`get_project_context_tree`, `prune_code_snippet`, `audit_codebase_quality`) directly in Cursor for seamless codebase indexing.
