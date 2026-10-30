@@ -2117,6 +2117,18 @@
       ]
     },
     {
+      "name": "vicem",
+      "tags": [
+        "ai",
+        "cursor-rules",
+        "mcp",
+        "context-handoff",
+        "claude-code",
+        "codex",
+        "developer-tools"
+      ]
+    },
+    {
       "name": "zod",
       "tags": [
         "web",
