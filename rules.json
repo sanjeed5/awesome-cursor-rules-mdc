@@ -1727,6 +1727,19 @@
       ]
     },
     {
+      "name": "signbee",
+      "tags": [
+        "ai",
+        "e-signature",
+        "document-signing",
+        "mcp",
+        "cursor-plugin",
+        "agent-skills",
+        "pdf",
+        "api"
+      ]
+    },
+    {
       "name": "smolagents",
       "tags": [
         "ai",
