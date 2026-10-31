@@ -1,0 +1,89 @@
+---
+description: Definitive Cursor rules for integrating Signbee e-signing API, MCP server (signbee-mcp), and Agent Skill for two-party SHA-256 certified PDF document signing.
+globs: **/*.{ts,tsx,js,py,md,json}
+---
+# Signbee Document Signing & MCP Best Practices
+
+Use this rule when integrating two-party e-signatures, generating NDAs/contracts from Markdown or PDF, configuring the Signbee MCP server (`signbee-mcp`), or calling the Signbee REST API (`https://signb.ee`).
+
+## 1. Cursor Plugin, Agent Skill & MCP Configuration
+
+### Cursor Plugin & Agent Skill
+- **Cursor Plugin Repository**: `https://github.com/signbee/cursor-plugin`
+- **Agent Skill Install**:
+  ```bash
+  npx skills add signbee/skill --skill signbee -g
+  ```
+- **LLM Documentation**: Fetch `https://signb.ee/llms.txt` (concise) or `https://signb.ee/llms-full.txt` (complete reference) before writing custom API wrappers.
+
+### `.cursor/mcp.json` Setup (`signbee-mcp`)
+```json
+{
+  "mcpServers": {
+    "signbee": {
+      "command": "npx",
+      "args": ["-y", "signbee-mcp"],
+      "env": {
+        "SIGNBEE_API_KEY": "${env:SIGNBEE_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+## 2. Sending Documents for E-Signing (`POST /api/v1/send`)
+
+- **Endpoint**: `POST https://signb.ee/api/v1/send`
+- **Content Input**: Provide either `markdown` (auto-rendered into a formatted PDF) or `pdf_url` / base64 PDF payload.
+- **Authentication**:
+  - **With API Key (`Authorization: Bearer sb_live_...`)**: Immediately dispatches signing links to both parties without manual sender OTP.
+  - **Keyless Mode (No API Key)**: Sends a 6-digit email OTP to `sender_email` first; call `POST https://signb.ee/api/v1/verify` with `document_id` and `otp` to confirm and dispatch.
+
+### TypeScript Example
+```typescript
+export async function sendAgreementForSigning(params: {
+  title: string;
+  markdown: string;
+  senderName: string;
+  senderEmail: string;
+  recipientName: string;
+  recipientEmail: string;
+  webhookUrl?: string;
+}) {
+  const response = await fetch("https://signb.ee/api/v1/send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(process.env.SIGNBEE_API_KEY
+        ? { Authorization: `Bearer ${process.env.SIGNBEE_API_KEY}` }
+        : {}),
+    },
+    body: JSON.stringify({
+      title: params.title,
+      markdown: params.markdown,
+      sender_name: params.senderName,
+      sender_email: params.senderEmail,
+      recipient_name: params.recipientName,
+      recipient_email: params.recipientEmail,
+      webhook_url: params.webhookUrl,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Signbee API error (${response.status}): ${err}`);
+  }
+
+  return response.json() as Promise<{
+    document_id: string;
+    status: "pending_sender_verification" | "sent" | "completed";
+    signing_url?: string;
+  }>;
+}
+```
+
+## 3. Status Polling & Webhook Handling
+
+- Check document status via `GET https://signb.ee/api/v1/status/{document_id}`.
+- Every completed PDF includes a tamper-evident **two-pass SHA-256 cryptographic signing certificate** appended to the final document.
+- Never modify or re-compress a signed PDF buffer after completion, as doing so invalidates the SHA-256 document hash recorded on the certificate.
