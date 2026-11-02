@@ -1,0 +1,87 @@
+---
+description: Definitive guidelines for using Ponder for convergent deliberation loops, multi-pass code reviews, and coverage-gated auditing in Cursor and AI coding agents.
+globs: **/*
+alwaysApply: false
+---
+
+# Ponder Best Practices
+
+Ponder is a convergent deliberation loop CLI and agent harness for code reviews and architectural audits. It measures whether stopping is honest, gates agent completion on full unit coverage, and reconciles revisions through an append-only ledger across four distinct perspectives (Skeptic, Builder, Dreamer, and Empath).
+
+## 1. Core Architecture and Deliberation Principles
+
+Coding agents frequently suffer from forced speech, premature convergence, or hallucinated coverage. Ponder enforces strict epistemic silence and coverage guarantees.
+
+### The Coverage Gate
+
+- Agents cannot mark an audit as stopped or complete while units remain ungraded.
+- Every enumerated unit (document, source file, route, export) must receive explicit grades across rubric dimensions before the engine permits stopping.
+- Incomplete coverage produces exit code 2 (state machine violation) when attempting `ponder decide stop`.
+
+### The Four Deliberation Perspectives
+
+Every multi-pass deliberation pass must evaluate findings through four distinct viewpoints:
+
+1. **Skeptic**: Tests boundary assumptions, scans for subtle regressions, detects false confidence, and challenges unverified claims.
+2. **Builder**: Assesses implementation feasibility, interface consistency, dependencies, backwards compatibility, and test coverage.
+3. **Dreamer**: Identifies missed systemic improvements, extensible abstractions, future edge cases, and architectural clarity.
+4. **Empath**: Evaluates developer ergonomics, cognitive burden, documentation clarity, and human review experience.
+
+## 2. Deliberation Workflow
+
+Follow the standard sequential state machine for multi-pass audits:
+
+### Phase 1: Initialize Session and Enumerate Units
+
+```bash
+# Start a deliberation session with the docs or code lens
+ponder start "Audit feature pull request" --lens code --slug pr-audit-review
+
+# Seed the inventory of units to review
+ponder units --diff main
+```
+
+### Phase 2: Predict and Grade Initial Baseline (Pass 1)
+
+```bash
+# State expected churn before grading
+ponder predict --churn 0.25 --claim "Initial baseline review will flag missing validation and docs"
+
+# Seed findings from the first review pass
+ponder grade --file findings-p1.json
+
+# Record the four perspectives
+ponder deliberate --file perspectives-p1.json
+
+# Compute convergence signals
+ponder judge
+
+# Commit the decision to continue to pass 2
+ponder decide continue --why "Completed baseline pass. Proceeding to pass 2 for revision."
+```
+
+### Phase 3: Converge and Stop (Pass 2+)
+
+```bash
+# Predict zero churn on quiet confirmation passes
+ponder predict --churn 0.00 --claim "Pass 2 confirms zero regressions and verified test passes"
+
+# Deliberate again across all four perspectives
+ponder deliberate --file perspectives-p2.json
+
+# Record revisions or declare zero deltas
+ponder delta --none --why "All findings stable; no new deltas discovered."
+
+# Judge convergence metrics
+ponder judge
+
+# Stop when coverage is 1.00 and churn is 0.00
+ponder decide stop --why "Coverage is 1.00 and churn reached 0.00 across consecutive passes."
+```
+
+## 3. Anti-Patterns to Avoid
+
+- **Premature Stopping**: Never attempt to stop when units are ungraded or coverage is below 1.00.
+- **Skipping the Evidence Loop**: Every finding must reference concrete files, line ranges, and reproducing commands.
+- **Single-Voice Dominance**: Do not bypass recording all four perspectives in `deliberation.json`.
+- **Phantom Deltas**: Avoid claiming non-zero churn without providing corresponding delta records in the ledger.

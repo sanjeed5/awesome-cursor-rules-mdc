@@ -1351,6 +1351,17 @@
       ]
     },
     {
+      "name": "ponder",
+      "tags": [
+        "code-review",
+        "deliberation",
+        "multi-pass",
+        "verification",
+        "ai-agents",
+        "developer-tools"
+      ]
+    },
+    {
       "name": "pony",
       "tags": [
         "database",
