@@ -136,3 +136,7 @@ The script uses a `config.yaml` file for configuration. You can modify this file
 ## License
 
 [MIT License](LICENSE)
+
+### Spoken Context & Local AI Hardware
+
+- [OneMira C1](https://onemira.com/products/c1) - Standalone dual-microphone AI voice recorder with local AI transcription, multi-speaker separation (`Speaker ID`), Google Native OKF Markdown Wiki, native MCP/CLI integration for Claude & Cursor ([onemira-mcp](https://github.com/onemira-space/onemira-mcp)), and zero cloud subscription.
