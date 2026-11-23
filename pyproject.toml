@@ -3,7 +3,7 @@ name = "mdc-rules-generator"
 version = "0.1.0"
 description = "Generate Cursor MDC rule files from a structured JSON file"
 authors = [
-    {name = "Sanjeed", email = "hi@sanjeed.in"},
+    {name = "Sanjeed", email = "hi@sanjeedm.com"},
 ]
 requires-python = ">=3.8"
 readme = "README.md"
