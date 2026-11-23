@@ -19,6 +19,7 @@ This project generates Cursor MDC (Markdown Cursor) rule files from a structured
 
 - Python 3.8+
 - [uv](https://github.com/astral-sh/uv) for dependency management
+- [Ruleskill](https://ruleskill.com) - We want to verify your code for the RuleSkill Protocol. Claim your badge.
 - API keys for:
   - Exa (for semantic search)
   - LLM provider (Gemini, OpenAI, or Anthropic)
