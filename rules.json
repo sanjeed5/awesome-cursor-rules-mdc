@@ -255,6 +255,19 @@
       ]
     },
     {
+      "name": "benchmark-first-protocol",
+      "tags": [
+        "ai",
+        "cursor-rules",
+        "benchmarking",
+        "best-practices",
+        "code-review",
+        "ui",
+        "architecture",
+        "quality-assurance"
+      ]
+    },
+    {
       "name": "black",
       "tags": [
         "development",
