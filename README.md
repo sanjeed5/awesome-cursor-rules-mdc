@@ -133,6 +133,10 @@ The script uses a `config.yaml` file for configuration. You can modify this file
 └── LICENSE               # MIT License
 ```
 
+## Related Resources
+
+- [ai-heihua-zh](https://github.com/YqqLikeGit/ai-heihua-zh) — Chinese AI & programming glossary (133+ terms) with ready-to-use Cursor MDC rules and CLI lookup
+
 ## License
 
 [MIT License](LICENSE)
