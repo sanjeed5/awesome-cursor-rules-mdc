@@ -1,0 +1,69 @@
+---
+description: Rules for building production AI agents with LangGraph
+globs: ["**/*.py"]
+alwaysApply: false
+---
+
+# LangGraph Agent Development Rules
+
+## State Definition
+- Always use TypedDict for explicit state typing
+- Use Annotated with add_messages reducer for message lists
+- Keep state minimal - avoid storing large objects
+
+```python
+from typing import TypedDict, Annotated
+from langgraph.graph import add_messages
+
+class AgentState(TypedDict):
+    messages: Annotated[list, add_messages]
+    context: str
+```
+
+## Node Functions
+- Each node should do ONE thing well
+- Always return a dict with state updates
+- Use descriptive node names
+
+```python
+def process_query(state: AgentState) -> dict:
+    result = llm.invoke(state["messages"])
+    return {"messages": [result]}
+```
+
+## Conditional Edges
+- Use explicit routing functions
+- Return string literals that map to node names
+
+```python
+def should_continue(state: AgentState) -> str:
+    if state["messages"][-1].tool_calls:
+        return "tools"
+    return "end"
+
+graph.add_conditional_edges("agent", should_continue, {"tools": "tool_node", "end": END})
+```
+
+## Tool Definition
+- Tool descriptions are critical
+- Keep functions pure and focused
+- Handle errors gracefully
+
+```python
+@tool
+def search_web(query: str) -> str:
+    """Search the web for current information."""
+    return search_api.search(query)
+```
+
+## Human-in-the-Loop
+- Use interrupt_before for dangerous actions
+- Always use a checkpointer
+
+```python
+app = graph.compile(checkpointer=memory, interrupt_before=["send_email"])
+```
+
+## Production
+- Use persistent checkpointers (PostgreSQL/Redis)
+- Set timeouts, monitor latency, log transitions
