@@ -1,0 +1,518 @@
+---
+description: Best practices for Snowflake SQL, data pipelines (Dynamic Tables, Streams, Tasks, Snowpipe), Cortex AI Functions, Cortex Search, Snowpark Python, and dbt on Snowflake.
+globs: **/*
+---
+# Snowflake Best Practices
+
+This document outlines best practices for Snowflake development including SQL, data pipelines, Cortex AI, Snowpark Python, and dbt integration. Snowflake separates storage (columnar micro-partitions), compute (elastic virtual warehouses), and services (metadata, security, optimization).
+
+## 1. Code Organization and Structure
+
+### 1.1. Naming Conventions
+Use `snake_case` for all identifiers. Avoid double-quoted identifiers — they create case-sensitive names that cause constant quoting headaches.
+
+❌ **BAD**:
+```sql
+CREATE TABLE "UserData" (
+    "UserID" INT,
+    "Created At" TIMESTAMP
+);
+SELECT "UserID" FROM "UserData";
+```
+
+✅ **GOOD**:
+```sql
+CREATE TABLE user_data (
+    user_id INT,
+    created_at TIMESTAMP_NTZ
+);
+SELECT user_id FROM user_data;
+```
+
+### 1.2. CTEs Over Nested Subqueries
+Use `WITH` clauses for readable, maintainable SQL. Use `CREATE OR REPLACE` for idempotent DDL in scripts.
+
+❌ **BAD**:
+```sql
+SELECT * FROM (
+    SELECT * FROM (
+        SELECT user_id, SUM(amount) AS total
+        FROM orders GROUP BY user_id
+    ) WHERE total > 100
+) WHERE user_id IN (SELECT user_id FROM active_users);
+```
+
+✅ **GOOD**:
+```sql
+WITH order_totals AS (
+    SELECT user_id, SUM(amount) AS total
+    FROM orders
+    GROUP BY user_id
+),
+high_value AS (
+    SELECT user_id, total
+    FROM order_totals
+    WHERE total > 100
+)
+SELECT h.user_id, h.total
+FROM high_value h
+JOIN active_users a ON h.user_id = a.user_id;
+```
+
+### 1.3. Upserts with MERGE
+Use `MERGE` for upsert patterns instead of manual DELETE + INSERT.
+
+```sql
+MERGE INTO target t USING source s ON t.id = s.id
+WHEN MATCHED THEN UPDATE SET t.name = s.name, t.updated_at = CURRENT_TIMESTAMP()
+WHEN NOT MATCHED THEN INSERT (id, name, updated_at) VALUES (s.id, s.name, CURRENT_TIMESTAMP());
+```
+
+### 1.4. Stored Procedures — Colon Prefix for Variables
+In SQL stored procedures (BEGIN...END blocks), variables and parameters must use colon `:` prefix inside SQL statements. Without the colon, Snowflake treats them as column identifiers.
+
+❌ **BAD**:
+```sql
+CREATE PROCEDURE my_proc(p_id INT) RETURNS STRING LANGUAGE SQL AS
+BEGIN
+    LET result STRING;
+    SELECT name INTO result FROM users WHERE id = p_id;
+    RETURN result;
+END;
+```
+
+✅ **GOOD**:
+```sql
+CREATE PROCEDURE my_proc(p_id INT) RETURNS STRING LANGUAGE SQL AS
+BEGIN
+    LET result STRING;
+    SELECT name INTO :result FROM users WHERE id = :p_id;
+    RETURN result;
+END;
+```
+
+## 2. Semi-Structured Data
+
+### 2.1. VARIANT, OBJECT, and ARRAY Types
+Use these types for JSON, Avro, Parquet, ORC data. Access nested fields with colon notation and always cast explicitly.
+
+❌ **BAD**:
+```sql
+-- No casting, mixed types across rows, no LATERAL FLATTEN for arrays
+SELECT src:customer.name, src:items FROM events;
+```
+
+✅ **GOOD**:
+```sql
+-- Explicit casting, proper FLATTEN for arrays
+SELECT
+    src:customer.name::STRING AS customer_name,
+    src:price::NUMBER(10,2) AS price,
+    f.value:sku::STRING AS item_sku
+FROM events,
+    LATERAL FLATTEN(input => src:items) f;
+```
+
+### 2.2. VARIANT Null vs SQL NULL
+JSON `null` in VARIANT is stored as the string `"null"`, not SQL NULL. Handle this on load.
+
+```sql
+-- Use STRIP_NULL_VALUES on load to convert JSON nulls to SQL NULLs
+COPY INTO my_table FROM @my_stage
+    FILE_FORMAT = (TYPE = 'JSON' STRIP_NULL_VALUE = TRUE);
+```
+
+### 2.3. Flatten for Better Performance
+Flatten semi-structured data into relational columns when data contains dates, numbers as strings, or arrays. This enables micro-partition pruning which VARIANT fields prevent.
+
+## 3. Performance Considerations
+
+### 3.1. Cluster Keys
+Define on columns used in WHERE, JOIN, or GROUP BY for very large tables (multi-TB). Range queries benefit most.
+
+❌ **BAD**:
+```sql
+-- Clustering a small table or on a high-cardinality random column
+ALTER TABLE small_lookups CLUSTER BY (uuid_column);
+```
+
+✅ **GOOD**:
+```sql
+-- Cluster large fact tables on commonly filtered columns
+ALTER TABLE large_events CLUSTER BY (event_date, region);
+```
+
+### 3.2. Search Optimization Service
+Enable for point-lookup queries on high-cardinality columns, substring/regex searches, and VARIANT field lookups.
+
+```sql
+ALTER TABLE logs ADD SEARCH OPTIMIZATION
+    ON EQUALITY(sender_ip), SUBSTRING(error_message);
+```
+
+### 3.3. Warehouse Sizing
+Size by query complexity, not data volume. Start X-Small and scale up. Use separate warehouses per workload (ETL vs analytics vs data science).
+
+```sql
+CREATE WAREHOUSE etl_wh WITH
+    WAREHOUSE_SIZE = 'MEDIUM'
+    AUTO_SUSPEND = 60
+    AUTO_RESUME = TRUE;
+```
+
+### 3.4. Avoid SELECT *
+Snowflake uses columnar storage — scanning fewer columns is cheaper and faster.
+
+❌ **BAD**:
+```sql
+SELECT * FROM wide_events_table WHERE event_date = '2024-01-15';
+```
+
+✅ **GOOD**:
+```sql
+SELECT event_id, event_type, user_id, event_timestamp
+FROM wide_events_table
+WHERE event_date = '2024-01-15';
+```
+
+## 4. Data Pipelines
+
+### 4.1. Choosing Your Approach
+
+| Approach | When to Use |
+|----------|-------------|
+| Dynamic Tables | Declarative transformations. Define the query, Snowflake handles refresh. Best for most pipelines. |
+| Streams + Tasks | Imperative CDC + scheduling. Best for procedural logic, stored procedure calls. |
+| Snowpipe | Continuous file loading from S3/GCS/Azure. |
+| Snowpipe Streaming | Low-latency row-level ingestion via SDK (Java, Python). |
+
+### 4.2. Dynamic Tables
+Declarative, auto-refreshing transformations. Chain them for multi-step pipelines.
+
+❌ **BAD**:
+```sql
+-- Using Streams+Tasks for a simple transformation
+CREATE STREAM s ON TABLE raw;
+CREATE TASK t WAREHOUSE = wh SCHEDULE = '1 MINUTE'
+    WHEN SYSTEM$STREAM_HAS_DATA('s')
+    AS INSERT INTO cleaned SELECT * FROM s WHERE type IS NOT NULL;
+```
+
+✅ **GOOD**:
+```sql
+-- Dynamic Table handles refresh automatically
+CREATE OR REPLACE DYNAMIC TABLE cleaned_events
+    TARGET_LAG = '5 minutes'
+    WAREHOUSE = transform_wh
+    AS
+    SELECT event_id, event_type, user_id, event_timestamp
+    FROM raw_events
+    WHERE event_type IS NOT NULL;
+
+-- Chain for multi-step pipelines
+CREATE OR REPLACE DYNAMIC TABLE user_sessions
+    TARGET_LAG = '10 minutes'
+    WAREHOUSE = transform_wh
+    AS
+    SELECT user_id,
+        MIN(event_timestamp) AS session_start,
+        MAX(event_timestamp) AS session_end,
+        COUNT(*) AS event_count
+    FROM cleaned_events
+    GROUP BY user_id;
+```
+
+### 4.3. Streams and Tasks
+Use when you need procedural logic, stored procedure calls, or imperative CDC.
+
+```sql
+CREATE OR REPLACE STREAM raw_events_stream ON TABLE raw_events;
+-- Use APPEND_ONLY = TRUE for insert-only sources (lower overhead)
+
+CREATE OR REPLACE TASK process_events
+    WAREHOUSE = transform_wh
+    SCHEDULE = 'USING CRON 0 */1 * * * America/Los_Angeles'
+    WHEN SYSTEM$STREAM_HAS_DATA('raw_events_stream')
+    AS
+    INSERT INTO cleaned_events
+    SELECT event_id, event_type, user_id, event_timestamp
+    FROM raw_events_stream
+    WHERE event_type IS NOT NULL;
+
+-- Tasks start SUSPENDED — must resume after creation
+ALTER TASK process_events RESUME;
+```
+
+### 4.4. Snowpipe
+Continuous file loading. Common pattern: Snowpipe into raw table, then Dynamic Table chain for transformations.
+
+```sql
+CREATE OR REPLACE PIPE my_pipe AUTO_INGEST = TRUE AS
+    COPY INTO raw_events FROM @my_external_stage
+    FILE_FORMAT = (TYPE = 'JSON');
+```
+
+## 5. Cortex AI Functions
+
+### 5.1. Available Functions
+Use these names (the current versions):
+
+| Function | Purpose |
+|----------|---------|
+| `AI_COMPLETE` | General-purpose LLM completion (text, images, documents) |
+| `AI_CLASSIFY` | Classify text/images into user-defined categories |
+| `AI_FILTER` | Returns TRUE/FALSE for text/image input |
+| `AI_AGG` | Aggregate insights across rows of text |
+| `AI_EMBED` | Generate embedding vectors |
+| `AI_EXTRACT` | Extract structured info from text/images/documents |
+| `AI_SENTIMENT` | Sentiment score (-1 to 1) |
+| `AI_SUMMARIZE_AGG` | Summarize across rows |
+| `AI_SIMILARITY` | Embedding similarity between two inputs |
+| `AI_TRANSCRIBE` | Transcribe audio/video from stages |
+| `AI_PARSE_DOCUMENT` | OCR or text+layout extraction from documents |
+| `AI_REDACT` | Redact PII from text |
+| `AI_TRANSLATE` | Translate between languages |
+
+Helper functions: `TO_FILE('@stage', 'filename')`, `AI_COUNT_TOKENS(model, text)`, `PROMPT('template {0}', arg)`, `TRY_COMPLETE`.
+
+### 5.2. AI_COMPLETE
+Available models: claude-4-opus, claude-4-sonnet, claude-sonnet-4-5, claude-opus-4-5, claude-haiku-4-5, gemini-3-pro, llama3.1-70b, llama3.1-8b, llama3.3-70b, mistral-large2, mistral-small2, deepseek-r1.
+
+```sql
+-- Text completion
+SELECT AI_COMPLETE(MODEL => 'claude-4-sonnet',
+    PROMPT => 'Summarize: ' || review_text) AS summary
+FROM reviews;
+
+-- Document processing
+SELECT AI_COMPLETE(MODEL => 'claude-4-sonnet',
+    PROMPT => PROMPT('Extract the invoice total from {0}',
+        TO_FILE('@docs', 'invoice.pdf')));
+
+-- Structured JSON output
+SELECT AI_COMPLETE(MODEL => 'claude-4-sonnet',
+    PROMPT => 'Extract name, email, company as JSON: ' || raw_text
+)::VARIANT AS extracted
+FROM contacts;
+```
+
+### 5.3. AI_CLASSIFY
+Use AI_CLASSIFY for classification instead of AI_COMPLETE — it is purpose-built and cheaper.
+
+❌ **BAD**:
+```sql
+-- Using AI_COMPLETE for simple classification (wasteful)
+SELECT AI_COMPLETE('claude-4-sonnet',
+    'Classify into billing/technical/account/other: ' || ticket_text) FROM tickets;
+```
+
+✅ **GOOD**:
+```sql
+-- Single-label
+SELECT AI_CLASSIFY(ticket_text,
+    ['billing', 'technical', 'account', 'other']) AS category
+FROM tickets;
+
+-- Multi-label classification
+SELECT AI_CLASSIFY(input, categories, {'output_mode': 'multi'});
+```
+
+### 5.4. Other AI Functions
+```sql
+-- AI_FILTER (natural-language WHERE clause)
+SELECT * FROM reviews
+WHERE AI_FILTER(review_text, 'mentions product quality issues');
+
+-- AI_AGG (cross-row aggregation)
+SELECT AI_AGG(feedback_text, 'What are the top 3 themes?')
+FROM customer_feedback;
+
+-- AI_EXTRACT (entity extraction)
+SELECT AI_EXTRACT(email_body, 'meeting date', 'attendees', 'action items')
+FROM emails;
+
+-- AI_SENTIMENT
+SELECT review_text, AI_SENTIMENT(review_text) AS sentiment FROM product_reviews;
+
+-- AI_PARSE_DOCUMENT (OCR)
+SELECT AI_PARSE_DOCUMENT(TO_FILE('@docs', 'contract.pdf'), MODE => 'LAYOUT');
+
+-- AI_REDACT (PII removal)
+SELECT AI_REDACT(customer_notes) AS redacted FROM support_cases;
+```
+
+### 5.5. Privileges
+Users need both `USE AI FUNCTIONS` account privilege AND the `SNOWFLAKE.CORTEX_USER` database role. Both are granted to PUBLIC by default.
+
+## 6. Cortex Search (RAG)
+
+### 6.1. Creating a Search Service
+Managed hybrid vector + keyword search for RAG applications.
+
+```sql
+-- Single-index (simplest)
+CREATE OR REPLACE CORTEX SEARCH SERVICE my_search
+    ON transcript_text
+    ATTRIBUTES region, agent_id
+    WAREHOUSE = my_wh
+    TARGET_LAG = '1 day'
+    EMBEDDING_MODEL = 'snowflake-arctic-embed-l-v2.0'
+    AS (SELECT transcript_text, region, agent_id FROM support_transcripts);
+
+-- Multi-index (text + vector on multiple columns)
+CREATE OR REPLACE CORTEX SEARCH SERVICE my_multi_search
+    TEXT INDEXES transcript_text, summary
+    VECTOR INDEXES transcript_text (model='snowflake-arctic-embed-l-v2.0')
+    ATTRIBUTES region
+    WAREHOUSE = my_wh
+    TARGET_LAG = '1 hour'
+    AS (SELECT transcript_text, summary, region FROM support_transcripts);
+```
+
+### 6.2. Querying — Python API
+```python
+from snowflake.core import Root
+
+root = Root(session)
+service = root.databases["db"].schemas["schema"].cortex_search_services["my_search"]
+resp = service.search(
+    query="internet connection issues",
+    columns=["transcript_text", "region"],
+    filter={"@eq": {"region": "North America"}},
+    limit=5
+)
+```
+
+Filter syntax: `{"@eq": {...}}`, `{"@contains": {...}}`, `{"@gte": {...}}`, `{"@and": [...]}`, `{"@or": [...]}`, `{"@not": ...}`.
+
+### 6.3. RAG Pattern
+Search for context, pass to AI_COMPLETE:
+```python
+results = service.search(query=question, columns=["content"], limit=5)
+context = "\n".join([r["content"] for r in results.results])
+```
+```sql
+SELECT AI_COMPLETE(MODEL => 'claude-4-sonnet',
+    PROMPT => 'Answer from context: ' || :context || ' Question: ' || :question);
+```
+
+## 7. Snowpark Python
+
+### 7.1. Session and DataFrame API
+DataFrames are lazy — operations build a query plan, executed on `collect()`/`show()`.
+
+```python
+from snowflake.snowpark import Session
+import os
+
+session = Session.builder.configs({
+    "account": os.environ["SNOWFLAKE_ACCOUNT"],
+    "user": os.environ["SNOWFLAKE_USER"],
+    "password": os.environ["SNOWFLAKE_PASSWORD"],
+    "role": "my_role", "warehouse": "my_wh",
+    "database": "my_db", "schema": "my_schema"
+}).create()
+
+df = session.table("customers")
+df_agg = df.group_by("region").agg(sum("revenue").alias("total_revenue"))
+df_agg.show()
+```
+
+### 7.2. UDFs and Vectorized UDFs
+
+❌ **BAD**:
+```python
+# Scalar UDF for ML inference (slow — processes one row at a time)
+@udf(name="predict")
+def predict(val: float) -> float:
+    import pickle
+    model = pickle.load(open("model.pkl", "rb"))
+    return float(model.predict([[val]])[0])
+```
+
+✅ **GOOD**:
+```python
+# Vectorized UDF for ML inference (10-100x faster — batch processing)
+@udf(name="predict", packages=["scikit-learn", "pandas"])
+def predict(vals: pd.Series) -> pd.Series:
+    import pickle, sys
+    model = pickle.load(open(sys.path[0] + "/model.pkl", "rb"))
+    return pd.Series(model.predict(vals.values.reshape(-1, 1)))
+```
+
+### 7.3. Stored Procedures
+```python
+from snowflake.snowpark.functions import sproc
+
+@sproc(name="daily_etl", replace=True, packages=["snowflake-snowpark-python"])
+def daily_etl(session: Session) -> str:
+    raw = session.table("raw_events")
+    cleaned = raw.filter(raw["event_type"].is_not_null())
+    cleaned.write.mode("overwrite").save_as_table("cleaned_events")
+    return f"Processed {cleaned.count()} rows"
+```
+
+## 8. dbt on Snowflake
+
+### 8.1. Dynamic Tables in dbt
+```sql
+{{ config(materialized='dynamic_table', snowflake_warehouse='transforming', target_lag='1 hour') }}
+
+SELECT customer_id, SUM(amount) AS lifetime_value, MAX(order_date) AS last_order_date
+FROM {{ ref('stg_orders') }}
+GROUP BY 1
+```
+
+### 8.2. Snowflake-Specific Configs
+```sql
+-- Transient tables (no Fail-safe, lower storage cost):
+{{ config(materialized='table', transient=true) }}
+
+-- Query tags (cost tracking):
+{{ config(query_tag='finance_team_daily') }}
+
+-- Copy grants (preserve access when replacing):
+{{ config(copy_grants=true) }}
+
+-- Warehouse override per model:
+{{ config(snowflake_warehouse='large_wh') }}
+```
+
+## 9. Security Best Practices
+
+### 9.1. Access Control
+Follow least-privilege RBAC. Use database roles for object-level grants. Use functional roles: loader (write raw), transformer (read raw, write analytics), analyst (read analytics).
+
+### 9.2. Masking and Row Access Policies
+Use masking policies for PII columns and row access policies for multi-tenant isolation.
+
+### 9.3. Credentials
+Never hardcode credentials. Use environment variables or Snowflake's secrets manager.
+
+❌ **BAD**:
+```python
+session = Session.builder.configs({"password": "hunter2"}).create()
+```
+
+✅ **GOOD**:
+```python
+session = Session.builder.configs({
+    "account": os.environ["SNOWFLAKE_ACCOUNT"],
+    "user": os.environ["SNOWFLAKE_USER"],
+    "password": os.environ["SNOWFLAKE_PASSWORD"]
+}).create()
+```
+
+## 10. Common Pitfalls and Gotchas
+
+- Do NOT use old Cortex function names (`COMPLETE`, `CLASSIFY_TEXT`, `EXTRACT_ANSWER`, etc.) — use `AI_*` versions.
+- Do NOT use `AI_COMPLETE` for simple classification — use `AI_CLASSIFY` (purpose-built, cheaper).
+- Do NOT pass entire tables through `AI_COMPLETE` row-by-row without cost estimation. Check with `AI_COUNT_TOKENS` first.
+- Do NOT use Streams+Tasks for simple transformations that Dynamic Tables can handle.
+- Do NOT set `TARGET_LAG` shorter than needed — it directly impacts cost.
+- Do NOT forget to `ALTER TASK ... RESUME` after creation — tasks start suspended.
+- Do NOT use `collect()` on large Snowpark DataFrames — process server-side.
+- Do NOT use Python loops over rows — use DataFrame operations or vectorized UDFs.
+- Do NOT use `{{ this }}` in dbt without `{% if is_incremental() %}` guard.
+- Do NOT set `cluster_by` on small tables (< 1TB) — Snowflake auto-clusters well.
+- Do NOT skip `dbt test` — data quality issues compound downstream.
