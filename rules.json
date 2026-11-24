@@ -574,6 +574,17 @@
       ]
     },
     {
+      "name": "entroly",
+      "tags": [
+        "ai",
+        "mcp",
+        "context-optimization",
+        "rust",
+        "python",
+        "llm-caching"
+      ]
+    },
+    {
       "name": "esbuild",
       "tags": [
         "build-tool",
