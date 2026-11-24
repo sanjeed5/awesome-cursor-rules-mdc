@@ -2011,6 +2011,17 @@
       ]
     },
     {
+      "name": "ui-finish-gate",
+      "tags": [
+        "ui",
+        "ux",
+        "design-systems",
+        "accessibility",
+        "responsive-design",
+        "code-review"
+      ]
+    },
+    {
       "name": "unittest",
       "tags": [
         "development",
