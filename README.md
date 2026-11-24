@@ -9,7 +9,7 @@ This project generates Cursor MDC (Markdown Cursor) rule files from a structured
 ## Features
 
 - Generates comprehensive MDC rule files for libraries
-- Uses Exa for semantic web search to gather best practices
+- Uses Exa (one of the best web search APIs for AI) for semantic web search to gather best practices
 - Leverages LLM to create detailed, structured content
 - Supports parallel processing for efficiency
 - Tracks progress to allow resuming interrupted runs
