@@ -1,0 +1,282 @@
+---
+description: Definitive guidelines for building robust, production-ready integrations with the Anthropic Claude API using the official @anthropic-ai/sdk (TypeScript/Node.js), covering client setup, messaging, streaming, tool use, and error handling.
+globs: **/*
+---
+# Anthropic Claude API Best Practices
+
+This guide outlines definitive best practices for integrating the Anthropic Claude API. Always use the official `@anthropic-ai/sdk` package and target the latest Claude models.
+
+## 1. Code Organization & Structure
+
+### 1.1. Secure API Key Management
+
+Never hardcode API keys. Always load them from environment variables.
+
+❌ BAD:
+```typescript
+import Anthropic from "@anthropic-ai/sdk"
+const client = new Anthropic({ apiKey: "sk-ant-api03-hardcoded-key" })
+```
+
+✅ GOOD:
+```typescript
+import Anthropic from "@anthropic-ai/sdk"
+// Automatically reads ANTHROPIC_API_KEY from env
+const client = new Anthropic()
+```
+
+### 1.2. Singleton Client Initialization
+
+Initialize the Anthropic client once at module level. Re-initializing on every request wastes resources.
+
+❌ BAD:
+```typescript
+async function chat(prompt: string) {
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  return await client.messages.create({ /* ... */ })
+}
+```
+
+✅ GOOD:
+```typescript
+// lib/anthropic.ts
+import Anthropic from "@anthropic-ai/sdk"
+export const anthropic = new Anthropic()
+```
+
+### 1.3. Model Selection
+
+| Model | Use case |
+|-------|----------|
+| `claude-opus-4-6` | Complex reasoning, multi-step tasks |
+| `claude-sonnet-4-6` | Balanced — most production tasks |
+| `claude-haiku-4-5-20251001` | Fast, cheap — high-volume simple tasks |
+
+❌ BAD: Expensive model for simple classification
+```typescript
+const result = await anthropic.messages.create({
+  model: "claude-opus-4-6",
+  max_tokens: 10,
+  messages: [{ role: "user", content: "Is this spam? Yes or No." }]
+})
+```
+
+✅ GOOD: Match model to task
+```typescript
+const result = await anthropic.messages.create({
+  model: "claude-haiku-4-5-20251001",
+  max_tokens: 10,
+  messages: [{ role: "user", content: "Is this spam? Yes or No." }]
+})
+```
+
+## 2. Common Patterns & Anti-patterns
+
+### 2.1. Message Structure
+
+Use the `system` parameter for persistent instructions, not the user message.
+
+❌ BAD:
+```typescript
+messages: [{ role: "user", content: "You are a coding assistant. Explain async/await." }]
+```
+
+✅ GOOD:
+```typescript
+{
+  system: "You are an expert TypeScript engineer. Provide concise, production-ready examples.",
+  messages: [{ role: "user", content: "Explain async/await." }]
+}
+```
+
+### 2.2. Streaming Responses
+
+Use streaming for user-facing apps to improve perceived responsiveness.
+
+✅ GOOD (Next.js Edge Route):
+```typescript
+// app/api/chat/route.ts
+import Anthropic from "@anthropic-ai/sdk"
+export const runtime = "edge"
+
+export async function POST(req: Request) {
+  const { messages } = await req.json()
+  const client = new Anthropic()
+
+  const stream = client.messages.stream({
+    model: "claude-opus-4-6",
+    max_tokens: 2048,
+    system: "You are a helpful assistant.",
+    messages,
+  })
+
+  return new Response(stream.toReadableStream(), {
+    headers: { "Content-Type": "text/event-stream" },
+  })
+}
+```
+
+### 2.3. Tool Use (Function Calling)
+
+Define tools with precise schemas and handle tool calls in a loop.
+
+❌ BAD: Vague tool description
+```typescript
+{ name: "search", description: "Search for stuff", input_schema: { type: "object", properties: { q: { type: "string" } } } }
+```
+
+✅ GOOD: Precise, actionable descriptions
+```typescript
+{
+  name: "web_search",
+  description: "Search the web for current facts or news not in training data.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      query: { type: "string", description: "Concise, specific search query." }
+    },
+    required: ["query"]
+  }
+}
+```
+
+✅ GOOD: Tool use loop pattern
+```typescript
+async function runWithTools(userMessage: string): Promise<string> {
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content: userMessage }]
+
+  while (true) {
+    const response = await anthropic.messages.create({
+      model: "claude-opus-4-6",
+      max_tokens: 4096,
+      tools,
+      messages,
+    })
+
+    if (response.stop_reason === "end_turn") {
+      return response.content.filter(b => b.type === "text").map(b => b.text).join("")
+    }
+
+    if (response.stop_reason === "tool_use") {
+      messages.push({ role: "assistant", content: response.content })
+      const toolResults: Anthropic.ToolResultBlockParam[] = []
+      for (const block of response.content) {
+        if (block.type === "tool_use") {
+          const result = await executeTool(block.name, block.input)
+          toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) })
+        }
+      }
+      messages.push({ role: "user", content: toolResults })
+    }
+  }
+}
+```
+
+### 2.4. Content Extraction
+
+Never assume content block type. Filter safely.
+
+❌ BAD:
+```typescript
+const text = response.content[0].text  // TypeError if block is not text
+```
+
+✅ GOOD:
+```typescript
+const text = response.content
+  .filter(block => block.type === "text")
+  .map(block => block.text)
+  .join("")
+```
+
+## 3. Performance Considerations
+
+### 3.1. Token Management
+
+Always set `max_tokens` explicitly and monitor usage.
+
+```typescript
+const response = await anthropic.messages.create({
+  model: "claude-opus-4-6",
+  max_tokens: 1024,  // always set explicitly
+  messages: [{ role: "user", content: prompt }]
+})
+
+console.log(`Tokens: ${response.usage.input_tokens} in / ${response.usage.output_tokens} out`)
+```
+
+### 3.2. Conversation History Trimming
+
+Cap history to avoid unbounded token growth.
+
+❌ BAD: Unbounded history
+```typescript
+history.push({ role: "user", content: msg })
+history.push({ role: "assistant", content: reply })
+// grows forever
+```
+
+✅ GOOD:
+```typescript
+const MAX_TURNS = 10
+function trimHistory(messages: Anthropic.MessageParam[]) {
+  return messages.slice(-MAX_TURNS * 2)
+}
+```
+
+### 3.3. Prompt Caching
+
+Cache large, repeated context (docs, code) to reduce costs up to 90%.
+
+```typescript
+await anthropic.messages.create({
+  model: "claude-opus-4-6",
+  max_tokens: 1024,
+  system: [{
+    type: "text",
+    text: largeSystemPrompt,
+    cache_control: { type: "ephemeral" }
+  }],
+  messages: [{ role: "user", content: question }]
+})
+```
+
+## 4. Error Handling
+
+Implement retry with exponential backoff for rate limits and overload errors.
+
+❌ BAD:
+```typescript
+try {
+  const response = await anthropic.messages.create(params)
+} catch (err) {
+  console.error("error", err)  // no retry
+}
+```
+
+✅ GOOD:
+```typescript
+async function createWithRetry(params: Anthropic.MessageCreateParamsNonStreaming, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await anthropic.messages.create(params)
+    } catch (err) {
+      const isRetryable =
+        (err instanceof Anthropic.RateLimitError) ||
+        (err instanceof Anthropic.APIStatusError && err.status === 529)
+
+      if (!isRetryable || attempt === maxRetries) throw err
+      await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000 + Math.random() * 500))
+    }
+  }
+}
+```
+
+## 5. Common Pitfalls
+
+- **Deprecated models**: Never use `claude-1`, `claude-2`, `claude-instant`. Use `claude-opus-4-6`, `claude-sonnet-4-6`, or `claude-haiku-4-5-20251001`.
+- **Missing `max_tokens`**: The default is very low and will truncate most responses. Always set it.
+- **Hardcoded API keys**: Use environment variables, never commit keys to source control.
+- **Ignoring rate limits**: Implement exponential backoff. API returns 429 (rate limit) and 529 (overloaded).
+- **Unchecked `stop_reason`**: Always check — `end_turn`, `max_tokens`, `tool_use`, and `stop_sequence` all require different handling.
+- **Unbounded conversation history**: Trim history periodically to control costs and stay within context limits.
