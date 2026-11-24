@@ -1,0 +1,15 @@
+---
+description: Go production rules — idiomatic, error-safe Go
+globs: **/*.go, !**/*_test.go
+alwaysApply: true
+---
+
+# Go Production Rules
+
+- Never ignore a returned error with _. Every error must be handled or returned.
+- Wrap errors with context: return fmt.Errorf("functionName: %w", err).
+- Define interfaces at the consumer package. Keep interfaces to 1-2 methods.
+- Every I/O function takes ctx context.Context as first parameter. Never store context in a struct.
+- Every goroutine has a clear owner and shutdown path. Use errgroup for coordinated groups.
+- Never positional struct initialization. Always name fields.
+- Table-driven tests: tests := []struct{name, input, expected} + t.Run(tt.name, ...).

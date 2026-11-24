@@ -1,0 +1,15 @@
+---
+description: React and Next.js App Router production rules
+globs: **/*.tsx, **/*.jsx, src/**/*.ts
+alwaysApply: true
+---
+
+# React + Next.js App Router Rules
+
+- Default to Server Components. Add "use client" only when you need hooks, browser APIs, or event handlers.
+- Fetch data in Server Components or page.tsx. Never fetch in useEffect.
+- Use server actions for mutations — not API routes called from client components.
+- One component per file. File name = component name (PascalCase). No default exports.
+- Define explicit interface Props for every component. Never use any as a prop type.
+- Every route with async data needs a sibling loading.tsx and error.tsx.
+- Use next/image instead of img. Use next/font instead of Google Fonts link tags.

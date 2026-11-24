@@ -1,0 +1,15 @@
+---
+description: TypeScript strict-mode production rules
+globs: **/*.ts, **/*.tsx, !**/*.test.ts, !**/*.spec.ts
+alwaysApply: true
+---
+
+# TypeScript Strict Mode Rules
+
+- tsconfig.json must include "strict": true. Never disable strict checks.
+- No any. Use unknown + type guards, or as Type only at I/O boundaries.
+- Every exported function needs an explicit return type, including async (Promise<T>).
+- Model state as discriminated unions, not { data?: T; loading: boolean; error?: E }.
+- Use Readonly<T> for immutable data. Use as const for config objects.
+- Validate env vars at startup with zod. Never access process.env directly in business logic.
+- No TypeScript enum. Use const object + typeof union instead.
