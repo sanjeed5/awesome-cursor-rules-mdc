@@ -1015,6 +1015,16 @@
       ]
     },
     {
+      "name": "lean-ctx",
+      "tags": [
+        "cursor",
+        "mcp",
+        "context-engineering",
+        "ai-agent",
+        "developer-tools"
+      ]
+    },
+    {
       "name": "lightgbm",
       "tags": [
         "ai",
