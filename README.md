@@ -133,6 +133,12 @@ The script uses a `config.yaml` file for configuration. You can modify this file
 └── LICENSE               # MIT License
 ```
 
+## Community Collections
+
+Looking for pre-made `.cursorrules` files you can use right away? These community collections offer ready-to-use rule files:
+
+- [Survivor Forge Cursor Rules](https://github.com/survivorforge/cursor-rules) - Collection of 35+ framework-specific `.cursorrules` files covering React, Next.js, Python, FastAPI, Go, Rust, Vue, Angular, Svelte, TypeScript, and more. Each file includes best practices, code style conventions, and project structure guidelines.
+
 ## License
 
 [MIT License](LICENSE)
